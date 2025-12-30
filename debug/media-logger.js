@@ -1,5 +1,13 @@
-// weberlessa-support/debug/media-logger.js
-console.log('📊 media-logger.js carregado - Sistema de logs para mídia');
+// weberlessa-support/debug/media-logger.js - VERSÃO CONFLITO-SEGURA
+console.log('📊 media-logger.js carregado do repositório de suporte');
+
+// ⚡ VERIFICAR SE JÁ EXISTE PARA EVITAR DUPLICAÇÃO
+if (typeof window.MEDIA_LOGGER_CONFIG !== 'undefined') {
+    console.warn('⚠️ MEDIA_LOGGER_CONFIG já existe! Ignorando recriação.');
+    console.log('ℹ️ Provavelmente o arquivo original ainda está sendo carregado.');
+    console.log('💡 Solução: Remova js/modules/media/media-logger.js do index.html');
+    return; // PARA EXECUÇÃO - não recria objetos existentes
+}
 
 /**
  * SISTEMA DE LOGGING OTIMIZADO PARA MÓDULO DE MÍDIA
@@ -22,7 +30,9 @@ const MEDIA_LOGGER_CONFIG = Object.freeze({
 });
 
 // ⚡ CACHE DE LOGS (array circular para performance)
-window.mediaLogHistory = [];
+if (!window.mediaLogHistory) {
+    window.mediaLogHistory = [];
+}
 
 // ⚡ FUNÇÃO PRINCIPAL (única exportação para reduzir overhead)
 window.mediaLog = function(level, module, message, data = null) {
