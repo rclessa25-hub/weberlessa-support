@@ -54,6 +54,86 @@ window.PerformanceCache = {
     }
 };
 
+// ========== CACHE INTELLIGENTE (INVALIDATION AUTOMÁTICA) ==========
+window.SmartCache = {
+    // Invalidar cache específico
+    invalidate(key, type = 'data') {
+        if (PerformanceCache[type] && PerformanceCache[type].has(key)) {
+            PerformanceCache[type].delete(key);
+            console.log(`🗑️ Cache invalidado: ${key} (${type})`);
+            return true;
+        }
+        return false;
+    },
+    
+    // Invalidar múltiplos caches
+    invalidatePattern(pattern, type = 'data') {
+        if (!PerformanceCache[type]) return 0;
+        
+        let count = 0;
+        for (const key of PerformanceCache[type].keys()) {
+            if (key.includes(pattern)) {
+                PerformanceCache[type].delete(key);
+                count++;
+            }
+        }
+        
+        if (count > 0) {
+            console.log(`🗑️ ${count} cache(s) invalidado(s) com padrão: "${pattern}"`);
+        }
+        
+        return count;
+    },
+    
+    // Invalidar cache de propriedades (CRUD operations)
+    invalidatePropertiesCache() {
+        const invalidated = [
+            this.invalidate('properties_data', 'data'),
+            this.invalidatePattern('property_', 'data'),
+            this.invalidatePattern('prop_', 'dom')
+        ].filter(Boolean).length;
+        
+        console.log(`🏠 Cache de propriedades invalidado (${invalidated} itens)`);
+        return invalidated;
+    },
+    
+    // Cache com auto-invalidation por eventos
+    setWithAutoInvalidation(key, value, type = 'data', ttl = 300000) {
+        PerformanceCache.set(key, value, type, ttl);
+        
+        // Configurar invalidação por eventos
+        this.setupAutoInvalidation(key, type);
+        
+        return true;
+    },
+    
+    // Configurar invalidação automática
+    setupAutoInvalidation(key, type) {
+        // Invalidar quando houver mudanças no DOM (simplificado)
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                    if (PerformanceCache[type] && PerformanceCache[type].has(key)) {
+                        PerformanceCache[type].delete(key);
+                        console.log(`🔄 Cache auto-invalidado: ${key} (${type}) por mudança DOM`);
+                        observer.disconnect();
+                    }
+                }
+            });
+        });
+        
+        // Observar mudanças no container de propriedades
+        const container = document.getElementById('properties-container');
+        if (container) {
+            observer.observe(container, {
+                childList: true,
+                subtree: true,
+                attributes: false
+            });
+        }
+    }
+};
+
 // ========== MONITOR DE PERFORMANCE ==========
 window.PerformanceMonitor = {
     metrics: {
