@@ -205,6 +205,128 @@ window.PerformanceMonitor = {
     }
 };
 
+// ========== MONITORAMENTO AVANÇADO DE OPERAÇÕES ==========
+window.OperationMonitor = {
+    operations: new Map(),
+    
+    // Iniciar monitoramento de operação
+    startOperation(name, metadata = {}) {
+        const operation = {
+            id: `${name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name,
+            metadata,
+            startTime: performance.now(),
+            endTime: null,
+            duration: null,
+            success: null,
+            error: null
+        };
+        
+        this.operations.set(operation.id, operation);
+        console.log(`🚀 Operação iniciada: ${name} (${operation.id})`);
+        
+        return operation.id;
+    },
+    
+    // Finalizar operação com sucesso
+    endOperationSuccess(operationId, result = null) {
+        const operation = this.operations.get(operationId);
+        if (!operation) return null;
+        
+        operation.endTime = performance.now();
+        operation.duration = operation.endTime - operation.startTime;
+        operation.success = true;
+        operation.result = result;
+        
+        console.log(`✅ Operação concluída: ${operation.name} (${operation.duration.toFixed(2)}ms)`);
+        
+        // Registrar também no PerformanceMonitor
+        if (window.PerformanceMonitor) {
+            PerformanceMonitor.metrics.functionCalls.set(
+                operation.name,
+                (PerformanceMonitor.metrics.functionCalls.get(operation.name) || []).concat(operation.duration)
+            );
+        }
+        
+        return operation;
+    },
+    
+    // Finalizar operação com erro
+    endOperationError(operationId, error) {
+        const operation = this.operations.get(operationId);
+        if (!operation) return null;
+        
+        operation.endTime = performance.now();
+        operation.duration = operation.endTime - operation.startTime;
+        operation.success = false;
+        operation.error = error.message || error;
+        
+        console.error(`❌ Operação falhou: ${operation.name} (${operation.duration.toFixed(2)}ms)`, error);
+        
+        return operation;
+    },
+    
+    // Obter estatísticas de operações
+    getOperationStats() {
+        const stats = {};
+        const operationsArray = Array.from(this.operations.values());
+        
+        // Agrupar por nome de operação
+        const grouped = operationsArray.reduce((acc, op) => {
+            if (!acc[op.name]) {
+                acc[op.name] = [];
+            }
+            if (op.duration) {
+                acc[op.name].push(op.duration);
+            }
+            return acc;
+        }, {});
+        
+        // Calcular estatísticas
+        Object.entries(grouped).forEach(([name, durations]) => {
+            if (durations.length > 0) {
+                const total = durations.reduce((a, b) => a + b, 0);
+                const avg = total / durations.length;
+                const max = Math.max(...durations);
+                const min = Math.min(...durations);
+                
+                // Contar sucessos vs falhas
+                const ops = operationsArray.filter(op => op.name === name);
+                const successes = ops.filter(op => op.success === true).length;
+                const failures = ops.filter(op => op.success === false).length;
+                
+                stats[name] = {
+                    count: durations.length,
+                    successes,
+                    failures,
+                    successRate: successes / ops.length * 100,
+                    average: avg.toFixed(2),
+                    max: max.toFixed(2),
+                    min: min.toFixed(2),
+                    total: total.toFixed(2)
+                };
+            }
+        });
+        
+        return stats;
+    },
+    
+    // Monitorar função específica
+    wrapFunction(name, fn) {
+        return async (...args) => {
+            const opId = this.startOperation(name, { args: args.length });
+            try {
+                const result = await fn(...args);
+                this.endOperationSuccess(opId, result);
+                return result;
+            } catch (error) {
+                this.endOperationError(opId, error);
+                throw error;
+            }
+        };
+    }
+};
+
 // ========== OPTIMIZATION HELPERS ==========
 window.PerformanceHelpers = {
     // Lazy loading para imagens
