@@ -1,6 +1,11 @@
 // weberlessa-support/debug/emergency-recovery.js
 console.log('🆘 emergency-recovery.js - Sistema Avançado de Recuperação (Suporte)');
 
+// FUTURO (não implementado):
+//Avaliar criação de EmergencySystem como orquestrador
+//caso o sistema de recuperação cresça ou se torne distribuído.
+
+
 (function () {
     const isDebug =
         location.search.includes('debug=true') ||
