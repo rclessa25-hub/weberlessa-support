@@ -20,14 +20,12 @@ window.PerformanceCache = {
     set(key, value, type = 'data', ttl = 300000) {
         const cache = this[type];
         cache.set(key, value);
-
         setTimeout(() => {
             if (cache.has(key)) {
                 cache.delete(key);
                 console.log(`🧹 Cache expirado: ${key} (${type})`);
             }
         }, ttl);
-
         console.log(`💾 Cache SET: ${key} (${type}, TTL: ${ttl}ms)`);
         return true;
     },
@@ -45,7 +43,7 @@ window.PerformanceCache = {
     }
 };
 
-// ========== CACHE INTELLIGENTE (INVALIDATION AUTOMÁTICA) ==========
+// ========== CACHE INTELLIGENTE ==========
 window.SmartCache = {
     invalidate(key, type = 'data') {
         if (PerformanceCache[type] && PerformanceCache[type].has(key)) {
@@ -58,7 +56,6 @@ window.SmartCache = {
 
     invalidatePattern(pattern, type = 'data') {
         if (!PerformanceCache[type]) return 0;
-
         let count = 0;
         for (const key of PerformanceCache[type].keys()) {
             if (key.includes(pattern)) {
@@ -66,11 +63,9 @@ window.SmartCache = {
                 count++;
             }
         }
-
         if (count > 0) {
             console.log(`🗑️ ${count} cache(s) invalidado(s) com padrão: "${pattern}"`);
         }
-
         return count;
     },
 
@@ -80,7 +75,6 @@ window.SmartCache = {
             this.invalidatePattern('property_', 'data'),
             this.invalidatePattern('prop_', 'dom')
         ].filter(Boolean).length;
-
         console.log(`🏠 Cache de propriedades invalidado (${invalidated} itens)`);
         return invalidated;
     },
@@ -126,24 +120,17 @@ window.PerformanceMonitor = {
     },
 
     start(name) {
-        return {
-            name,
-            start: performance.now(),
-            end: null,
-            duration: null
-        };
+        return { name, start: performance.now(), end: null, duration: null };
     },
 
     end(metric) {
         if (metric && metric.start) {
             metric.end = performance.now();
             metric.duration = metric.end - metric.start;
-
             if (!this.metrics.functionCalls.has(metric.name)) {
                 this.metrics.functionCalls.set(metric.name, []);
             }
             this.metrics.functionCalls.get(metric.name).push(metric.duration);
-
             console.log(`⏱️ ${metric.name}: ${metric.duration.toFixed(2)}ms`);
             return metric;
         }
@@ -163,13 +150,11 @@ window.PerformanceMonitor = {
         this.metrics.functionCalls.forEach((durations, name) => {
             if (durations.length > 0) {
                 const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
-                const max = Math.max(...durations);
-                const min = Math.min(...durations);
                 stats[name] = {
                     calls: durations.length,
                     average: avg.toFixed(2),
-                    max: max.toFixed(2),
-                    min: min.toFixed(2)
+                    max: Math.max(...durations).toFixed(2),
+                    min: Math.min(...durations).toFixed(2)
                 };
             }
         });
@@ -177,37 +162,32 @@ window.PerformanceMonitor = {
     }
 };
 
-// ========== MONITORAMENTO AVANÇADO DE OPERAÇÕES ==========
+// ========== MONITORAMENTO DE OPERAÇÕES ==========
 window.OperationMonitor = {
     operations: new Map(),
 
     startOperation(name, metadata = {}) {
         const operation = {
             id: `${name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            name,
-            metadata,
+            name, metadata,
             startTime: performance.now(),
             endTime: null,
             duration: null,
             success: null,
             error: null
         };
-
         this.operations.set(operation.id, operation);
         console.log(`🚀 Operação iniciada: ${name} (${operation.id})`);
-
         return operation.id;
     },
 
     endOperationSuccess(operationId, result = null) {
         const operation = this.operations.get(operationId);
         if (!operation) return null;
-
         operation.endTime = performance.now();
         operation.duration = operation.endTime - operation.startTime;
         operation.success = true;
         operation.result = result;
-
         console.log(`✅ Operação concluída: ${operation.name} (${operation.duration.toFixed(2)}ms)`);
 
         if (window.PerformanceMonitor) {
@@ -216,21 +196,17 @@ window.OperationMonitor = {
                 (PerformanceMonitor.metrics.functionCalls.get(operation.name) || []).concat(operation.duration)
             );
         }
-
         return operation;
     },
 
     endOperationError(operationId, error) {
         const operation = this.operations.get(operationId);
         if (!operation) return null;
-
         operation.endTime = performance.now();
         operation.duration = operation.endTime - operation.startTime;
         operation.success = false;
         operation.error = error.message || error;
-
         console.error(`❌ Operação falhou: ${operation.name} (${operation.duration.toFixed(2)}ms)`, error);
-
         return operation;
     },
 
@@ -242,7 +218,6 @@ window.OperationMonitor = {
             if (op.duration) acc[op.name].push(op.duration);
             return acc;
         }, {});
-
         Object.entries(grouped).forEach(([name, durations]) => {
             if (durations.length > 0) {
                 const total = durations.reduce((a, b) => a + b, 0);
@@ -263,7 +238,6 @@ window.OperationMonitor = {
                 };
             }
         });
-
         return stats;
     },
 
@@ -282,24 +256,44 @@ window.OperationMonitor = {
     }
 };
 
-// ========== RELATÓRIO DE PERFORMANCE ==========
+// ========== WRAPPER PARA FUNÇÕES CRÍTICAS ==========
+window.wrapCriticalFunctions = function() {
+    console.log('🔧 Envolvendo funções críticas com monitoramento...');
+    const functionsToWrap = [
+        'initializeProperties',
+        'renderProperties', 
+        'addNewProperty',
+        'updateProperty',
+        'deleteProperty',
+        'savePropertiesToStorage',
+        'supabaseLoadProperties',
+        'handleNewMediaFiles',
+        'processAndSavePdfs'
+    ];
+    let wrappedCount = 0;
+    functionsToWrap.forEach(funcName => {
+        if (typeof window[funcName] === 'function' && !window[`_original_${funcName}`]) {
+            window[`_original_${funcName}`] = window[funcName];
+            window[funcName] = OperationMonitor.wrapFunction(funcName, window[funcName]);
+            wrappedCount++;
+            console.log(`✅ ${funcName} envolvida com monitoramento`);
+        }
+    });
+    console.log(`🔧 ${wrappedCount} função(ões) envolvida(s) com monitoramento`);
+    return wrappedCount;
+};
+
+// ========== PERFORMANCE REPORT ==========
 window.PerformanceReport = {
     generateReport() {
         console.group('📊 RELATÓRIO DE PERFORMANCE COMPLETO');
-
-        // 1. Métricas básicas
-        console.log('📈 MÉTRICAS BÁSICAS:');
         const pageLoad = PerformanceMonitor.metrics.pageLoad;
         if (pageLoad) {
-            console.log(`⏱️  DOM Content Loaded: ${pageLoad.domContentLoaded}ms`);
-            console.log(`⏱️  Page Loaded: ${pageLoad.pageLoaded}ms`);
+            console.log(`⏱️ DOM Content Loaded: ${pageLoad.domContentLoaded}ms`);
+            console.log(`⏱️ Page Loaded: ${pageLoad.pageLoaded}ms`);
         }
 
-        // 2. Estatísticas de cache
-        console.log('\n💾 ESTATÍSTICAS DE CACHE:');
-        let cacheHits = 0;
-        let cacheMisses = 0;
-
+        let cacheHits = 0, cacheMisses = 0;
         if (window.performanceCacheLogs) {
             window.performanceCacheLogs.forEach(log => {
                 if (log.type === 'hit') cacheHits++;
@@ -307,39 +301,25 @@ window.PerformanceReport = {
             });
             const total = cacheHits + cacheMisses;
             const hitRate = total > 0 ? (cacheHits / total * 100).toFixed(1) : 0;
-
             console.log(`✅ Cache Hits: ${cacheHits}`);
             console.log(`❌ Cache Misses: ${cacheMisses}`);
             console.log(`📊 Hit Rate: ${hitRate}%`);
         }
 
-        // 3. Operações monitoradas
-        console.log('\n🚀 OPERAÇÕES MONITORADAS:');
         if (window.OperationMonitor) {
+            console.log('\n🚀 OPERAÇÕES MONITORADAS:');
             const opsStats = OperationMonitor.getOperationStats();
             Object.entries(opsStats).forEach(([name, stats]) => {
                 console.log(`📋 ${name}:`);
                 console.log(`   🔢 Execuções: ${stats.count}`);
                 console.log(`   ✅ Sucessos: ${stats.successes} (${stats.successRate.toFixed(1)}%)`);
                 console.log(`   ❌ Falhas: ${stats.failures}`);
-                console.log(`   ⏱️  Tempo médio: ${stats.average}ms`);
+                console.log(`   ⏱️ Tempo médio: ${stats.average}ms`);
                 console.log(`   📈 Tempo total: ${stats.total}ms`);
             });
         }
 
-        // 4. Recomendações
-        console.log('\n💡 RECOMENDAÇÕES:');
-        if (cacheHits > cacheMisses * 2) {
-            console.log('✅ Cache está funcionando bem!');
-        } else {
-            console.log('⚠️  Cache poderia ser mais eficiente. Considere:');
-            console.log('   • Aumentar TTL para dados estáticos');
-            console.log('   • Implementar cache por componente');
-            console.log('   • Usar Service Workers para cache offline');
-        }
-
         console.groupEnd();
-
         return {
             pageLoad,
             cacheStats: { hits: cacheHits, misses: cacheMisses },
@@ -349,7 +329,7 @@ window.PerformanceReport = {
 
     startPeriodicReporting(interval = 30000) {
         if (!window.location.search.includes('debug=true')) return;
-        console.log(`📈 Relatório de performance agendado a cada ${interval / 1000}s`);
+        console.log(`📈 Relatório de performance agendado a cada ${interval/1000}s`);
         setInterval(() => { this.generateReport(); }, interval);
         setTimeout(() => this.generateReport(), 5000);
     }
@@ -357,89 +337,63 @@ window.PerformanceReport = {
 
 // Logs de cache
 window.performanceCacheLogs = [];
-if (window.PerformanceCache) {
-    const originalCacheGet = PerformanceCache.get;
-    const originalCacheSet = PerformanceCache.set;
+const originalCacheGet = PerformanceCache.get;
+const originalCacheSet = PerformanceCache.set;
 
-    PerformanceCache.get = function(key, type = 'data') {
-        const result = originalCacheGet.call(this, key, type);
-        window.performanceCacheLogs.push({
-            timestamp: Date.now(),
-            type: result !== null ? 'hit' : 'miss',
-            key,
-            cacheType: type
-        });
-        if (window.performanceCacheLogs.length > 100) {
-            window.performanceCacheLogs = window.performanceCacheLogs.slice(-100);
-        }
-        return result;
-    };
-
-    PerformanceCache.set = function(key, value, type = 'data', ttl = 300000) {
-        window.performanceCacheLogs.push({
-            timestamp: Date.now(),
-            type: 'set',
-            key,
-            cacheType: type,
-            ttl
-        });
-        return originalCacheSet.call(this, key, value, type, ttl);
-    };
-}
-
-// ========== OPTIMIZATION HELPERS ==========
-window.PerformanceHelpers = {
-    lazyLoadImages(selector = 'img[data-src]') {
-        const images = document.querySelectorAll(selector);
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    img.src = img.dataset.src;
-                    img.removeAttribute('data-src');
-                    observer.unobserve(img);
-                    console.log(`🖼️ Lazy loaded: ${img.src.substring(0, 50)}...`);
-                }
-            });
-        });
-        images.forEach(img => observer.observe(img));
-        console.log(`👀 Lazy loading configurado para ${images.length} imagem(ns)`);
-    },
-
-    defer(callback, delay = 100) {
-        return setTimeout(callback, delay);
-    },
-
-    batchUpdate(callback) {
-        requestAnimationFrame(() => {
-            callback();
-            console.log('🔄 Batch update executado');
-        });
-    },
-
-    optimizeImageUrl(url, options = {}) {
-        const defaultOptions = { width: 800, quality: 80, format: 'webp' };
-        const opts = { ...defaultOptions, ...options };
-        console.log(`🖼️ Otimizando imagem: ${url.substring(0, 50)}...`);
-        return url;
+PerformanceCache.get = function(key, type = 'data') {
+    const result = originalCacheGet.call(this, key, type);
+    window.performanceCacheLogs.push({
+        timestamp: Date.now(),
+        type: result !== null ? 'hit' : 'miss',
+        key,
+        cacheType: type
+    });
+    if (window.performanceCacheLogs.length > 100) {
+        window.performanceCacheLogs = window.performanceCacheLogs.slice(-100);
     }
+    return result;
 };
+
+PerformanceCache.set = function(key, value, type = 'data', ttl = 300000) {
+    window.performanceCacheLogs.push({
+        timestamp: Date.now(),
+        type: 'set',
+        key,
+        cacheType: type,
+        ttl
+    });
+    return originalCacheSet.call(this, key, value, type, ttl);
+};
+
+// ========== INICIALIZAÇÃO AVANÇADA ==========
+(function initAdvancedPerformance() {
+    console.log('🔧 Inicializando sistema avançado de performance...');
+    if (window.location.search.includes('debug=true')) {
+        setTimeout(() => {
+            PerformanceReport.startPeriodicReporting(60000);
+        }, 3000);
+    }
+    if (window.OperationMonitor && window.wrapCriticalFunctions) {
+        window.wrapCriticalFunctions();
+    }
+    console.log('✅ Sistema avançado de performance inicializado');
+})();
 
 // ========== INICIALIZAÇÃO AUTOMÁTICA ==========
 (function initPerformanceSystem() {
     console.log('🔧 Inicializando sistema de performance...');
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => { PerformanceMonitor.recordPageLoad(); });
+        document.addEventListener('DOMContentLoaded', () => {
+            PerformanceMonitor.recordPageLoad();
+        });
     } else {
         setTimeout(() => PerformanceMonitor.recordPageLoad(), 100);
     }
-
     setTimeout(() => {
-        if (typeof window.PerformanceHelpers.lazyLoadImages === 'function') {
+        if (typeof window.PerformanceHelpers?.lazyLoadImages === 'function') {
             PerformanceHelpers.lazyLoadImages();
         }
     }, 1000);
-
     console.log('✅ Sistema de performance inicializado');
 })();
 
@@ -458,9 +412,8 @@ if (window.location.search.includes('debug=true')) {
             console.groupEnd();
         }, 100);
     };
-
     setTimeout(() => { window.testPerformance(); }, 3000);
 }
 
 console.log('⚡ Sistema de otimização de performance carregado');
-console.log('🔧 Módulos disponíveis: PerformanceCache, PerformanceMonitor, PerformanceHelpers, PerformanceReport');
+console.log('🔧 Módulos disponíveis: PerformanceCache, PerformanceMonitor, PerformanceHelpers, OperationMonitor, PerformanceReport, wrapCriticalFunctions');
