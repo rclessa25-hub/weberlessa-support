@@ -1,53 +1,87 @@
 // weberlessa-support/debug/media-recovery.js
+// Módulo de diagnóstico e recuperação do sistema de mídia
+// Carregado apenas em modo debug/teste
 
-window.debugMediaSystem = function () {
-    console.group('🔍 DIAGNÓSTICO DO SISTEMA DE MÍDIA');
+console.log('🧩 media-recovery.js carregado (SUPORTE)');
 
-    const uploadArea = document.getElementById('uploadArea');
-    const fileInput = document.getElementById('fileInput');
+// Logger seguro (usa MediaLogger se disponível)
+const MediaLog = {
+    info: (msg) =>
+        window.MediaLogger
+            ? window.MediaLogger.info('MediaRecovery', msg)
+            : console.log(msg),
 
-    console.log('📌 Elementos encontrados:', {
-        uploadArea: !!uploadArea,
-        fileInput: !!fileInput
-    });
-
-    if (uploadArea) {
-        console.log('🎯 uploadArea event listeners:');
-        console.log('- onclick:', uploadArea.onclick ? 'SIM' : 'NÃO');
-        console.log('- ondragover:', uploadArea.ondragover ? 'SIM' : 'NÃO');
-        console.log('- ondrop:', uploadArea.ondrop ? 'SIM' : 'NÃO');
-    }
-
-    console.log('🔧 Funções globais:', {
-        handleNewMediaFiles: typeof window.handleNewMediaFiles,
-        clearMediaSystem: typeof window.clearMediaSystem,
-        selectedMediaFiles: window.selectedMediaFiles
-            ? window.selectedMediaFiles.length
-            : 'N/A'
-    });
-
-    console.groupEnd();
+    error: (msg) =>
+        window.MediaLogger
+            ? window.MediaLogger.error('MediaRecovery', msg)
+            : console.error(msg)
 };
 
-window.forceMediaSystemInit = function () {
-    console.log('🚀 Forçando inicialização do sistema de mídia...');
+// ===============================
+// DIAGNÓSTICO DO SISTEMA DE MÍDIA
+// ===============================
+if (typeof window.debugMediaSystem === 'undefined') {
 
-    if (typeof window.initMediaUI !== 'function') {
-        console.error('❌ media-ui.js não carregado!');
-        return false;
-    }
+    window.debugMediaSystem = function () {
+        console.group('🔍 [SUPORTE] Diagnóstico do Sistema de Mídia');
 
-    const uiSuccess = window.initMediaUI();
-    console.log('✅ UI inicializada:', uiSuccess);
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
 
-    if (typeof window.handleNewMediaFiles !== 'function') {
-        console.error('❌ media-core.js não conectado!');
+        console.log('📌 Elementos encontrados:', {
+            uploadArea: !!uploadArea,
+            fileInput: !!fileInput
+        });
 
-        if (typeof window.initMediaSystem === 'function') {
-            window.initMediaSystem('vendas');
-            console.log('🔧 Sistema core reinicializado');
+        if (uploadArea) {
+            console.log('🎯 uploadArea event listeners:', {
+                onclick: !!uploadArea.onclick,
+                ondragover: !!uploadArea.ondragover,
+                ondrop: !!uploadArea.ondrop
+            });
         }
-    }
 
-    return true;
-};
+        console.log('🔧 Funções globais:', {
+            handleNewMediaFiles: typeof window.handleNewMediaFiles,
+            clearMediaSystem: typeof window.clearMediaSystem,
+            selectedMediaFiles: Array.isArray(window.selectedMediaFiles)
+                ? window.selectedMediaFiles.length
+                : 'N/A'
+        });
+
+        console.groupEnd();
+    };
+
+    MediaLog.info('debugMediaSystem registrado');
+}
+
+// ====================================
+// RECUPERAÇÃO FORÇADA DO SISTEMA DE MÍDIA
+// ====================================
+if (typeof window.forceMediaSystemInit === 'undefined') {
+
+    window.forceMediaSystemInit = function () {
+        MediaLog.info('Forçando inicialização do sistema de mídia...');
+
+        if (typeof window.initMediaUI !== 'function') {
+            MediaLog.error('media-ui.js não carregado');
+            return false;
+        }
+
+        const uiSuccess = window.initMediaUI();
+        MediaLog.info(`UI inicializada: ${uiSuccess}`);
+
+        if (typeof window.handleNewMediaFiles !== 'function') {
+            MediaLog.error('media-core.js não conectado');
+
+            if (typeof window.initMediaSystem === 'function') {
+                window.initMediaSystem('vendas');
+                MediaLog.info('Sistema core reinicializado');
+            }
+        }
+
+        return true;
+    };
+
+    MediaLog.info('forceMediaSystemInit registrado');
+}
