@@ -2,46 +2,70 @@
 console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo debug');
 
 (function () {
-    // Só ativa em modo debug + diagnostics=true
-    if (!location.search.includes('diagnostics=true')) return;
+    const isDebug =
+        location.search.includes('debug=true') ||
+        location.search.includes('diagnostics=true');
 
-    const out = [];
+    if (!isDebug) return;
 
-    // Função de execução segura de testes
+    const results = [];
     const run = (name, fn) => {
         try {
             const t = performance.now();
-            fn();
-            out.push(`✅ ${name} (${(performance.now() - t).toFixed(2)}ms)`);
+            const r = fn();
+            results.push(`✅ ${name} (${(performance.now() - t).toFixed(2)}ms)`);
+            return r;
         } catch (e) {
-            out.push(`❌ ${name}: ${e.message}`);
+            results.push(`❌ ${name}: ${e.message}`);
         }
     };
 
-    // ===== TESTES PRINCIPAIS =====
+    /* ========= TESTES ========= */
+
+    // PdfLogger
     run('PdfLogger existe', () => {
         if (!window.PdfLogger) throw new Error('ausente');
     });
 
     run('PdfLogger.simple()', () => {
-        window.PdfLogger.simple('Teste de logging');
+        window.PdfLogger.simple('teste diagnóstico');
     });
 
     run('Performance PdfLogger (1000x)', () => {
         for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
     });
 
-    // ===== PLACEHOLDERS PARA OUTRAS VERIFICAÇÕES =====
-    // Aqui você pode adicionar funções extras sugeridas
-    // Ex: run('Verificar storage', diagnostics.checkStorage);
+    // EmergencySystem / emergencyRecovery
+    run('EmergencySystem disponível', () => {
+        if (!window.EmergencySystem && !window.emergencyRecovery)
+            throw new Error('nenhum sistema de recuperação encontrado');
+    });
 
-    // ===== EXIBIÇÃO DO RESULTADO =====
+    run('Simulação segura de falha (properties nulo)', () => {
+        const original = window.properties;
+        window.properties = null;
+
+        if (window.EmergencySystem?.smartRecovery) {
+            window.EmergencySystem.smartRecovery();
+        } else if (window.emergencyRecovery?.restoreEssentialData) {
+            window.emergencyRecovery.restoreEssentialData();
+        }
+
+        window.properties = original || window.properties;
+    });
+
+    /* ========= UI ========= */
+
     const box = document.createElement('div');
     box.style.cssText =
-        'position:fixed;bottom:10px;right:10px;background:#111;color:#0f0;' +
-        'padding:8px;font:12px monospace;z-index:99999;border-radius:6px;max-width:300px;overflow:auto;';
-    box.innerHTML = `<b>🧪 Diagnóstico</b><br>${out.join('<br>')}`;
-    document.body.appendChild(box);
+        'position:fixed;bottom:10px;right:10px;' +
+        'background:#111;color:#0f0;padding:8px;' +
+        'font:12px monospace;z-index:99999;' +
+        'border-radius:6px;max-width:320px';
 
-    console.log('✅ diagnostics.js - Diagnósticos completos executados');
+    box.innerHTML =
+        `<b>🧪 Diagnóstico do Sistema</b><br>` +
+        results.join('<br>');
+
+    document.body.appendChild(box);
 })();
