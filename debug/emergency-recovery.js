@@ -1,175 +1,110 @@
 // weberlessa-support/debug/emergency-recovery.js
-console.log('🆘 emergency-recovery.js - Sistema de Recuperação Avançada');
+console.log('🆘 emergency-recovery.js - Sistema Avançado de Recuperação (Suporte)');
 
-// ========== RECUPERAÇÃO COMPLETA DO SISTEMA DE MÍDIA ==========
-window.recoverMediaSystem = function() {
-    console.log('🔄 INICIANDO RECUPERAÇÃO COMPLETA DO SISTEMA DE MÍDIA');
-    
-    // 1. Garantir que variáveis existam
-    if (typeof window.selectedMediaFiles === 'undefined') {
-        window.selectedMediaFiles = [];
-        console.log('✅ window.selectedMediaFiles criado');
-    }
-    
-    if (typeof window.existingMediaFiles === 'undefined') {
-        window.existingMediaFiles = [];
-        console.log('✅ window.existingMediaFiles criado');
-    }
-    
-    if (typeof window.isUploadingMedia === 'undefined') {
-        window.isUploadingMedia = false;
-        console.log('✅ window.isUploadingMedia criado');
-    }
-    
-    // 2. Garantir que MEDIA_CONFIG existe
-    if (typeof window.MEDIA_CONFIG === 'undefined') {
-        window.MEDIA_CONFIG = {
-            supabaseBucket: 'properties',
-            maxFiles: 10,
-            maxSize: 5 * 1024 * 1024,
-            allowedImageTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-            allowedVideoTypes: ['video/mp4', 'video/quicktime'],
-            pathPrefix: 'property_media'
-        };
-        console.log('✅ window.MEDIA_CONFIG criado');
-    }
-    
-    // 3. Criar função handleNewMediaFiles se não existir
-    if (typeof window.handleNewMediaFiles !== 'function') {
-        console.log('⚠️ handleNewMediaFiles não existe. Criando versão de emergência...');
-        
-        window.handleNewMediaFiles = function(files) {
-            console.log('🆘 [EMERGÊNCIA] handleNewMediaFiles chamada com', files.length, 'arquivo(s)');
-            
+(function () {
+    const isDebug =
+        location.search.includes('debug=true') ||
+        location.search.includes('emergency=true');
+
+    // Namespace único
+    window.emergencyRecovery = window.emergencyRecovery || {};
+
+    // ========= RECUPERAÇÃO DO SISTEMA DE MÍDIA =========
+    window.emergencyRecovery.recoverMediaSystem = function () {
+        console.log('🚨 Iniciando recuperação de emergência do sistema de mídia');
+
+        try {
             if (!window.selectedMediaFiles) window.selectedMediaFiles = [];
-            
-            Array.from(files).forEach(file => {
-                window.selectedMediaFiles.push({
-                    file: file,
-                    id: Date.now() + Math.random(),
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    preview: URL.createObjectURL(file),
-                    isNew: true,
-                    isImage: file.type.includes('image'),
-                    isVideo: file.type.includes('video')
-                });
-                console.log(`✅ "${file.name}" adicionado`);
-            });
-            
-            // Atualizar preview
-            if (typeof window.updateMediaPreview === 'function') {
-                window.updateMediaPreview();
+            if (!window.existingMediaFiles) window.existingMediaFiles = [];
+            if (typeof window.isUploadingMedia === 'undefined') window.isUploadingMedia = false;
+
+            if (!window.MEDIA_CONFIG) {
+                window.MEDIA_CONFIG = {
+                    supabaseBucket: 'properties',
+                    maxFiles: 10,
+                    maxSize: 5 * 1024 * 1024,
+                    allowedImageTypes: ['image/jpeg','image/png','image/gif','image/webp'],
+                    allowedVideoTypes: ['video/mp4','video/quicktime'],
+                    pathPrefix: 'property_media'
+                };
             }
-            
-            return files.length;
-        };
-        
-        console.log('✅ handleNewMediaFiles criada (versão emergência)');
-    }
-    
-    // 4. Recriar clearMediaSystem se não existir
-    if (typeof window.clearMediaSystem !== 'function') {
-        window.clearMediaSystem = function() {
-            console.log('🧹 clearMediaSystem (emergência)');
-            if (window.selectedMediaFiles) window.selectedMediaFiles.length = 0;
-            if (window.existingMediaFiles) window.existingMediaFiles.length = 0;
-            
-            const preview = document.getElementById('uploadPreview');
-            if (preview) preview.innerHTML = 'Sistema recuperado - tente novamente';
-            
+
+            if (typeof window.handleNewMediaFiles !== 'function') {
+                window.handleNewMediaFiles = function (files) {
+                    Array.from(files).forEach(file => {
+                        window.selectedMediaFiles.push({
+                            id: Date.now() + Math.random(),
+                            file,
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            preview: URL.createObjectURL(file),
+                            isNew: true,
+                            isImage: file.type.includes('image'),
+                            isVideo: file.type.includes('video')
+                        });
+                    });
+
+                    window.updateMediaPreview?.();
+                    return files.length;
+                };
+            }
+
+            if (typeof window.clearMediaSystem !== 'function') {
+                window.clearMediaSystem = function () {
+                    window.selectedMediaFiles.length = 0;
+                    window.existingMediaFiles.length = 0;
+                    document.getElementById('uploadPreview')?.replaceChildren('Sistema recuperado');
+                    return true;
+                };
+            }
+
+            console.log('✅ Sistema de mídia recuperado');
             return true;
-        };
-    }
-    
-    console.log('✅ Sistema de mídia recuperado');
-    alert('🔄 SISTEMA DE MÍDIA RECUPERADO!\n\nTente adicionar fotos novamente.');
-    
-    return true;
-};
 
-// ========== RECARREGAMENTO DE EMERGÊNCIA ==========
-window.reloadMediaModules = function() {
-    console.log('🔄 RECARREGANDO MÓDULOS DE MÍDIA...');
-    
-    // 1. Remover módulos antigos
-    delete window.handleNewMediaFiles;
-    delete window.updateMediaPreview;
-    delete window.initMediaUI;
-    
-    // 2. Recarregar scripts dinamicamente
-    const scriptsToReload = [
-        'js/modules/media/media-core.js',
-        'js/modules/media/media-ui.js',
-        'js/modules/media/media-integration.js'
-    ];
-    
-    scriptsToReload.forEach(url => {
-        // Remover script antigo se existir
-        const oldScript = document.querySelector(`script[src="${url}"]`);
-        if (oldScript) oldScript.remove();
-        
-        // Adicionar novo
-        const newScript = document.createElement('script');
-        newScript.src = url + '?reload=' + Date.now(); // Cache bust
-        newScript.defer = true;
-        document.body.appendChild(newScript);
-        console.log(`📦 Recarregado: ${url}`);
-    });
-    
-    // 3. Reinicializar após 2 segundos
-    setTimeout(() => {
-        console.log('🔧 Reinicializando sistema...');
-        
-        if (typeof window.initMediaSystem === 'function') {
-            window.initMediaSystem('vendas');
+        } catch (e) {
+            console.error('❌ Falha na recuperação de mídia:', e);
+            return false;
         }
-        
-        if (typeof window.initMediaUI === 'function') {
-            window.initMediaUI();
-        }
-        
-        if (typeof window.setupMediaIntegration === 'function') {
-            window.setupMediaIntegration();
-        }
-        
-        alert('🔄 Módulos de mídia recarregados!\n\nTente novamente.');
-    }, 2000);
-};
+    };
 
-// ========== SISTEMA DE DETECÇÃO AUTOMÁTICA ==========
-(function setupEmergencyDetection() {
-    console.log('🔍 Configurando detecção de emergência...');
-    
-    // Verificar após 5 segundos se módulos essenciais carregaram
-    setTimeout(() => {
-        const essentialFunctions = [
-            'handleNewMediaFiles',
-            'updateMediaPreview',
-            'initMediaSystem'
+    // ========= RELOAD DE MÓDULOS =========
+    window.emergencyRecovery.reloadMediaModules = function () {
+        console.log('🔄 Recarregando módulos de mídia');
+
+        const modules = [
+            'js/modules/media/media-core.js',
+            'js/modules/media/media-ui.js',
+            'js/modules/media/media-integration.js'
         ];
-        
-        const missingFunctions = essentialFunctions.filter(func => 
-            typeof window[func] !== 'function'
-        );
-        
-        if (missingFunctions.length > 0) {
-            console.warn('⚠️ Funções essenciais não carregaram:', missingFunctions);
-            
-            // Apenas log em debug mode
-            if (window.location.search.includes('debug=true')) {
-                console.log('🔄 Tentando recuperação automática...');
-                if (typeof window.recoverMediaSystem === 'function') {
-                    window.recoverMediaSystem();
-                }
-            }
-        } else {
-            console.log('✅ Todas funções essenciais carregadas');
-        }
-    }, 5000);
-})();
 
-// ========== EXPORT ==========
-console.log('✅ Sistema de recuperação de emergência carregado');
-console.log('🔧 Funções disponíveis: recoverMediaSystem(), reloadMediaModules()');
+        modules.forEach(src => {
+            document.querySelector(`script[src="${src}"]`)?.remove();
+            const s = document.createElement('script');
+            s.src = `${src}?reload=${Date.now()}`;
+            s.defer = true;
+            document.body.appendChild(s);
+        });
+
+        return true;
+    };
+
+    // ========= DETECÇÃO AUTOMÁTICA (SOMENTE DEBUG) =========
+    if (isDebug) {
+        setTimeout(() => {
+            const required = ['handleNewMediaFiles','updateMediaPreview','initMediaSystem'];
+            const missing = required.filter(fn => typeof window[fn] !== 'function');
+
+            if (missing.length) {
+                console.warn('⚠️ Falhas detectadas:', missing);
+                window.emergencyRecovery.recoverMediaSystem();
+            } else {
+                console.log('✅ Nenhuma falha crítica detectada');
+            }
+        }, 5000);
+    }
+
+    console.log('✅ emergency-recovery.js pronto');
+    console.log('🧪 Uso: window.emergencyRecovery.recoverMediaSystem()');
+
+})();
