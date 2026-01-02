@@ -14,22 +14,22 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         results.push({ status, neofitoMsg, tecnicoMsg });
     };
 
-    /* ========= FUNÇÃO AUXILIAR DE TESTE ========== */
+    /* ========= FUNÇÃO AUXILIAR DE TESTE ========= */
     const run = (name, fn) => {
         try {
             const t0 = performance.now();
             const r = fn();
             const t1 = performance.now();
-            addResult('OK', name + ' → Funcionando normalmente', `${name} (${(t1-t0).toFixed(2)}ms)`);
+            addResult('OK', `${name} → Funcionando normalmente`, `${name} (${(t1-t0).toFixed(2)}ms)`);
             return r;
         } catch (e) {
-            addResult('ERR/OK – Proteção ativa', name + ' → Proteção ativa / fallback acionado', `${name}: ${e.message}`);
+            addResult('ERR/OK – Proteção ativa', `${name} → Proteção ativa / fallback acionado`, `${name}: ${e.message}`);
         }
     };
 
     /* ========= TESTES ORIGINAIS ========== */
 
-    // 1. ValidationSystem
+    // ValidationSystem
     if (window.ValidationSystem) {
         run('Etapa 10: ValidationSystem existe', () => true);
         run('Etapa 10: validateGalleryModule disponível', () => {
@@ -47,7 +47,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         addResult('ERR/OK – Proteção ativa', 'Etapa 10: validateGalleryModule disponível → Não acessível', 'Cannot read properties of undefined (reading validateGalleryModule)');
         addResult('ERR/OK – Proteção ativa', 'Etapa 10: quickSystemCheck disponível → Não acessível', 'Cannot read properties of undefined (reading quickSystemCheck)');
         addResult('ERR/OK – Proteção ativa', 'Etapa 10: execução quickSystemCheck() → Não executado', 'Cannot read properties of undefined (reading quickSystemCheck)');
-        addResult('OK', 'Etapa 10: validação da galeria → Funcionando normalmente', 'Fallback validateGalleryModule acionado');
+        addResult('OK', 'Etapa 10: validação da galeria → Fallback acionado', 'Fallback validateGalleryModule acionado');
     }
 
     run('Etapa 10: fallback validateGalleryModule', () => {
@@ -60,7 +60,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
     });
     run('PdfLogger.simple()', () => window.PdfLogger.simple('teste diagnóstico'));
     run('Performance PdfLogger (1000x)', () => {
-        for (let i=0;i<1000;i++) window.PdfLogger.simple('x');
+        for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
     });
 
     // EmergencySystem / emergencyRecovery
@@ -78,27 +78,14 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         window.properties = original || window.properties;
     });
 
-    # Teste 1: Produção limpa
-    curl -s "https://rclessa25-hub.github.io/imoveis-maceio/" | grep -c "validation.js"
-    # Resultado esperado: 0 (não carrega em produção)
-    
-    # Teste 2: Debug completo
-    curl -s "https://rclessa25-hub.github.io/imoveis-maceio/?debug=true" | grep -c "validation.js"
-    # Resultado esperado: 1 (carrega em debug)
-    
-    # Teste 3: Sistema funcional
-    # Acessar manualmente e verificar que galeria ainda abre imagens
-    
-    /* ========= FUNÇÃO DE LEITURA AUTOMÁTICA DE NOVOS TESTES ========== */
+    /* ========= FUNÇÃO DE LEITURA AUTOMÁTICA DE NOVOS TESTES ========= */
     const processNewTests = (testLines) => {
         testLines.forEach(line => {
             const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith('#')) return; // Ignora comentários vazios
-            // Checa se há "Resultado esperado"
+            if (!trimmed || trimmed.startsWith('#')) return;
             const match = trimmed.match(/# Resultado esperado:\s*(.*)/);
             if (match) {
                 const esperado = match[1].trim();
-                // Simula leitura: se contém "0" ou "1" marcamos OK/ERR-Proteção
                 if (esperado === '0') addResult('OK', trimmed.split('#')[0].trim() + ' → Produção limpa', `Resultado esperado: ${esperado}`);
                 else if (esperado === '1') addResult('ERR/OK – Proteção ativa', trimmed.split('#')[0].trim() + ' → Debug ativo', `Resultado esperado: ${esperado}`);
                 else addResult('OK', trimmed.split('#')[0].trim() + ' → Verificação manual necessária', `Resultado esperado: ${esperado}`);
@@ -106,7 +93,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         });
     };
 
-    /* ========= NOVOS TESTES - EXEMPLO ========== */
+    /* ========= EXEMPLO DE NOVOS TESTES ========= */
     const novosTestes = [
         '# Teste 1: Produção limpa',
         'curl -s "https://rclessa25-hub.github.io/imoveis-maceio/" | grep -c "validation.js"',
@@ -122,30 +109,32 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     processNewTests(novosTestes);
 
-    /* ========= PAINEL DE DIAGNÓSTICO ========= */
+    /* ========= PAINEL DE DIAGNÓSTICO FINAL ========= */
     const box = document.createElement('div');
     box.style.cssText = `
-        position:fixed;
-        bottom:10px; right:10px;
-        max-height:60vh;
-        overflow-y:auto;
-        background:#f5f5f5;
-        color:#000;
-        padding:12px;
-        font:16px monospace;
-        z-index:99999;
-        border-radius:8px;
-        box-shadow:0 0 10px rgba(0,0,0,0.3);
-        white-space:pre-wrap;
-        user-select:text;
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        width: 450px;
+        max-height: 70vh;
+        overflow-y: auto;
+        background: #f0f0f0;
+        color: #000;
+        padding: 14px;
+        font-size: 16px;
+        font-family: monospace;
+        z-index: 99999;
+        border-radius: 10px;
+        box-shadow: 0 0 12px rgba(0,0,0,0.35);
+        white-space: pre-wrap;
+        user-select: text;
     `;
 
-    // Cria cada linha
     results.forEach(r => {
         const div = document.createElement('div');
         let color = '#000';
-        if (r.status.includes('ERR')) color = '#b00';       // Vermelho para erro/falha
-        else if (r.status.includes('OK')) color = '#060';    // Verde para OK
+        if (r.status.includes('ERR')) color = '#b00';
+        else if (r.status.includes('OK')) color = '#060';
         div.innerHTML = `<span style="font-weight:bold; color:${color}">(${r.status})</span> ${r.neofitoMsg} → <span style="color:#555">${r.tecnicoMsg}</span>`;
         box.appendChild(div);
     });
