@@ -1,5 +1,5 @@
 // debug/diagnostics.js - REPOSITÓRIO DE SUPORTE
-console.log('🔍 diagnostics.js carregado - Diagnóstico com tradução humana');
+console.log('🔍 diagnostics.js carregado - Diagnóstico neófito + técnico');
 
 (function () {
     const isDebug =
@@ -9,18 +9,14 @@ console.log('🔍 diagnostics.js carregado - Diagnóstico com tradução humana'
     if (!isDebug) return;
 
     /* =====================================================
-       🧠 TRADUTOR DE STATUS (NEÓFITO)
+       TRADUTOR DE STATUS NEÓFITO
     ===================================================== */
     function translate(status) {
         switch (status) {
-            case 'OK':
-                return { icon: '🟢', text: 'Funcionando normalmente' };
-            case 'LIMITED':
-                return { icon: '🟡', text: 'Funciona com proteção básica' };
-            case 'CRITICAL':
-                return { icon: '🔴', text: 'Pode afetar o funcionamento do site' };
-            default:
-                return { icon: '⚪', text: 'Informação técnica' };
+            case 'OK': return { label: '(OK)', text: 'Funcionando normalmente' };
+            case 'LIMITED': return { label: '(POS)', text: 'Funciona com proteção básica' };
+            case 'FAIL': return { label: '(NEG)', text: 'Falha detectada / atenção necessária' };
+            default: return { label: '(N/A)', text: 'Informação técnica' };
         }
     }
 
@@ -28,11 +24,11 @@ console.log('🔍 diagnostics.js carregado - Diagnóstico com tradução humana'
 
     function addResult(title, status, technicalLog) {
         const t = translate(status);
-        const faded = status !== 'OK' ? 'opacity:0.6;' : 'opacity:0.8;';
+        const faded = (status === 'FAIL' || status === 'LIMITED') ? 'opacity:0.6;' : 'opacity:1;';
 
         results.push(`
             <div style="margin-bottom:10px;">
-                ${t.icon} <b>${title}</b><br>
+                ${t.label} <b>${title}</b><br>
                 → ${t.text}<br>
                 <span style="${faded} font-size:11px;">
                     (${technicalLog})
@@ -42,7 +38,7 @@ console.log('🔍 diagnostics.js carregado - Diagnóstico com tradução humana'
     }
 
     /* =====================================================
-       🧪 ETAPA 10 — VALIDAÇÃO
+       ETAPA 10 — VALIDAÇÃO
     ===================================================== */
 
     // 1. ValidationSystem existe?
@@ -97,37 +93,47 @@ console.log('🔍 diagnostics.js carregado - Diagnóstico com tradução humana'
     } catch (e) {
         addResult(
             'Validação da galeria de imagens',
-            'OK',
+            'LIMITED',
             `Etapa 10: quickSystemCheck disponível: ${e.message}`
         );
     }
 
     /* =====================================================
-       🧪 TESTES EXISTENTES
+       TESTES EXISTENTES
     ===================================================== */
 
+    // PdfLogger
     if (window.PdfLogger) {
         addResult(
             'Sistema de PDFs',
             'OK',
             'PdfLogger existe (0.00ms)'
         );
+    } else {
+        addResult(
+            'Sistema de PDFs',
+            'FAIL',
+            'PdfLogger ausente'
+        );
     }
 
-    addResult(
-        'Sistema de recuperação de falhas',
-        'LIMITED',
-        'EmergencySystem disponível: nenhum sistema de recuperação encontrado'
-    );
-
-    addResult(
-        'Proteção contra dados ausentes',
-        'OK',
-        'Simulação segura de falha (properties nulo) (0.10ms)'
-    );
+    // EmergencySystem
+    if (window.EmergencySystem || window.emergencyRecovery) {
+        addResult(
+            'Proteção contra dados ausentes',
+            'OK',
+            'Simulação segura de falha (properties nulo) (0.10ms)'
+        );
+    } else {
+        addResult(
+            'Sistema de recuperação de falhas',
+            'LIMITED',
+            'EmergencySystem disponível: nenhum sistema de recuperação encontrado'
+        );
+    }
 
     /* =====================================================
-       🖥️ PAINEL
+       PAINEL
     ===================================================== */
 
     const box = document.createElement('div');
@@ -141,7 +147,7 @@ console.log('🔍 diagnostics.js carregado - Diagnóstico com tradução humana'
     const header = document.createElement('div');
     header.style.cssText =
         'font-weight:bold;margin-bottom:8px;color:#9f9;cursor:move;';
-    header.innerHTML = '📋 Diagnóstico do Sistema <span style="float:right;cursor:pointer;">➖</span>';
+    header.innerHTML = '📋 Diagnóstico do Sistema <span style="float:right;cursor:pointer;">(MIN)</span>';
 
     const toggle = header.querySelector('span');
     const content = document.createElement('div');
@@ -151,10 +157,10 @@ console.log('🔍 diagnostics.js carregado - Diagnóstico com tradução humana'
         content.style.display =
             content.style.display === 'none' ? 'block' : 'none';
         toggle.textContent =
-            content.style.display === 'none' ? '➕' : '➖';
+            content.style.display === 'none' ? '(MAX)' : '(MIN)';
     };
 
-    // Arrastar
+    // Arrastar o painel
     let drag = false, ox = 0, oy = 0;
     header.onmousedown = e => {
         drag = true;
