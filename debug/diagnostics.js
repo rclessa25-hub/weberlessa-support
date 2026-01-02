@@ -120,10 +120,12 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         'background:#f9f9f9;color:#222;padding:12px;' +
         'font:14px monospace;line-height:1.5;z-index:99999;' +
         'border-radius:8px;max-width:400px;' +
+        'max-height:500px; overflow-y:auto;' + // <- barra de rolagem vertical
         'box-shadow:0 4px 8px rgba(0,0,0,0.2);' +
         'white-space:pre-wrap;' +
         'user-select:text;' +
         'cursor:text;';
+
 
     box.innerHTML = '<b>🧪 Diagnóstico do Sistema</b>\n\n';
 
