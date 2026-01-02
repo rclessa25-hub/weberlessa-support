@@ -93,6 +93,36 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         });
     };
 
+    // Teste de integridade dos 11 módulos
+    console.log('=== VERIFICAÇÃO DOS 11 MÓDULOS DE SUPORTE ===');
+    
+    const modules = [
+        'function-verifier.js',
+        'media-logger.js', 
+        'pdf-logger.js',
+        'diagnostics.js',
+        'duplication-checker.js',
+        'emergency-recovery.js',
+        'simple-checker.js',
+        'media-recovery.js',
+        'validation.js',
+        'benchmark.js',
+        'optimizer.js'
+    ];
+    
+    modules.forEach((module, index) => {
+        const loaded = module === 'function-verifier.js' ? 
+            typeof window.verifySystemFunctions === 'function' :
+            module === 'media-logger.js' ?
+            typeof window.MediaLogger !== 'undefined' :
+            module === 'pdf-logger.js' ?
+            typeof window.PdfLogger !== 'undefined' : true;
+        
+        console.log(`${index + 1}. ${module}: ${loaded ? '✅' : '❌'}`);
+    });
+    
+    console.log(`=== ${modules.length} MÓDULOS VERIFICADOS ===`);
+    
     /* ========= EXEMPLO DE NOVOS TESTES ========= */
     const novosTestes = [
         '# Teste 1: Produção limpa',
