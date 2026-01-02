@@ -77,18 +77,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         else if (window.emergencyRecovery?.restoreEssentialData) window.emergencyRecovery.restoreEssentialData();
         window.properties = original || window.properties;
     });
-
-    # Teste 1: Produção limpa
-    curl -s "https://rclessa25-hub.github.io/imoveis-maceio/" | grep -c "validation.js"
-    # Resultado esperado: 0 (não carrega em produção)
-    
-    # Teste 2: Debug completo
-    curl -s "https://rclessa25-hub.github.io/imoveis-maceio/?debug=true" | grep -c "validation.js"
-    # Resultado esperado: 1 (carrega em debug)
-    
-    # Teste 3: Sistema funcional
-    # Acessar manualmente e verificar que galeria ainda abre imagens
-    
+     
     /* ========= FUNÇÃO DE LEITURA AUTOMÁTICA DE NOVOS TESTES ========= */
     const processNewTests = (testLines) => {
         testLines.forEach(line => {
