@@ -12,40 +12,56 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
     const run = (name, fn) => {
         try {
             const t = performance.now();
-            fn();
+            const r = fn();
             results.push(`✅ ${name} (${(performance.now() - t).toFixed(2)}ms)`);
+            return r;
         } catch (e) {
             results.push(`❌ ${name}: ${e.message}`);
         }
     };
 
     // ==================================================
-    // 🧪 ETAPA 10 – VERIFICAÇÃO FINAL
+    // 🧪 ETAPA 10 – VERIFICAÇÃO FINAL (PAINEL + CONSOLE)
     // ==================================================
     console.log('=== ETAPA 10 VERIFICATION ===');
 
-    console.log('1. ValidationSystem:', typeof window.ValidationSystem);
+    run('Etapa 10: ValidationSystem existe', () => {
+        if (!window.ValidationSystem) {
+            throw new Error('ValidationSystem ausente');
+        }
+    });
 
-    if (window.ValidationSystem) {
-        console.log('2.1 validateGalleryModule:', typeof window.ValidationSystem.validateGalleryModule);
-        console.log('2.2 quickSystemCheck:', typeof window.ValidationSystem.quickSystemCheck);
+    run('Etapa 10: validateGalleryModule disponível', () => {
+        if (typeof window.ValidationSystem.validateGalleryModule !== 'function') {
+            throw new Error('validateGalleryModule ausente');
+        }
+    });
 
-        console.log('3. Executando quickSystemCheck:');
-        console.log(window.ValidationSystem.quickSystemCheck());
+    run('Etapa 10: quickSystemCheck disponível', () => {
+        if (typeof window.ValidationSystem.quickSystemCheck !== 'function') {
+            throw new Error('quickSystemCheck ausente');
+        }
+    });
 
-        console.log('4. Validando galeria:');
+    run('Etapa 10: execução quickSystemCheck()', () => {
+        const result = window.ValidationSystem.quickSystemCheck();
+        console.log('quickSystemCheck:', result);
+    });
+
+    run('Etapa 10: validação da galeria', () => {
         window.ValidationSystem.validateGalleryModule();
-    }
+    });
 
-    console.log('5. Fallback gallery validation:', typeof window.validateGalleryModule);
-    if (typeof window.validateGalleryModule === 'function') {
-        console.log('✅ Fallback funcionando');
-    }
+    run('Etapa 10: fallback validateGalleryModule', () => {
+        if (typeof window.validateGalleryModule !== 'function') {
+            throw new Error('Fallback ausente');
+        }
+    });
 
     console.log('=== ETAPA 10 COMPLETA ===');
 
     // ==================================================
-    // 🔬 TESTES AUTOMÁTICOS
+    // 🔬 TESTES EXISTENTES
     // ==================================================
     run('PdfLogger existe', () => {
         if (!window.PdfLogger) throw new Error('ausente');
@@ -78,20 +94,20 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
     });
 
     // ==================================================
-    // 🖥️ UI – PAINEL DE DIAGNÓSTICO (ARRASTÁVEL + MINIMIZÁVEL)
+    // 🖥️ UI – PAINEL DE DIAGNÓSTICO
     // ==================================================
     const box = document.createElement('div');
     box.style.cssText =
         'position:fixed;bottom:10px;left:10px;' +
         'background:#111;color:#0f0;padding:8px;' +
         'font:12px monospace;z-index:99999;' +
-        'border-radius:6px;max-width:320px;' +
+        'border-radius:6px;max-width:340px;' +
         'cursor:move';
 
     const header = document.createElement('div');
     header.style.cssText =
         'display:flex;justify-content:space-between;' +
-        'align-items:center;margin-bottom:6px;cursor:move';
+        'align-items:center;margin-bottom:6px';
 
     const title = document.createElement('strong');
     title.textContent = '🧪 Diagnóstico do Sistema';
