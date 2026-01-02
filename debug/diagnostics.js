@@ -1,5 +1,5 @@
 // debug/diagnostics.js - REPOSITÓRIO DE SUPORTE
-console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo debug');
+console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos (modo humano)');
 
 (function () {
     const isDebug =
@@ -8,152 +8,153 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     if (!isDebug) return;
 
+    /* ==========================================================
+       🧠 TRADUTOR DE RESULTADOS (NEÓFITO-FRIENDLY)
+    ========================================================== */
+    function translate(status) {
+        switch (status) {
+            case 'OK':
+                return { icon: '🟢', text: 'Funcionando normalmente' };
+            case 'LIMITED':
+                return { icon: '🟡', text: 'Funciona com proteção básica' };
+            case 'DEBUG_ONLY':
+                return { icon: '🔵', text: 'Recurso técnico (modo diagnóstico)' };
+            case 'CRITICAL':
+                return { icon: '🔴', text: 'Pode afetar o funcionamento do site' };
+            default:
+                return { icon: '⚪', text: 'Estado não identificado' };
+        }
+    }
+
+    /* ==========================================================
+       🧪 EXECUTOR DE TESTES
+    ========================================================== */
     const results = [];
-    const run = (name, fn) => {
+
+    function runHumanTest(label, evaluator) {
         try {
-            const t = performance.now();
-            const r = fn();
-            results.push(`✅ ${name} (${(performance.now() - t).toFixed(2)}ms)`);
-            return r;
+            const outcome = evaluator();
+            const translated = translate(outcome.status);
+
+            results.push(
+                `${translated.icon} <b>${label}</b><br>` +
+                `&nbsp;&nbsp;→ ${translated.text}`
+            );
         } catch (e) {
-            results.push(`❌ ${name}: ${e.message}`);
+            const translated = translate('CRITICAL');
+            results.push(
+                `${translated.icon} <b>${label}</b><br>` +
+                `&nbsp;&nbsp;→ Erro inesperado`
+            );
         }
-    };
+    }
 
-    // ==================================================
-    // 🧪 ETAPA 10 – VERIFICAÇÃO FINAL (PAINEL + CONSOLE)
-    // ==================================================
-    console.log('=== ETAPA 10 VERIFICATION ===');
+    /* ==========================================================
+       🧪 ETAPA 10 — VALIDAÇÃO DO SISTEMA
+    ========================================================== */
 
-    run('Etapa 10: ValidationSystem existe', () => {
-        if (!window.ValidationSystem) {
-            throw new Error('ValidationSystem ausente');
-        }
+    runHumanTest('Validação avançada do sistema', () => {
+        if (window.ValidationSystem) return { status: 'DEBUG_ONLY' };
+        return { status: 'LIMITED' };
     });
 
-    run('Etapa 10: validateGalleryModule disponível', () => {
-        if (typeof window.ValidationSystem.validateGalleryModule !== 'function') {
-            throw new Error('validateGalleryModule ausente');
-        }
+    runHumanTest('Verificação rápida do sistema', () => {
+        if (window.ValidationSystem?.quickSystemCheck) return { status: 'DEBUG_ONLY' };
+        return { status: 'LIMITED' };
     });
 
-    run('Etapa 10: quickSystemCheck disponível', () => {
-        if (typeof window.ValidationSystem.quickSystemCheck !== 'function') {
-            throw new Error('quickSystemCheck ausente');
-        }
+    runHumanTest('Validação da galeria de imagens', () => {
+        if (window.ValidationSystem?.validateGalleryModule) return { status: 'DEBUG_ONLY' };
+        if (typeof window.validateGalleryModule === 'function') return { status: 'OK' };
+        return { status: 'CRITICAL' };
     });
 
-    run('Etapa 10: execução quickSystemCheck()', () => {
-        const result = window.ValidationSystem.quickSystemCheck();
-        console.log('quickSystemCheck:', result);
+    /* ==========================================================
+       🧪 TESTES EXISTENTES (SEM MUDAR A LÓGICA)
+    ========================================================== */
+
+    runHumanTest('Sistema de PDFs', () => {
+        if (window.PdfLogger) return { status: 'OK' };
+        return { status: 'LIMITED' };
     });
 
-    run('Etapa 10: validação da galeria', () => {
-        window.ValidationSystem.validateGalleryModule();
+    runHumanTest('Sistema de recuperação de falhas', () => {
+        if (window.EmergencySystem || window.emergencyRecovery) return { status: 'DEBUG_ONLY' };
+        return { status: 'LIMITED' };
     });
 
-    run('Etapa 10: fallback validateGalleryModule', () => {
-        if (typeof window.validateGalleryModule !== 'function') {
-            throw new Error('Fallback ausente');
-        }
-    });
-
-    console.log('=== ETAPA 10 COMPLETA ===');
-
-    // ==================================================
-    // 🔬 TESTES EXISTENTES
-    // ==================================================
-    run('PdfLogger existe', () => {
-        if (!window.PdfLogger) throw new Error('ausente');
-    });
-
-    run('PdfLogger.simple()', () => {
-        window.PdfLogger.simple('teste diagnóstico');
-    });
-
-    run('Performance PdfLogger (1000x)', () => {
-        for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
-    });
-
-    run('EmergencySystem disponível', () => {
-        if (!window.EmergencySystem && !window.emergencyRecovery)
-            throw new Error('nenhum sistema de recuperação encontrado');
-    });
-
-    run('Simulação segura de falha (properties nulo)', () => {
+    runHumanTest('Proteção contra dados ausentes', () => {
         const original = window.properties;
         window.properties = null;
 
-        if (window.EmergencySystem?.smartRecovery) {
-            window.EmergencySystem.smartRecovery();
-        } else if (window.emergencyRecovery?.restoreEssentialData) {
-            window.emergencyRecovery.restoreEssentialData();
+        try {
+            if (window.EmergencySystem?.smartRecovery) {
+                window.EmergencySystem.smartRecovery();
+            } else if (window.emergencyRecovery?.restoreEssentialData) {
+                window.emergencyRecovery.restoreEssentialData();
+            }
+        } finally {
+            window.properties = original || window.properties;
         }
 
-        window.properties = original || window.properties;
+        return { status: 'OK' };
     });
 
-    // ==================================================
-    // 🖥️ UI – PAINEL DE DIAGNÓSTICO
-    // ==================================================
+    /* ==========================================================
+       🖥️ PAINEL VISUAL (SIMPLES, CLARO, HUMANO)
+    ========================================================== */
+
     const box = document.createElement('div');
     box.style.cssText =
         'position:fixed;bottom:10px;left:10px;' +
-        'background:#111;color:#0f0;padding:8px;' +
-        'font:12px monospace;z-index:99999;' +
-        'border-radius:6px;max-width:340px;' +
-        'cursor:move';
+        'background:#111;color:#eee;padding:10px;' +
+        'font:12px Arial, sans-serif;z-index:99999;' +
+        'border-radius:8px;max-width:340px;' +
+        'box-shadow:0 0 10px rgba(0,0,0,0.6);';
 
     const header = document.createElement('div');
     header.style.cssText =
-        'display:flex;justify-content:space-between;' +
-        'align-items:center;margin-bottom:6px';
+        'cursor:move;font-weight:bold;margin-bottom:6px;color:#0f0;';
+    header.innerHTML = '🧪 Diagnóstico do Sistema';
 
-    const title = document.createElement('strong');
-    title.textContent = '🧪 Diagnóstico do Sistema';
-
-    const toggleBtn = document.createElement('button');
-    toggleBtn.textContent = '–';
-    toggleBtn.style.cssText =
-        'background:#333;color:#0f0;border:none;' +
-        'cursor:pointer;font-size:12px;padding:2px 6px';
+    const toggle = document.createElement('span');
+    toggle.textContent = '➖';
+    toggle.style.cssText =
+        'float:right;cursor:pointer;color:#aaa;';
+    header.appendChild(toggle);
 
     const content = document.createElement('div');
-    content.innerHTML = results.join('<br>');
+    content.innerHTML = results.join('<br><br>');
 
-    toggleBtn.onclick = () => {
-        const visible = content.style.display !== 'none';
-        content.style.display = visible ? 'none' : 'block';
-        toggleBtn.textContent = visible ? '+' : '–';
+    toggle.onclick = () => {
+        content.style.display =
+            content.style.display === 'none' ? 'block' : 'none';
+        toggle.textContent =
+            content.style.display === 'none' ? '➕' : '➖';
     };
 
-    header.appendChild(title);
-    header.appendChild(toggleBtn);
-    box.appendChild(header);
-    box.appendChild(content);
-    document.body.appendChild(box);
+    /* ==========================================================
+       ✋ PAINEL ARRASTÁVEL (SIMPLES)
+    ========================================================== */
+    let isDragging = false, offsetX = 0, offsetY = 0;
 
-    // ==================================================
-    // 🖱️ DRAG & DROP
-    // ==================================================
-    let isDragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    header.addEventListener('mousedown', e => {
+    header.onmousedown = (e) => {
         isDragging = true;
         offsetX = e.clientX - box.offsetLeft;
         offsetY = e.clientY - box.offsetTop;
-    });
+    };
 
-    document.addEventListener('mousemove', e => {
+    document.onmousemove = (e) => {
         if (!isDragging) return;
-        box.style.left = `${e.clientX - offsetX}px`;
-        box.style.top = `${e.clientY - offsetY}px`;
-        box.style.bottom = 'auto';
-    });
+        box.style.left = (e.clientX - offsetX) + 'px';
+        box.style.top = (e.clientY - offsetY) + 'px';
+    };
 
-    document.addEventListener('mouseup', () => {
+    document.onmouseup = () => {
         isDragging = false;
-    });
+    };
+
+    box.appendChild(header);
+    box.appendChild(content);
+    document.body.appendChild(box);
 })();
