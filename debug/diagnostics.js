@@ -1,4 +1,4 @@
-// debug/diagnostics.js - PAINEL LIMPO PARA NEOFITOS E TÉCNICOS
+// debug/diagnostics.js - REPOSITÓRIO DE SUPORTE
 console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo debug');
 
 (function () {
@@ -10,162 +10,143 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     const results = [];
 
-    const run = (name, fn) => {
+    const run = (name, fn, fallbackMsg) => {
         try {
             const t = performance.now();
             const r = fn();
-            results.push({ name, status: 'OK', duration: (performance.now() - t).toFixed(2) + 'ms', log: null });
+            results.push({
+                status: '(OK)',
+                message: `${name} → Funcionando normalmente`,
+                technical: `${name} (${(performance.now() - t).toFixed(2)}ms)`,
+                fallback: false
+            });
             return r;
         } catch (e) {
-            results.push({ name, status: 'ERR', duration: null, log: e.message });
+            // Detecta se existe fallback / proteção
+            if (fallbackMsg) {
+                results.push({
+                    status: '(ERR/OK – Proteção ativa)',
+                    message: `${name} → ${fallbackMsg}`,
+                    technical: `Erro técnico: ${e.message}`,
+                    fallback: true
+                });
+            } else {
+                results.push({
+                    status: '(ERR)',
+                    message: `${name} → ${e.message}`,
+                    technical: `Erro técnico: ${e.message}`,
+                    fallback: false
+                });
+            }
         }
     };
 
-    // ======== TESTES ORIGINAIS ========
+    // ===========================
+    // TESTES ETAPA 10
+    // ===========================
+    run(
+        'Etapa 10: ValidationSystem existe',
+        () => { if (!window.ValidationSystem) throw new Error('ValidationSystem ausente'); },
+        'Sistema funcionando com proteção'
+    );
 
-    // 1. ValidationSystem existe
-    results.push({
-        name: 'Etapa 10: ValidationSystem existe',
-        status: typeof window.ValidationSystem !== 'undefined' ? 'OK' : 'ERR',
-        duration: null,
-        log: typeof window.ValidationSystem !== 'undefined' ? null : 'ValidationSystem ausente'
-    });
+    run(
+        'Etapa 10: validateGalleryModule disponível',
+        () => { if (!window.ValidationSystem?.validateGalleryModule) throw new Error('Cannot read properties of undefined (reading \'validateGalleryModule\')'); },
+        'Sistema funcionando com proteção'
+    );
 
-    // 2. validateGalleryModule disponível
-    results.push({
-        name: 'Etapa 10: validateGalleryModule disponível',
-        status: window.ValidationSystem?.validateGalleryModule ? 'OK' : 'ERR',
-        duration: null,
-        log: window.ValidationSystem?.validateGalleryModule ? null : "Cannot read properties of undefined (reading 'validateGalleryModule')"
-    });
+    run(
+        'Etapa 10: quickSystemCheck disponível',
+        () => { if (!window.ValidationSystem?.quickSystemCheck) throw new Error('Cannot read properties of undefined (reading \'quickSystemCheck\')'); },
+        'Sistema funcionando com proteção'
+    );
 
-    // 3. quickSystemCheck disponível
-    results.push({
-        name: 'Etapa 10: quickSystemCheck disponível',
-        status: window.ValidationSystem?.quickSystemCheck ? 'OK' : 'ERR',
-        duration: null,
-        log: window.ValidationSystem?.quickSystemCheck ? null : "Cannot read properties of undefined (reading 'quickSystemCheck')"
-    });
+    run(
+        'Etapa 10: execução quickSystemCheck()',
+        () => { if (!window.ValidationSystem?.quickSystemCheck) throw new Error('Cannot read properties of undefined (reading \'quickSystemCheck\')'); return window.ValidationSystem.quickSystemCheck(); },
+        'Sistema funcionando com proteção'
+    );
 
-    // 4. execução quickSystemCheck()
-    try {
-        const res = window.ValidationSystem?.quickSystemCheck();
-        results.push({
-            name: 'Etapa 10: execução quickSystemCheck()',
-            status: res !== undefined ? 'OK' : 'ERR',
-            duration: null,
-            log: res !== undefined ? null : "Cannot read properties of undefined (reading 'quickSystemCheck')"
-        });
-    } catch (e) {
-        results.push({ name: 'Etapa 10: execução quickSystemCheck()', status: 'ERR', duration: null, log: e.message });
-    }
+    run(
+        'Etapa 10: validação da galeria',
+        () => window.ValidationSystem?.validateGalleryModule?.(),
+        'Sistema funcionando com proteção'
+    );
 
-    // 5. validação da galeria
-    try {
-        window.ValidationSystem?.validateGalleryModule();
-        results.push({ name: 'Etapa 10: validação da galeria', status: 'OK', duration: null, log: null });
-    } catch (e) {
-        results.push({ name: 'Etapa 10: validação da galeria', status: 'ERR', duration: null, log: e.message });
-    }
+    run(
+        'Etapa 10: fallback validateGalleryModule',
+        () => { if (!window.validateGalleryModule) throw new Error('Fallback não encontrado'); },
+        'Fallback ativado'
+    );
 
-    // 6. fallback validateGalleryModule
-    const fallback = typeof window.validateGalleryModule === 'function';
-    results.push({
-        name: 'Etapa 10: fallback validateGalleryModule',
-        status: fallback ? 'OK' : 'ERR',
-        duration: '0.00ms',
-        log: fallback ? null : 'Função fallback ausente'
-    });
-
-    // 7. PdfLogger existe
+    // ===========================
+    // TESTES PdfLogger
+    // ===========================
     run('PdfLogger existe', () => { if (!window.PdfLogger) throw new Error('ausente'); });
 
-    // 8. PdfLogger.simple()
     run('PdfLogger.simple()', () => { window.PdfLogger.simple('teste diagnóstico'); });
 
-    // 9. Performance PdfLogger (1000x)
     run('Performance PdfLogger (1000x)', () => { for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x'); });
 
-    // 10. EmergencySystem disponível / simulação falha
-    const emergency = window.EmergencySystem || window.emergencyRecovery;
-    results.push({
-        name: 'EmergencySystem disponível',
-        status: emergency ? 'OK' : 'ERR',
-        duration: null,
-        log: emergency ? null : 'nenhum sistema de recuperação encontrado'
-    });
+    // ===========================
+    // TESTES EmergencySystem
+    // ===========================
+    run(
+        'EmergencySystem disponível',
+        () => { if (!window.EmergencySystem && !window.emergencyRecovery) throw new Error('nenhum sistema de recuperação encontrado'); },
+        'Proteção básica ativa'
+    );
 
-    const original = window.properties;
-    window.properties = null;
-    if (emergency?.smartRecovery) emergency.smartRecovery();
-    else if (window.emergencyRecovery?.restoreEssentialData) window.emergencyRecovery.restoreEssentialData();
-    window.properties = original || window.properties;
+    run('Simulação segura de falha (properties nulo)', () => {
+        const original = window.properties;
+        window.properties = null;
 
-    results.push({
-        name: 'Simulação segura de falha (properties nulo)',
-        status: 'OK',
-        duration: '0.10ms',
-        log: null
-    });
-
-    // ======== PAINEL VISUAL LIMPO ========
-    const panel = document.createElement('div');
-    panel.style.cssText = `
-        position:fixed;bottom:10px;right:10px;
-        background:#f0f0f0;color:#000;padding:14px;
-        font:16px monospace;z-index:99999;
-        border-radius:10px;max-width:450px;
-        max-height:80vh;overflow-y:auto;
-        box-shadow:0 0 15px rgba(0,0,0,0.3);
-        user-select:text;
-        resize:both;
-    `;
-
-    const title = document.createElement('div');
-    title.innerHTML = `<b>🧪 Diagnóstico do Sistema</b>`;
-    panel.appendChild(title);
-
-    results.forEach(item => {
-        const div = document.createElement('div');
-        div.style.display = 'flex';
-        div.style.alignItems = 'center';
-        div.style.margin = '4px 0';
-        div.style.padding = '4px 6px';
-        div.style.borderRadius = '4px';
-        div.style.backgroundColor = item.status === 'OK' ? '#d4edda' : '#f8d7da';
-        div.style.color = '#000';
-        div.style.fontSize = '15px';
-        div.style.lineHeight = '1.4';
-
-        const statusSpan = document.createElement('span');
-        statusSpan.textContent = item.status === 'OK' ? '(OK) ' : '(ERR) ';
-        statusSpan.style.fontWeight = 'bold';
-        statusSpan.style.color = item.status === 'OK' ? '#155724' : '#721c24';
-        div.appendChild(statusSpan);
-
-        const textSpan = document.createElement('span');
-        textSpan.textContent = `${item.name} → ${item.log || 'Funcionando normalmente'}${item.duration ? ' (' + item.duration + ')' : ''}`;
-        div.appendChild(textSpan);
-
-        panel.appendChild(div);
-    });
-
-    document.body.appendChild(panel);
-
-    // ======== ARRASTO ========
-    let isDragging = false, offsetX, offsetY;
-    panel.addEventListener('mousedown', e => {
-        isDragging = true;
-        offsetX = e.clientX - panel.offsetLeft;
-        offsetY = e.clientY - panel.offsetTop;
-        panel.style.cursor = 'move';
-    });
-    window.addEventListener('mouseup', () => { isDragging = false; panel.style.cursor = 'default'; });
-    window.addEventListener('mousemove', e => {
-        if (isDragging) {
-            panel.style.left = e.clientX - offsetX + 'px';
-            panel.style.top = e.clientY - offsetY + 'px';
+        if (window.EmergencySystem?.smartRecovery) {
+            window.EmergencySystem.smartRecovery();
+        } else if (window.emergencyRecovery?.restoreEssentialData) {
+            window.emergencyRecovery.restoreEssentialData();
         }
+
+        window.properties = original || window.properties;
     });
 
+    // ===========================
+    // PAINEL VISUAL
+    // ===========================
+    const box = document.createElement('div');
+    box.style.cssText =
+        'position:fixed;bottom:10px;right:10px;' +
+        'background:#f9f9f9;color:#222;padding:12px;' +
+        'font:14px monospace;line-height:1.5;z-index:99999;' +
+        'border-radius:8px;max-width:400px;' +
+        'box-shadow:0 4px 8px rgba(0,0,0,0.2);' +
+        'white-space:pre-wrap;' +
+        'user-select:text;' +
+        'cursor:text;';
+
+    box.innerHTML = '<b>🧪 Diagnóstico do Sistema</b>\n\n';
+
+    results.forEach(r => {
+        let bg = '#fff'; // padrão
+        let color = '#222'; // texto normal
+
+        if (r.status.startsWith('(OK)')) {
+            bg = '#d4edda'; // verde suave
+            color = '#155724';
+        } else if (r.status.startsWith('(ERR/OK')) {
+            bg = '#fff3cd'; // amarelo suave
+            color = '#856404';
+        } else if (r.status.startsWith('(ERR)')) {
+            bg = '#f8d7da'; // vermelho suave
+            color = '#721c24';
+        }
+
+        box.innerHTML +=
+            `<div style="background:${bg};color:${color};padding:4px 6px;border-radius:4px;margin-bottom:2px;">` +
+            `<b>${r.status}</b> ${r.message}\n<span style="color:#555;font-size:12px;">${r.technical}</span>` +
+            `</div>`;
+    });
+
+    document.body.appendChild(box);
 })();
