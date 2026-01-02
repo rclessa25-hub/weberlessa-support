@@ -8,18 +8,13 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     if (!isDebug) return;
 
-    /* =====================================================
-       ESTRUTURA CENTRAL DE RESULTADOS
-    ===================================================== */
     const results = [];
 
     const addResult = (status, neofitoMsg, tecnicoMsg) => {
         results.push({ status, neofitoMsg, tecnicoMsg });
     };
 
-    /* =====================================================
-       FUNÇÃO PADRÃO PARA TESTES EXECUTÁVEIS
-    ===================================================== */
+    /* ========= FUNÇÃO PADRÃO DE EXECUÇÃO ========= */
     const run = (name, fn) => {
         try {
             const t0 = performance.now();
@@ -39,31 +34,22 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         }
     };
 
-    /* =====================================================
-       TESTES AUTOMÁTICOS DO SISTEMA (ETAPA 10)
-    ===================================================== */
-
+    /* ========= ETAPA 10 ========= */
     if (window.ValidationSystem) {
         run('Etapa 10: ValidationSystem existe', () => true);
-
         run('Etapa 10: validateGalleryModule disponível', () => {
             if (typeof window.ValidationSystem.validateGalleryModule !== 'function')
-                throw new Error('função ausente');
+                throw new Error('ausente');
         });
-
         run('Etapa 10: quickSystemCheck disponível', () => {
             if (typeof window.ValidationSystem.quickSystemCheck !== 'function')
-                throw new Error('função ausente');
+                throw new Error('ausente');
         });
-
-        run(
-            'Etapa 10: execução quickSystemCheck()',
-            () => window.ValidationSystem.quickSystemCheck()
+        run('Etapa 10: execução quickSystemCheck()', () =>
+            window.ValidationSystem.quickSystemCheck()
         );
-
-        run(
-            'Etapa 10: validação da galeria',
-            () => window.ValidationSystem.validateGalleryModule()
+        run('Etapa 10: validação da galeria', () =>
+            window.ValidationSystem.validateGalleryModule()
         );
     } else {
         addResult(
@@ -71,7 +57,6 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
             'Etapa 10: ValidationSystem ausente → Sistema protegido',
             'ValidationSystem undefined'
         );
-
         addResult(
             'OK',
             'Etapa 10: validação da galeria → Fallback acionado',
@@ -81,27 +66,19 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     run('Etapa 10: fallback validateGalleryModule', () => {
         if (typeof window.validateGalleryModule !== 'function')
-            throw new Error('fallback ausente');
+            throw new Error('ausente');
     });
 
-    /* =====================================================
-       PdfLogger
-    ===================================================== */
+    /* ========= PdfLogger ========= */
     run('PdfLogger existe', () => {
         if (!window.PdfLogger) throw new Error('ausente');
     });
-
-    run('PdfLogger.simple()', () =>
-        window.PdfLogger.simple('teste diagnóstico')
-    );
-
+    run('PdfLogger.simple()', () => window.PdfLogger.simple('teste'));
     run('Performance PdfLogger (1000x)', () => {
         for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
     });
 
-    /* =====================================================
-       Emergency / Recovery
-    ===================================================== */
+    /* ========= Emergency ========= */
     if (!window.EmergencySystem && !window.emergencyRecovery) {
         addResult(
             'ERR/OK – Proteção ativa',
@@ -112,97 +89,75 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         addResult(
             'OK',
             'EmergencySystem disponível → Funcionando normalmente',
-            'Sistema de recuperação detectado'
+            'Recovery detectado'
         );
     }
 
     run('Simulação segura de falha (properties nulo)', () => {
         const original = window.properties;
         window.properties = null;
-
-        if (window.EmergencySystem?.smartRecovery)
-            window.EmergencySystem.smartRecovery();
-        else if (window.emergencyRecovery?.restoreEssentialData)
-            window.emergencyRecovery.restoreEssentialData();
-
+        window.EmergencySystem?.smartRecovery?.();
+        window.emergencyRecovery?.restoreEssentialData?.();
         window.properties = original || window.properties;
     });
 
-    /* =====================================================
-       INTERPRETADOR AUTOMÁTICO DE BLOCOS DE TESTE
-       (COPIAR / COLAR LIVRE)
-    ===================================================== */
-    function interpretarBlocosDeTeste(texto) {
-        const linhas = texto.split('\n');
-        let bloco = {};
+    /* ========= TESTE DE INTEGRIDADE DOS 11 MÓDULOS ========= */
+    const modules = [
+        { name: 'function-verifier.js', required: true, check: () => typeof window.verifySystemFunctions === 'function' },
+        { name: 'media-logger.js', required: false, check: () => typeof window.MediaLogger !== 'undefined' },
+        { name: 'pdf-logger.js', required: true, check: () => typeof window.PdfLogger !== 'undefined' },
+        { name: 'diagnostics.js', required: true, check: () => true },
+        { name: 'duplication-checker.js', required: false, check: () => true },
+        { name: 'emergency-recovery.js', required: false, check: () => typeof window.emergencyRecovery !== 'undefined' },
+        { name: 'simple-checker.js', required: false, check: () => true },
+        { name: 'media-recovery.js', required: false, check: () => true },
+        { name: 'validation.js', required: false, check: () => typeof window.ValidationSystem !== 'undefined' },
+        { name: 'benchmark.js', required: false, check: () => true },
+        { name: 'optimizer.js', required: false, check: () => true }
+    ];
 
-        linhas.forEach((linha) => {
-            const l = linha.trim();
-
-            if (l.startsWith('# Teste')) {
-                bloco = { nome: l.replace('# ', '') };
-            } else if (l.startsWith('# Resultado esperado:')) {
-                bloco.resultadoEsperado = l.replace('# Resultado esperado:', '').trim();
-
-                // Geração automática do resultado
-                if (bloco.resultadoEsperado.startsWith('0')) {
+    modules.forEach((m, i) => {
+        try {
+            if (m.check()) {
+                addResult(
+                    'OK',
+                    `Módulo ${i + 1}/11: ${m.name} → Carregado`,
+                    'Presente no runtime'
+                );
+            } else {
+                if (m.required) {
                     addResult(
-                        'OK',
-                        `${bloco.nome} → Produção limpa`,
-                        `Resultado esperado: ${bloco.resultadoEsperado}`
-                    );
-                } else if (bloco.resultadoEsperado.startsWith('1')) {
-                    addResult(
-                        'ERR/OK – Proteção ativa',
-                        `${bloco.nome} → Debug ativo`,
-                        `Resultado esperado: ${bloco.resultadoEsperado}`
+                        'ERR – FALHA REAL',
+                        `Módulo ${i + 1}/11: ${m.name} ausente → ERRO`,
+                        'Módulo obrigatório não encontrado'
                     );
                 } else {
                     addResult(
-                        'OK',
-                        `${bloco.nome} → Verificação manual`,
-                        `Resultado esperado: ${bloco.resultadoEsperado}`
+                        'ERR/OK – Proteção ativa',
+                        `Módulo ${i + 1}/11: ${m.name} ausente → Proteção ativa`,
+                        'Módulo opcional'
                     );
                 }
-
-                bloco = {};
-            } else if (l && !l.startsWith('#')) {
-                bloco.comando = l;
             }
-        });
-    }
+        } catch (e) {
+            addResult(
+                'ERR – FALHA REAL',
+                `Módulo ${i + 1}/11: ${m.name} erro`,
+                e.message
+            );
+        }
+    });
 
-    /* =====================================================
-       BLOCO DE TESTES — USUÁRIO SÓ COPIA E COLA AQUI
-    ===================================================== */
-    const novosTestes = `
-# Teste 1: Produção limpa
-curl -s "https://rclessa25-hub.github.io/imoveis-maceio/" | grep -c "validation.js"
-# Resultado esperado: 0 (não carrega em produção)
-
-# Teste 2: Debug completo
-curl -s "https://rclessa25-hub.github.io/imoveis-maceio/?debug=true" | grep -c "validation.js"
-# Resultado esperado: 1 (carrega em debug)
-
-# Teste 3: Sistema funcional
-Acessar manualmente e verificar que galeria abre imagens
-# Resultado esperado: Galeria funcional
-`;
-
-    interpretarBlocosDeTeste(novosTestes);
-
-    /* =====================================================
-       PAINEL DE DIAGNÓSTICO
-    ===================================================== */
+    /* ========= PAINEL ========= */
     const box = document.createElement('div');
     box.style.cssText = `
         position: fixed;
         bottom: 10px;
         right: 10px;
-        width: 480px;
+        width: 520px;
         max-height: 75vh;
         overflow-y: auto;
-        background: #f4f6f8;
+        background: #f7f7f7;
         color: #000;
         padding: 16px;
         font-size: 16px;
@@ -213,20 +168,19 @@ Acessar manualmente e verificar que galeria abre imagens
         user-select: text;
     `;
 
-    results.forEach((r) => {
-        const div = document.createElement('div');
+    results.forEach(r => {
+        const line = document.createElement('div');
         let color = '#000';
+        if (r.status.startsWith('ERR –')) color = '#b00000';
+        else if (r.status.includes('ERR/OK')) color = '#b36b00';
+        else color = '#006400';
 
-        if (r.status.includes('ERR')) color = '#b00000';
-        if (r.status === 'OK') color = '#006400';
-
-        div.style.marginBottom = '6px';
-        div.innerHTML = `
-            <strong style="color:${color}">(${r.status})</strong>
+        line.innerHTML = `
+            <span style="font-weight:bold;color:${color}">(${r.status})</span>
             ${r.neofitoMsg}
-            <div style="color:#555;margin-left:12px">${r.tecnicoMsg}</div>
+            <div style="color:#555;margin-left:10px">${r.tecnicoMsg}</div>
         `;
-        box.appendChild(div);
+        box.appendChild(line);
     });
 
     document.body.appendChild(box);
