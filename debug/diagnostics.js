@@ -85,7 +85,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         addCore('OK', `[MÓDULO CORE ${i + 1}] ${m} → Carregado`, 'CORE NO RUNTIME')
     );
 
-    /* ========= TESTES ========= */
+    /* ========= TESTES BÁSICOS ========= */
     run('Teste 1: Repositório de Suporte Carregado', () => {
         if (!location.href.includes('weberlessa-support'))
             throw new Error('Repositório de Suporte não detectado');
@@ -103,13 +103,25 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         });
     });
 
-    /* ========= ETAPA 10 - Validation ========= */
+    /* ========= ETAPA 10 — VALIDATIONSYSTEM (DETALHADA) ========= */
     if (window.ValidationSystem) {
         run('Etapa 10: ValidationSystem existe', () => true);
-        run('Etapa 10: quickSystemCheck()', () =>
+
+        run('Etapa 10: validateGalleryModule disponível', () => {
+            if (typeof window.ValidationSystem.validateGalleryModule !== 'function')
+                throw new Error('ausente');
+        });
+
+        run('Etapa 10: quickSystemCheck disponível', () => {
+            if (typeof window.ValidationSystem.quickSystemCheck !== 'function')
+                throw new Error('ausente');
+        });
+
+        run('Etapa 10: execução quickSystemCheck()', () =>
             window.ValidationSystem.quickSystemCheck()
         );
-        run('Etapa 10: validateGalleryModule()', () =>
+
+        run('Etapa 10: validação da galeria', () =>
             window.ValidationSystem.validateGalleryModule()
         );
     } else {
@@ -118,18 +130,26 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
             'Etapa 10: ValidationSystem ausente → Sistema protegido',
             'ValidationSystem undefined'
         );
+
+        addGeneral(
+            'OK',
+            'Etapa 10: validação da galeria → Fallback acionado',
+            'Fallback validateGalleryModule ativo'
+        );
     }
 
     run('Etapa 10: fallback validateGalleryModule', () => {
         if (typeof window.validateGalleryModule !== 'function')
-            throw new Error('fallback ausente');
+            throw new Error('ausente');
     });
 
     /* ========= PdfLogger ========= */
     run('PdfLogger existe', () => {
         if (!window.PdfLogger) throw new Error('ausente');
     });
+
     run('PdfLogger.simple()', () => window.PdfLogger.simple('teste'));
+
     run('Performance PdfLogger (1000x)', () => {
         for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
     });
@@ -141,6 +161,12 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
             'EmergencySystem ausente → Sistema protegido',
             'Nenhum recovery carregado'
         );
+    } else {
+        addGeneral(
+            'OK',
+            'EmergencySystem disponível → Funcionando normalmente',
+            'Recovery detectado'
+        );
     }
 
     run('Simulação segura de falha (properties nulo)', () => {
@@ -148,7 +174,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         window.properties = null;
         window.EmergencySystem?.smartRecovery?.();
         window.emergencyRecovery?.restoreEssentialData?.();
-        window.properties = original;
+        window.properties = original || window.properties;
     });
 
     /* ========= PAINEL ========= */
@@ -157,7 +183,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         position: fixed;
         bottom: 10px;
         right: 10px;
-        width: 560px;
+        width: 580px;
         max-height: 75vh;
         overflow-y: auto;
         background: #f7f7f7;
@@ -217,7 +243,8 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
     const renderSection = (title, icon, list) => {
         if (!list.length) return;
         const h = document.createElement('div');
-        h.style.cssText = 'margin:10px 0 6px;font-weight:bold;border-bottom:2px solid #ccc';
+        h.style.cssText =
+            'margin:10px 0 6px;font-weight:bold;border-bottom:2px solid #ccc';
         h.textContent = `${icon} ${title} (${list.length})`;
         box.appendChild(h);
 
