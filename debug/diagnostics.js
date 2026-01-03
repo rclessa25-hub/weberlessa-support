@@ -49,8 +49,12 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
     };
 
     const allLoadedModules = getLoadedScripts();
+    
+    // Definindo os módulos do Core e Suporte
+    const coreModules = allLoadedModules.filter(module => module.includes('core-'));
     const supportModules = allLoadedModules.filter(module => !module.includes('core-')); 
 
+    // Exibindo as informações de módulos carregados
     if (supportModules.length === 0) {
         addResult(
             'ERR/OK – Proteção ativa',
@@ -61,8 +65,24 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         supportModules.forEach((module, index) => {
             addResult(
                 'OK',
-                `Módulo ${index + 1}: ${module} → Carregado`,
-                `Presente no runtime`
+                `Módulo de Suporte ${index + 1}: ${module} → Carregado`,
+                `Módulo de Suporte no runtime`
+            );
+        });
+    }
+
+    if (coreModules.length === 0) {
+        addResult(
+            'ERR/OK – Proteção ativa',
+            'Nenhum módulo do Core detectado → Ambiente protegido',
+            'Nenhum módulo do Core carregado'
+        );
+    } else {
+        coreModules.forEach((module, index) => {
+            addResult(
+                'OK',
+                `Módulo Core ${index + 1}: ${module} → Carregado`,
+                `Módulo Core no runtime`
             );
         });
     }
