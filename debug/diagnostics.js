@@ -34,72 +34,9 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         }
     };
 
-    /* =====================================================
-       TESTES FUNCIONAIS (MANTIDOS)
-       ===================================================== */
+    /* ========= TESTES DE INTEGRIDADE DO SISTEMA ========= */
 
-    if (window.ValidationSystem) {
-        run('Etapa 10: ValidationSystem existe', () => true);
-        run('Etapa 10: validateGalleryModule disponível', () => {
-            if (typeof window.ValidationSystem.validateGalleryModule !== 'function')
-                throw new Error('ausente');
-        });
-        run('Etapa 10: quickSystemCheck disponível', () => {
-            if (typeof window.ValidationSystem.quickSystemCheck !== 'function')
-                throw new Error('ausente');
-        });
-        run('Etapa 10: execução quickSystemCheck()', () =>
-            window.ValidationSystem.quickSystemCheck()
-        );
-        run('Etapa 10: validação da galeria', () =>
-            window.ValidationSystem.validateGalleryModule()
-        );
-    } else {
-        addResult(
-            'ERR/OK – Proteção ativa',
-            'Etapa 10: ValidationSystem ausente → Sistema protegido',
-            'ValidationSystem undefined'
-        );
-    }
-
-    run('Etapa 10: fallback validateGalleryModule', () => {
-        if (typeof window.validateGalleryModule !== 'function')
-            throw new Error('ausente');
-    });
-
-    /* ========= PdfLogger ========= */
-    run('PdfLogger existe', () => {
-        if (!window.PdfLogger) throw new Error('ausente');
-    });
-    run('PdfLogger.simple()', () => window.PdfLogger.simple('teste'));
-
-    /* ========= Emergency ========= */
-    if (!window.EmergencySystem && !window.emergencyRecovery) {
-        addResult(
-            'ERR/OK – Proteção ativa',
-            'EmergencySystem ausente → Sistema protegido',
-            'Nenhum recovery carregado'
-        );
-    } else {
-        addResult(
-            'OK',
-            'EmergencySystem disponível → Funcionando normalmente',
-            'Recovery detectado'
-        );
-    }
-
-    run('Simulação segura de falha (properties nulo)', () => {
-        const original = window.properties;
-        window.properties = null;
-        window.EmergencySystem?.smartRecovery?.();
-        window.emergencyRecovery?.restoreEssentialData?.();
-        window.properties = original || window.properties;
-    });
-
-    /* =====================================================
-       AUDITORIA REAL DE MÓDULOS DO REPOSITÓRIO DE SUPORTE (somente)
-       ===================================================== */
-
+    // Verificar módulos carregados do repositório de suporte
     const jsResources = performance
         .getEntriesByType('resource')
         .filter(r => r.initiatorType === 'script' && r.name.endsWith('.js'));
@@ -109,7 +46,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         .map(r => {
             try {
                 const filename = r.name.split('/').pop().split('?')[0];
-                // Exemplo de filtro: Arquivos que estão no diretório 'support' ou que possuem prefixo 'support-'
+                // Filtro por prefixo 'support-' ou caminho contendo '/support/'
                 if (r.name.includes('/support/') || filename.startsWith('support-')) {
                     return filename;
                 }
@@ -132,15 +69,77 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
             addResult(
                 'OK',
                 `Módulo ${i + 1}/${uniqueSupportModules.length}: ${mod} → Carregado`,
-                'Arquivo .js do repositório de suporte detectado no runtime'
+                `Arquivo .js do repositório de suporte detectado no runtime`
             );
         });
     }
 
-    /* =====================================================
-       PAINEL VISUAL
-       ===================================================== */
+    /* ========= OUTROS TESTES IMPORTANTES ========= */
 
+    // Teste do ValidationSystem
+    if (window.ValidationSystem) {
+        run('Etapa 10: ValidationSystem existe', () => true);
+        run('Etapa 10: validateGalleryModule disponível', () => {
+            if (typeof window.ValidationSystem.validateGalleryModule !== 'function')
+                throw new Error('ausente');
+        });
+        run('Etapa 10: quickSystemCheck disponível', () => {
+            if (typeof window.ValidationSystem.quickSystemCheck !== 'function')
+                throw new Error('ausente');
+        });
+        run('Etapa 10: execução quickSystemCheck()', () =>
+            window.ValidationSystem.quickSystemCheck()
+        );
+        run('Etapa 10: validação da galeria', () =>
+            window.ValidationSystem.validateGalleryModule()
+        );
+    } else {
+        addResult(
+            'ERR/OK – Proteção ativa',
+            'Etapa 10: ValidationSystem ausente → Sistema protegido',
+            'ValidationSystem undefined'
+        );
+        addResult(
+            'OK',
+            'Etapa 10: validação da galeria → Fallback acionado',
+            'Fallback validateGalleryModule ativo'
+        );
+    }
+
+    // Teste do PdfLogger
+    run('PdfLogger existe', () => {
+        if (!window.PdfLogger) throw new Error('ausente');
+    });
+    run('PdfLogger.simple()', () => window.PdfLogger.simple('teste'));
+    run('Performance PdfLogger (1000x)', () => {
+        for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
+    });
+
+    // Teste de EmergencySystem
+    if (!window.EmergencySystem && !window.emergencyRecovery) {
+        addResult(
+            'ERR/OK – Proteção ativa',
+            'EmergencySystem ausente → Sistema protegido',
+            'Nenhum recovery carregado'
+        );
+    } else {
+        addResult(
+            'OK',
+            'EmergencySystem disponível → Funcionando normalmente',
+            'Recovery detectado'
+        );
+    }
+
+    // Teste de falha segura
+    run('Simulação segura de falha (properties nulo)', () => {
+        const original = window.properties;
+        window.properties = null;
+        window.EmergencySystem?.smartRecovery?.();
+        window.emergencyRecovery?.restoreEssentialData?.();
+        window.properties = original || window.properties;
+    });
+
+    /* ========= PAINEL VISUAL ========= */
     const box = document.createElement('div');
     box.style.cssText = `
         position: fixed;
