@@ -14,7 +14,6 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         results.push({ status, neofitoMsg, tecnicoMsg });
     };
 
-    /* ========= FUNÇÃO PADRÃO DE EXECUÇÃO ========= */
     const run = (name, fn) => {
         try {
             const t0 = performance.now();
@@ -34,7 +33,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         }
     };
 
-    /* ========= ETAPA 10 ========= */
+    /* ========= ETAPA 10: ValidationSystem ========= */
     if (window.ValidationSystem) {
         run('Etapa 10: ValidationSystem existe', () => true);
         run('Etapa 10: validateGalleryModule disponível', () => {
@@ -78,7 +77,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
     });
 
-    /* ========= Emergency ========= */
+    /* ========= EmergencySystem ========= */
     if (!window.EmergencySystem && !window.emergencyRecovery) {
         addResult(
             'ERR/OK – Proteção ativa',
@@ -101,54 +100,62 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         window.properties = original || window.properties;
     });
 
-    /* ========= TESTE DE INTEGRIDADE DOS 11 MÓDULOS ========= */
-    const modules = [
-        { name: 'function-verifier.js', required: true, check: () => typeof window.verifySystemFunctions === 'function' },
-        { name: 'media-logger.js', required: false, check: () => typeof window.MediaLogger !== 'undefined' },
-        { name: 'pdf-logger.js', required: true, check: () => typeof window.PdfLogger !== 'undefined' },
-        { name: 'diagnostics.js', required: true, check: () => true },
-        { name: 'duplication-checker.js', required: false, check: () => true },
-        { name: 'emergency-recovery.js', required: false, check: () => typeof window.emergencyRecovery !== 'undefined' },
-        { name: 'simple-checker.js', required: false, check: () => true },
-        { name: 'media-recovery.js', required: false, check: () => true },
-        { name: 'validation.js', required: false, check: () => typeof window.ValidationSystem !== 'undefined' },
-        { name: 'benchmark.js', required: false, check: () => true },
-        { name: 'optimizer.js', required: false, check: () => true }
+    /* ========= DETECÇÃO DOS MÓDULOS DO REPOSITÓRIO ========= */
+    const predefinedModules = [
+        { name: 'function-verifier.js', global: 'verifySystemFunctions', required: true },
+        { name: 'media-logger.js', global: 'MediaLogger', required: false },
+        { name: 'pdf-logger.js', global: 'PdfLogger', required: true },
+        { name: 'diagnostics.js', global: null, required: true },
+        { name: 'duplication-checker.js', global: null, required: false },
+        { name: 'emergency-recovery.js', global: 'emergencyRecovery', required: false },
+        { name: 'simple-checker.js', global: null, required: false },
+        { name: 'media-recovery.js', global: null, required: false },
+        { name: 'validation.js', global: 'ValidationSystem', required: false },
+        { name: 'benchmark.js', global: null, required: false },
+        { name: 'optimizer.js', global: null, required: false }
     ];
 
-    modules.forEach((m, i) => {
+    // Auto-detect módulos novos pelo padrão de nomes globais (*Module, *Logger)
+    for (const key in window) {
+        if (/^[A-Z][A-Za-z0-9]+(Module|Logger)$/.test(key)) {
+            if (!predefinedModules.find(m => m.global === key)) {
+                predefinedModules.push({ name: key + '.js (auto)', global: key, required: false });
+            }
+        }
+    }
+
+    predefinedModules.forEach((m, i) => {
         try {
-            if (m.check()) {
+            const exists = m.global ? typeof window[m.global] !== 'undefined' : true;
+            if (exists) {
                 addResult(
                     'OK',
-                    `Módulo ${i + 1}/11: ${m.name} → Carregado`,
+                    `Módulo ${i + 1}/${predefinedModules.length}: ${m.name} → Carregado`,
                     'Presente no runtime'
                 );
+            } else if (!m.required) {
+                addResult(
+                    'ERR/OK – Proteção ativa',
+                    `Módulo ${i + 1}/${predefinedModules.length}: ${m.name} ausente → fallback`,
+                    'Módulo opcional'
+                );
             } else {
-                if (m.required) {
-                    addResult(
-                        'ERR – FALHA REAL',
-                        `Módulo ${i + 1}/11: ${m.name} ausente → ERRO`,
-                        'Módulo obrigatório não encontrado'
-                    );
-                } else {
-                    addResult(
-                        'ERR/OK – Proteção ativa',
-                        `Módulo ${i + 1}/11: ${m.name} ausente → Proteção ativa`,
-                        'Módulo opcional'
-                    );
-                }
+                addResult(
+                    'ERR – FALHA REAL',
+                    `Módulo ${i + 1}/${predefinedModules.length}: ${m.name} ausente → ERRO`,
+                    'Módulo obrigatório não encontrado'
+                );
             }
         } catch (e) {
             addResult(
                 'ERR – FALHA REAL',
-                `Módulo ${i + 1}/11: ${m.name} erro`,
+                `Módulo ${i + 1}/${predefinedModules.length}: ${m.name} erro`,
                 e.message
             );
         }
     });
 
-    /* ========= PAINEL ========= */
+    /* ========= PAINEL VISUAL DE DEBUG ========= */
     const box = document.createElement('div');
     box.style.cssText = `
         position: fixed;
