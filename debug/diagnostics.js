@@ -8,25 +8,44 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     if (!isDebug) return;
 
-    const results = [];
+    /* ========= STORAGE ========= */
+    const coreResults = [];
+    const supportResults = [];
+    const generalResults = [];
+    let errorCount = 0;
 
-    const addResult = (status, neofitoMsg, tecnicoMsg) => {
-        results.push({ status, neofitoMsg, tecnicoMsg });
+    /* ========= HELPERS ========= */
+    const countIfError = status => {
+        if (status.includes('ERR')) errorCount++;
     };
 
-    /* ========= FUNÇÃO PADRÃO DE EXECUÇÃO ========= */
+    const addSupport = (status, neofitoMsg, tecnicoMsg) => {
+        countIfError(status);
+        supportResults.push({ status, neofitoMsg, tecnicoMsg });
+    };
+
+    const addCore = (status, neofitoMsg, tecnicoMsg) => {
+        countIfError(status);
+        coreResults.push({ status, neofitoMsg, tecnicoMsg });
+    };
+
+    const addGeneral = (status, neofitoMsg, tecnicoMsg) => {
+        countIfError(status);
+        generalResults.push({ status, neofitoMsg, tecnicoMsg });
+    };
+
     const run = (name, fn) => {
         try {
             const t0 = performance.now();
             fn();
             const t1 = performance.now();
-            addResult(
+            addGeneral(
                 'OK',
                 `${name} → Funcionando normalmente`,
                 `${name} (${(t1 - t0).toFixed(2)}ms)`
             );
         } catch (e) {
-            addResult(
+            addGeneral(
                 'ERR/OK – Proteção ativa',
                 `${name} → Proteção ativa / fallback acionado`,
                 `${name}: ${e.message}`
@@ -34,119 +53,76 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         }
     };
 
-    /* ========= DETECTAR SCRIPT CARREGADO NO DOCUMENTO ========= */
-    const getLoadedScripts = () => {
-        const scripts = document.querySelectorAll('script[src]');
-        const scriptNames = [];
+    /* ========= STATUS GERAL ========= */
+    const getOverallStatus = () => {
+        if (errorCount === 0)
+            return { text: 'OPERACIONAL', color: '#006400', level: 'ok' };
 
-        scripts.forEach(script => {
-            const src = script.src;
-            const filename = src.substring(src.lastIndexOf('/') + 1);
-            scriptNames.push(filename);
-        });
+        if (errorCount <= 3)
+            return { text: 'OPERACIONAL (COM ALERTAS)', color: '#b36b00', level: 'warn' };
 
-        return scriptNames;
+        return {
+            text: 'OPERACIONAL (COM PROTEÇÕES ATIVAS)',
+            color: '#b00000',
+            level: 'error'
+        };
     };
 
-    const allLoadedModules = getLoadedScripts();
-    
-    // Definindo os módulos do Core e Suporte
-    const coreModules = allLoadedModules.filter(module => module.includes('core-'));
-    const supportModules = allLoadedModules.filter(module => !module.includes('core-')); 
+    /* ========= DETECTAR SCRIPTS ========= */
+    const scripts = [...document.querySelectorAll('script[src]')].map(s =>
+        s.src.split('/').pop()
+    );
 
-    // Exibindo as informações de módulos carregados
-    if (supportModules.length === 0) {
-        addResult(
-            'ERR/OK – Proteção ativa',
-            'Nenhum módulo do repositório de suporte detectado → Ambiente protegido',
-            'Nenhum módulo carregado'
-        );
-    } else {
-        supportModules.forEach((module, index) => {
-            addResult(
-                'OK',
-                `Módulo de Suporte ${index + 1}: ${module} → Carregado`,
-                `Módulo de Suporte no runtime`
-            );
-        });
-    }
+    const coreModules = scripts.filter(s => s.startsWith('core-'));
+    const supportModules = scripts.filter(s => !s.startsWith('core-'));
 
-    if (coreModules.length === 0) {
-        addResult(
-            'ERR/OK – Proteção ativa',
-            'Nenhum módulo do Core detectado → Ambiente protegido',
-            'Nenhum módulo do Core carregado'
-        );
-    } else {
-        coreModules.forEach((module, index) => {
-            addResult(
-                'OK',
-                `Módulo Core ${index + 1}: ${module} → Carregado`,
-                `Módulo Core no runtime`
-            );
-        });
-    }
+    /* ========= LISTAGEM DE MÓDULOS ========= */
+    supportModules.forEach((m, i) =>
+        addSupport('OK', `[MÓDULO SUPORTE ${i + 1}] ${m} → Carregado`, 'SUPORTE NO RUNTIME')
+    );
 
-    /* ========= TESTES DE FUNCIONALIDADE ========= */
-    // Teste 1: Validando a existência do repositório de suporte
+    coreModules.forEach((m, i) =>
+        addCore('OK', `[MÓDULO CORE ${i + 1}] ${m} → Carregado`, 'CORE NO RUNTIME')
+    );
+
+    /* ========= TESTES ========= */
     run('Teste 1: Repositório de Suporte Carregado', () => {
-        if (!window.location.href.includes('weberlessa-support')) {
-            throw new Error('Repositório de Suporte não carregado corretamente');
-        }
+        if (!location.href.includes('weberlessa-support'))
+            throw new Error('Repositório de Suporte não detectado');
     });
 
-    // Teste 2: Verificando se os módulos carregados são do repositório correto
     run('Teste 2: Verificação de Módulos de Suporte', () => {
-        supportModules.forEach(module => {
-            if (!module.includes('weberlessa-support')) {
-                throw new Error(`Módulo inválido detectado: ${module}`);
-            }
+        supportModules.forEach(m => {
+            if (m.startsWith('core-')) throw new Error(`Inválido: ${m}`);
         });
     });
 
-    // Teste 3: Verificação se algum módulo essencial não falhou
-    run('Teste 3: Verificação de Módulos Essenciais', () => {
-        const requiredModules = ['function-verifier.js', 'pdf-logger.js', 'diagnostics.js'];
-        requiredModules.forEach(requiredModule => {
-            if (!supportModules.includes(requiredModule)) {
-                throw new Error(`Módulo essencial ausente: ${requiredModule}`);
-            }
+    run('Teste 3: Módulos Essenciais', () => {
+        ['function-verifier.js', 'pdf-logger.js', 'diagnostics.js'].forEach(r => {
+            if (!scripts.includes(r)) throw new Error(`Ausente: ${r}`);
         });
     });
 
-    /* ========= ETAPA 10: VALIDAÇÃO DO ValidationSystem ========= */
+    /* ========= ETAPA 10 - Validation ========= */
     if (window.ValidationSystem) {
         run('Etapa 10: ValidationSystem existe', () => true);
-        run('Etapa 10: validateGalleryModule disponível', () => {
-            if (typeof window.ValidationSystem.validateGalleryModule !== 'function')
-                throw new Error('ausente');
-        });
-        run('Etapa 10: quickSystemCheck disponível', () => {
-            if (typeof window.ValidationSystem.quickSystemCheck !== 'function')
-                throw new Error('ausente');
-        });
-        run('Etapa 10: execução quickSystemCheck()', () =>
+        run('Etapa 10: quickSystemCheck()', () =>
             window.ValidationSystem.quickSystemCheck()
         );
-        run('Etapa 10: validação da galeria', () =>
+        run('Etapa 10: validateGalleryModule()', () =>
             window.ValidationSystem.validateGalleryModule()
         );
     } else {
-        addResult(
+        addGeneral(
             'ERR/OK – Proteção ativa',
             'Etapa 10: ValidationSystem ausente → Sistema protegido',
             'ValidationSystem undefined'
-        );
-        addResult(
-            'OK',
-            'Etapa 10: validação da galeria → Fallback acionado',
-            'Fallback validateGalleryModule ativo'
         );
     }
 
     run('Etapa 10: fallback validateGalleryModule', () => {
         if (typeof window.validateGalleryModule !== 'function')
-            throw new Error('ausente');
+            throw new Error('fallback ausente');
     });
 
     /* ========= PdfLogger ========= */
@@ -158,18 +134,12 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
     });
 
-    /* ========= EmergencySystem ========= */
+    /* ========= Emergency ========= */
     if (!window.EmergencySystem && !window.emergencyRecovery) {
-        addResult(
+        addGeneral(
             'ERR/OK – Proteção ativa',
             'EmergencySystem ausente → Sistema protegido',
             'Nenhum recovery carregado'
-        );
-    } else {
-        addResult(
-            'OK',
-            'EmergencySystem disponível → Funcionando normalmente',
-            'Recovery detectado'
         );
     }
 
@@ -178,43 +148,98 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         window.properties = null;
         window.EmergencySystem?.smartRecovery?.();
         window.emergencyRecovery?.restoreEssentialData?.();
-        window.properties = original || window.properties;
+        window.properties = original;
     });
 
-    /* ========= PAINEL DE RESULTADOS ========= */
+    /* ========= PAINEL ========= */
     const box = document.createElement('div');
     box.style.cssText = `
         position: fixed;
         bottom: 10px;
         right: 10px;
-        width: 520px;
+        width: 560px;
         max-height: 75vh;
         overflow-y: auto;
         background: #f7f7f7;
         color: #000;
-        padding: 16px;
-        font-size: 16px;
+        padding: 14px;
         font-family: monospace;
         z-index: 99999;
         border-radius: 10px;
-        box-shadow: 0 0 14px rgba(0,0,0,0.35);
-        user-select: text;
+        box-shadow: 0 0 14px rgba(0,0,0,.35);
     `;
 
-    results.forEach(r => {
-        const line = document.createElement('div');
-        let color = '#000';
-        if (r.status.startsWith('ERR –')) color = '#b00000';
-        else if (r.status.includes('ERR/OK')) color = '#b36b00';
-        else color = '#006400';
+    const overall = getOverallStatus();
 
-        line.innerHTML = `
-            <span style="font-weight:bold;color:${color}">(${r.status})</span>
-            ${r.neofitoMsg}
-            <div style="color:#555;margin-left:10px">${r.tecnicoMsg}</div>
-        `;
-        box.appendChild(line);
-    });
+    if (overall.level === 'warn') {
+        box.style.border = '3px solid #b36b00';
+        box.style.background = '#fff8f0';
+    }
+
+    if (overall.level === 'error') {
+        box.style.border = '3px solid #b00000';
+        box.style.background = '#fff0f0';
+        box.style.animation = 'diagnosticPulse 2s infinite';
+    }
+
+    const style = document.createElement('style');
+    style.innerHTML = `
+        @keyframes diagnosticPulse {
+            0% { box-shadow: 0 0 10px rgba(176,0,0,.4); }
+            50% { box-shadow: 0 0 18px rgba(176,0,0,.8); }
+            100% { box-shadow: 0 0 10px rgba(176,0,0,.4); }
+        }
+    `;
+    document.head.appendChild(style);
+
+    /* ========= RESUMO ========= */
+    const summary = document.createElement('div');
+    summary.style.cssText = `
+        margin-bottom: 12px;
+        padding: 10px;
+        background: #fff;
+        border-radius: 8px;
+        border: 2px solid #ccc;
+    `;
+    summary.innerHTML = `
+        <b>📊 RESUMO DO SISTEMA</b><br>
+        ⚙️ CORE: <b>${coreResults.length}</b><br>
+        🧩 SUPORTE: <b>${supportResults.length}</b><br>
+        ❌ ERROS / ALERTAS: <b>${errorCount}</b><br>
+        <b style="color:${overall.color}">
+            ${overall.level === 'error' ? '🔴' : overall.level === 'warn' ? '🟠' : '🟢'}
+            STATUS GERAL: ${overall.text}
+        </b>
+    `;
+    box.appendChild(summary);
+
+    /* ========= SEÇÕES ========= */
+    const renderSection = (title, icon, list) => {
+        if (!list.length) return;
+        const h = document.createElement('div');
+        h.style.cssText = 'margin:10px 0 6px;font-weight:bold;border-bottom:2px solid #ccc';
+        h.textContent = `${icon} ${title} (${list.length})`;
+        box.appendChild(h);
+
+        list.forEach(r => {
+            const d = document.createElement('div');
+            const color = r.status.includes('ERR')
+                ? '#b00000'
+                : r.status.includes('ERR/OK')
+                ? '#b36b00'
+                : '#006400';
+            d.innerHTML = `
+                <span style="color:${color};font-weight:bold">(${r.status})</span>
+                ${r.neofitoMsg}
+                <div style="margin-left:10px;color:#555">${r.tecnicoMsg}</div>
+            `;
+            box.appendChild(d);
+        });
+    };
+
+    renderSection('MÓDULOS SUPORTE', '🧩', supportResults);
+    renderSection('MÓDULOS CORE', '⚙️', coreResults);
+    renderSection('TESTES E DIAGNÓSTICOS', '🧪', generalResults);
 
     document.body.appendChild(box);
 })();
