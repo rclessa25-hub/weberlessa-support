@@ -12,20 +12,6 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     const addResult = (status, neofitoMsg, tecnicoMsg) => {
         results.push({ status, neofitoMsg, tecnicoMsg });
-    };// debug/diagnostics.js - REPOSITÓRIO DE SUPORTE
-console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo debug');
-
-(function () {
-    const isDebug =
-        location.search.includes('debug=true') ||
-        location.search.includes('diagnostics=true');
-
-    if (!isDebug) return;
-
-    const results = [];
-
-    const addResult = (status, neofitoMsg, tecnicoMsg) => {
-        results.push({ status, neofitoMsg, tecnicoMsg });
     };
 
     /* ========= FUNÇÃO PADRÃO DE EXECUÇÃO ========= */
