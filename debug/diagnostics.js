@@ -1,7 +1,5 @@
 // debug/diagnostics.js
-console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos');
-
-console.log('🔍 diagnostics.js carregado – varredura funcional de runtime');
+console.log('🔍 diagnostics.js – runtime interceptor ativo');
 
 /* ================== FLAGS ================== */
 const params = new URLSearchParams(location.search);
@@ -20,7 +18,7 @@ function ui(msg) {
 if (ACTIVE) {
     panel = document.createElement('div');
     panel.style.cssText = `
-        position:fixed;top:10px;right:10px;width:480px;
+        position:fixed;top:10px;right:10px;width:500px;
         max-height:92vh;overflow:auto;
         background:#0b0b0b;color:#00ff9c;
         font:12px monospace;padding:10px;
@@ -30,12 +28,9 @@ if (ACTIVE) {
     document.body.appendChild(panel);
 }
 
-/* ================== SNAPSHOT GLOBAL ================== */
-const GLOBAL_KEYS = Object.keys(window);
-
-/* ================== DETECTORES ================== */
-function scoreSymbol(name, value) {
-    let score = {
+/* ================== CLASSIFICADOR FUNCIONAL ================== */
+function classifyByBehavior(symbols) {
+    const score = {
         CORE: 0,
         PERFORMANCE: 0,
         SUPPORT: 0,
@@ -43,58 +38,85 @@ function scoreSymbol(name, value) {
         EXTERNAL: 0
     };
 
-    if (typeof value === 'function') {
-        if (/init|load|render|mount|admin|gallery/i.test(name)) score.CORE += 3;
-        if (/optimize|performance|analy/i.test(name)) score.PERFORMANCE += 3;
-        if (/log|recover|emergency|diagnostic|check/i.test(name)) score.SUPPORT += 3;
-        if (/format|parse|extract|map|filter/i.test(name)) score.UTIL += 2;
-    }
+    symbols.forEach(({ name, value }) => {
+        if (typeof value === 'function') {
+            if (/init|load|render|mount|admin|gallery/i.test(name)) score.CORE += 3;
+            if (/optimize|performance|analy|cache/i.test(name)) score.PERFORMANCE += 3;
+            if (/log|recover|emergency|diagnostic|check/i.test(name)) score.SUPPORT += 3;
+            if (/format|parse|extract|map|filter/i.test(name)) score.UTIL += 2;
+        }
 
-    if (typeof value === 'object' && value !== null) {
-        if (value === window.supabase) score.EXTERNAL += 5;
-        if (name === 'properties' || name === 'ValidationSystem') score.CORE += 4;
-        if (/logger|recovery/i.test(name)) score.SUPPORT += 3;
-    }
+        if (typeof value === 'object' && value !== null) {
+            if (name === 'properties' || name === 'ValidationSystem') score.CORE += 4;
+            if (/logger|recovery/i.test(name)) score.SUPPORT += 3;
+            if (value === window.supabase) score.EXTERNAL += 5;
+        }
+    });
 
-    return score;
+    return Object.entries(score).sort((a, b) => b[1] - a[1])[0][0];
 }
 
-function resolveType(score) {
-    return Object.entries(score).sort((a,b)=>b[1]-a[1])[0][0];
-}
+/* ================== INTERCEPTAÇÃO DE SCRIPT ================== */
+const originalAppend = HTMLScriptElement.prototype.append;
+const moduleRegistry = [];
 
-/* ================== VARREDURA ================== */
-const moduleMap = {};
+HTMLScriptElement.prototype.append = function (...args) {
+    const before = new Set(Object.keys(window));
 
-Object.keys(window).forEach(key => {
-    if (GLOBAL_KEYS.includes(key)) return;
+    const result = originalAppend.apply(this, args);
 
-    const value = window[key];
-    const score = scoreSymbol(key, value);
-    const type = resolveType(score);
+    setTimeout(() => {
+        const after = Object.keys(window);
+        const diff = after.filter(k => !before.has(k));
 
-    moduleMap[type] = moduleMap[type] || [];
-    moduleMap[type].push(key);
-});
+        if (!diff.length) return;
 
-/* ================== RELATÓRIO ================== */
-ui('📊 RESUMO POR NATUREZA');
-Object.entries(moduleMap).forEach(([type, items]) => {
-    ui(`${type}: ${items.length}`);
-});
+        const symbols = diff.map(k => ({
+            name: k,
+            value: window[k]
+        }));
 
-Object.entries(moduleMap).forEach(([type, items]) => {
+        const type = classifyByBehavior(symbols);
+        const src = this.src ? this.src.split('/').pop() : 'inline-script';
+
+        moduleRegistry.push({
+            src,
+            type,
+            symbols: diff
+        });
+    }, 0);
+
+    return result;
+};
+
+/* ================== RELATÓRIO FINAL ================== */
+window.addEventListener('load', () => {
+    const grouped = {};
+
+    moduleRegistry.forEach(m => {
+        grouped[m.type] = grouped[m.type] || [];
+        grouped[m.type].push(m);
+    });
+
+    ui('📊 RESUMO POR NATUREZA');
+    Object.entries(grouped).forEach(([type, mods]) =>
+        ui(`${type}: ${mods.length}`)
+    );
+
+    Object.entries(grouped).forEach(([type, mods]) => {
+        ui('');
+        ui(`🧩 ${type}`);
+        mods.forEach((m, i) =>
+            ui(`(${i + 1}) ${m.src} → ${m.symbols.join(', ')}`)
+        );
+    });
+
+    let health = 100;
+    if (!grouped.CORE || grouped.CORE.length < 3) health -= 30;
+    if (!grouped.SUPPORT) health -= 10;
+
     ui('');
-    ui(`🧩 ${type}`);
-    items.forEach((k, i) => ui(`(${i+1}) ${k}`));
+    ui(`🩺 HEALTH SCORE: ${health}/100`);
+
+    console.log('🔍 registry runtime:', moduleRegistry);
 });
-
-/* ================== SAÚDE ================== */
-let health = 100;
-if (!moduleMap.CORE || moduleMap.CORE.length < 3) health -= 30;
-if (!moduleMap.SUPPORT) health -= 10;
-
-ui('');
-ui(`🩺 HEALTH SCORE: ${health}/100`);
-
-console.log('🔍 diagnostics runtime map:', moduleMap);
