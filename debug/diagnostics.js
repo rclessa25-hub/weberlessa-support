@@ -1,5 +1,5 @@
 // debug/diagnostics.js
-console.log('🔍 diagnostics.js – interceptação real de runtime ativa');
+console.log('🔍 diagnostics.js – análise por efeitos colaterais');
 
 /* ================== FLAGS ================== */
 const params = new URLSearchParams(location.search);
@@ -28,90 +28,71 @@ if (ACTIVE) {
     document.body.appendChild(panel);
 }
 
-/* ================== CLASSIFICAÇÃO FUNCIONAL ================== */
-function classify(symbols) {
-    const score = { CORE:0, PERFORMANCE:0, SUPPORT:0, UTIL:0, EXTERNAL:0 };
+/* ================== REGISTRO ================== */
+const activity = {
+    CORE: new Set(),
+    PERFORMANCE: new Set(),
+    SUPPORT: new Set(),
+    UTIL: new Set()
+};
 
-    symbols.forEach(({ name, value }) => {
-        if (typeof value === 'function') {
-            if (/init|load|render|mount|admin|gallery/i.test(name)) score.CORE += 3;
-            if (/optimi|perform|cache|profil/i.test(name)) score.PERFORMANCE += 3;
-            if (/log|recover|emergency|diagnostic|check/i.test(name)) score.SUPPORT += 3;
-            if (/format|parse|extract|map|filter/i.test(name)) score.UTIL += 2;
+/* ================== INTERCEPTORES ================== */
+
+// DOM
+const origCreate = document.createElement;
+document.createElement = function(tag) {
+    activity.CORE.add('DOM:' + tag);
+    return origCreate.apply(this, arguments);
+};
+
+// Listeners
+const origAddListener = EventTarget.prototype.addEventListener;
+EventTarget.prototype.addEventListener = function(type) {
+    activity.CORE.add('EVENT:' + type);
+    return origAddListener.apply(this, arguments);
+};
+
+// Timers
+['setTimeout', 'setInterval'].forEach(fn => {
+    const orig = window[fn];
+    window[fn] = function() {
+        activity.PERFORMANCE.add(fn);
+        return orig.apply(this, arguments);
+    };
+});
+
+// Console (diagnóstico / suporte)
+const origLog = console.log;
+console.log = function(...args) {
+    if (typeof args[0] === 'string') {
+        if (/diagnostic|check|verifica|fallback/i.test(args[0])) {
+            activity.SUPPORT.add('LOG:' + args[0]);
         }
-
-        if (typeof value === 'object' && value !== null) {
-            if (name === 'properties' || name === 'ValidationSystem') score.CORE += 4;
-            if (/logger|recovery/i.test(name)) score.SUPPORT += 3;
-            if (value === window.supabase) score.EXTERNAL += 5;
-        }
-    });
-
-    return Object.entries(score).sort((a,b)=>b[1]-a[1])[0][0];
-}
-
-/* ================== INTERCEPTAÇÃO appendChild ================== */
-const originalAppendChild = Node.prototype.appendChild;
-const registry = [];
-
-Node.prototype.appendChild = function(node) {
-    if (node.tagName === 'SCRIPT' && node.src) {
-        const before = new Set(Object.keys(window));
-        const srcName = node.src.split('/').pop();
-
-        node.addEventListener('load', () => {
-            const after = Object.keys(window);
-            const diff = after.filter(k => !before.has(k));
-
-            if (!diff.length) return;
-
-            const symbols = diff.map(k => ({
-                name: k,
-                value: window[k]
-            }));
-
-            registry.push({
-                src: srcName,
-                type: classify(symbols),
-                symbols: diff
-            });
-        }, { once: true });
     }
-
-    return originalAppendChild.call(this, node);
+    return origLog.apply(console, args);
 };
 
 /* ================== RELATÓRIO FINAL ================== */
 window.addEventListener('load', () => {
 
-    // congelar interceptação
-    Node.prototype.appendChild = originalAppendChild;
+    ui('📊 RESUMO POR NATUREZA');
 
-    const grouped = {};
-    registry.forEach(m => {
-        grouped[m.type] = grouped[m.type] || [];
-        grouped[m.type].push(m);
+    Object.entries(activity).forEach(([type, set]) => {
+        ui(`${type}: ${set.size}`);
     });
 
-    ui('📊 RESUMO POR NATUREZA');
-    Object.entries(grouped).forEach(([type, mods]) =>
-        ui(`${type}: ${mods.length}`)
-    );
-
-    Object.entries(grouped).forEach(([type, mods]) => {
+    Object.entries(activity).forEach(([type, set]) => {
         ui('');
         ui(`🧩 ${type}`);
-        mods.forEach((m, i) =>
-            ui(`(${i+1}) ${m.src} → ${m.symbols.join(', ')}`)
-        );
+        [...set].forEach((v, i) => ui(`(${i + 1}) ${v}`));
     });
 
     let health = 100;
-    if (!grouped.CORE || grouped.CORE.length < 3) health -= 30;
-    if (!grouped.SUPPORT) health -= 10;
+    if (activity.CORE.size === 0) health -= 40;
+    if (activity.SUPPORT.size === 0) health -= 10;
 
     ui('');
     ui(`🩺 HEALTH SCORE: ${health}/100`);
 
-    console.log('🔍 runtime registry:', registry);
+    console.log('🔍 runtime activity map:', activity);
 });
