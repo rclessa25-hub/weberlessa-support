@@ -97,37 +97,41 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
     });
 
     /* =====================================================
-       AUDITORIA REAL DE MÓDULOS (.js) — PLUG & PLAY
+       AUDITORIA REAL DE MÓDULOS DO SupportSystem (somente)
        ===================================================== */
 
     const jsResources = performance
         .getEntriesByType('resource')
         .filter(r => r.initiatorType === 'script' && r.name.endsWith('.js'));
 
-    const uniqueModules = Array.from(
-        new Set(
-            jsResources.map(r => {
-                try {
-                    return r.name.split('/').pop().split('?')[0];
-                } catch {
-                    return null;
+    // Filtrando apenas módulos do SupportSystem (prefixo "support-" como exemplo)
+    const supportModules = jsResources
+        .map(r => {
+            try {
+                const filename = r.name.split('/').pop().split('?')[0];
+                if (filename.startsWith('support-')) {
+                    return filename;
                 }
-            }).filter(Boolean)
-        )
-    ).sort();
+            } catch {
+                return null;
+            }
+        })
+        .filter(Boolean);
 
-    if (uniqueModules.length === 0) {
+    const uniqueSupportModules = Array.from(new Set(supportModules)).sort();
+
+    if (uniqueSupportModules.length === 0) {
         addResult(
             'ERR/OK – Proteção ativa',
-            'Nenhum módulo JS detectado → Ambiente protegido',
+            'Nenhum módulo do SupportSystem detectado → Ambiente protegido',
             'performance.resource vazio ou bloqueado'
         );
     } else {
-        uniqueModules.forEach((mod, i) => {
+        uniqueSupportModules.forEach((mod, i) => {
             addResult(
                 'OK',
-                `Módulo ${i + 1}/${uniqueModules.length}: ${mod} → Carregado`,
-                'Arquivo .js detectado no runtime'
+                `Módulo ${i + 1}/${uniqueSupportModules.length}: ${mod} → Carregado`,
+                'Arquivo .js do SupportSystem detectado no runtime'
             );
         });
     }
