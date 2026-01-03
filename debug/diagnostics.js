@@ -36,7 +36,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     /* ========= DETECTAR SCRIPT CARREGADO NO DOCUMENTO ========= */
     const getLoadedScripts = () => {
-        // Buscar todos os scripts carregados no document
+        // Buscar todos os scripts carregados no documento
         const scripts = document.querySelectorAll('script[src]');
         const scriptNames = [];
 
@@ -49,17 +49,18 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         return scriptNames;
     };
 
-    /* ========= DETECÇÃO DE MÓDULOS DO REPOSITÓRIO DE SUPORTE ========= */
-    const detectedModules = getLoadedScripts();
+    /* ========= FILTRAR MÓDULOS DO REPOSITÓRIO DE SUPORTE ========= */
+    const allLoadedModules = getLoadedScripts();
+    const supportModules = allLoadedModules.filter(module => !module.includes('core-')); // Filtra módulos do Core
 
-    if (detectedModules.length === 0) {
+    if (supportModules.length === 0) {
         addResult(
             'ERR/OK – Proteção ativa',
             'Nenhum módulo do repositório de suporte detectado → Ambiente protegido',
             'Nenhum módulo carregado'
         );
     } else {
-        detectedModules.forEach((module, index) => {
+        supportModules.forEach((module, index) => {
             addResult(
                 'OK',
                 `Módulo ${index + 1}: ${module} → Carregado`,
@@ -78,7 +79,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     // Teste 2: Verificando se os módulos carregados são do repositório correto
     run('Teste 2: Verificação de Módulos de Suporte', () => {
-        detectedModules.forEach(module => {
+        supportModules.forEach(module => {
             if (!module.includes('weberlessa-support')) {
                 throw new Error(`Módulo inválido detectado: ${module}`);
             }
@@ -89,7 +90,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
     run('Teste 3: Verificação de Módulos Essenciais', () => {
         const requiredModules = ['function-verifier.js', 'pdf-logger.js', 'diagnostics.js'];
         requiredModules.forEach(requiredModule => {
-            if (!detectedModules.includes(requiredModule)) {
+            if (!supportModules.includes(requiredModule)) {
                 throw new Error(`Módulo essencial ausente: ${requiredModule}`);
             }
         });
