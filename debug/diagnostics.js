@@ -1,7 +1,7 @@
 // debug/diagnostics.js
-console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo debug');
+console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos');
 
-/* ================== CONFIGURAÇÃO DE URL ================== */
+/* ================== URL FLAGS ================== */
 const params = new URLSearchParams(window.location.search);
 const DEBUG_MODE = params.get('debug') === 'true';
 const DIAGNOSTICS_MODE = params.get('diagnostics') === 'true';
@@ -16,7 +16,7 @@ if (DEBUG_MODE && DIAGNOSTICS_MODE) {
         position: fixed;
         top: 10px;
         right: 10px;
-        width: 440px;
+        width: 460px;
         max-height: 92vh;
         overflow-y: auto;
         background: #0b0b0b;
@@ -30,83 +30,110 @@ if (DEBUG_MODE && DIAGNOSTICS_MODE) {
     `;
     panel.innerHTML = `
         <div style="font-weight:bold;font-size:13px">🔍 SUPPORT DIAGNOSTICS</div>
-        <div style="opacity:.7">Modo visual ativo</div>
+        <div style="opacity:.7">Painel automático ativo</div>
         <hr>
     `;
     document.body.appendChild(panel);
 }
 
-/* ================== FUNÇÃO DE LOG UNIFICADA ================== */
-function logUI(message) {
-    console.log(message);
+/* ================== LOG UNIFICADO ================== */
+function logUI(msg) {
+    console.log(msg);
     if (panel) {
         const line = document.createElement('div');
-        line.textContent = message;
+        line.textContent = msg;
         panel.appendChild(line);
     }
 }
 
-/* ================== DIAGNÓSTICS CORE ================== */
-const results = [];
-let healthScore = 100;
-let etapa10Counter = 0;
+/* ================== CLASSIFICAÇÃO REAL ================== */
+function classifyModule(src) {
+    const name = src.split('/').pop().toLowerCase();
 
-/* ---------- Função de resultado ---------- */
-function addResult(status, message, detail = '') {
-    results.push({ status, message, detail });
-    if (status.includes('ERR')) healthScore -= 20;
+    const SUPPORT_KEYWORDS = [
+        'diagnostics',
+        'logger',
+        'recovery',
+        'checker',
+        'utils'
+    ];
 
-    if (panel) {
-        const line = document.createElement('div');
-        line.innerHTML = `<b>${status}</b> → ${message} ${detail}`;
-        panel.appendChild(line);
-    }
+    const EXTERNAL_KEYWORDS = [
+        'supabase',
+        'cdn',
+        'unpkg'
+    ];
+
+    if (EXTERNAL_KEYWORDS.some(k => name.includes(k))) return 'EXTERNAL';
+    if (SUPPORT_KEYWORDS.some(k => name.includes(k))) return 'SUPPORT';
+    return 'CORE';
 }
 
-/* ---------- Detectar módulos carregados ---------- */
+/* ================== COLETA DE SCRIPTS ================== */
 const scripts = Array.from(document.scripts)
     .map(s => s.src || s.dataset.module || '')
     .filter(Boolean);
 
-const coreModules = scripts.filter(s => s.includes('core'));
-const supportModules = scripts.filter(s => !s.includes('core'));
+const classified = scripts.map(src => ({
+    src,
+    name: src.split('/').pop(),
+    type: classifyModule(src)
+}));
 
-function formatModuleList(modules, type) {
-    return modules.map((m, i) =>
-        `(${i + 1}) [${type} ${i + 1}] ${m.split('/').pop()}`
-    );
+const coreModules = classified.filter(m => m.type === 'CORE');
+const supportModules = classified.filter(m => m.type === 'SUPPORT');
+const externalModules = classified.filter(m => m.type === 'EXTERNAL');
+
+/* ================== HEALTH ================== */
+const results = [];
+let healthScore = 100;
+let etapa10Counter = 0;
+
+function addResult(status, message, detail = '') {
+    results.push({ status, message, detail });
+    if (status.includes('ERR')) healthScore -= 20;
+    logUI(`${status} → ${message} ${detail}`);
 }
 
-/* ---------- Resumo inicial ---------- */
+/* ================== RESUMO ================== */
 logUI('📊 RESUMO DO SISTEMA');
 logUI(`⚙️ CORE: ${coreModules.length}`);
 logUI(`🧩 SUPORTE: ${supportModules.length}`);
+logUI(`📦 EXTERNOS: ${externalModules.length}`);
 logUI(`🩺 HEALTH SCORE INICIAL: ${healthScore}/100`);
 logUI('');
 
-/* ---------- Listagem de módulos ---------- */
-logUI('🧩 MÓDULOS SUPORTE');
-formatModuleList(supportModules, 'SUPORTE')
-    .forEach(m => logUI('(OK) ' + m));
+/* ================== LISTAGEM ================== */
+logUI('⚙️ MÓDULOS CORE');
+coreModules.forEach((m, i) =>
+    logUI(`(OK) (${i + 1}) [CORE ${i + 1}] ${m.name}`)
+);
 
 logUI('');
-logUI('⚙️ MÓDULOS CORE');
-formatModuleList(coreModules, 'CORE')
-    .forEach(m => logUI('(OK) ' + m));
+logUI('🧩 MÓDULOS SUPORTE');
+supportModules.forEach((m, i) =>
+    logUI(`(OK) (${i + 1}) [SUPORTE ${i + 1}] ${m.name}`)
+);
 
-/* ---------- Execução segura ---------- */
+if (externalModules.length) {
+    logUI('');
+    logUI('📦 MÓDULOS EXTERNOS');
+    externalModules.forEach((m, i) =>
+        logUI(`(OK) (${i + 1}) [EXTERNO ${i + 1}] ${m.name}`)
+    );
+}
+
+/* ================== RUN SEGURO ================== */
 function run(testName, fn) {
     try {
         fn();
         logUI(`(OK) ${testName}`);
     } catch (e) {
-        logUI(`(ERR/OK – Proteção ativa) ${testName}`);
-        logUI(`↳ ${e.message}`);
         addResult('ERR/OK', testName, e.message);
     }
 }
 
-/* ================== TESTES ETAPA 10 ================== */
+/* ================== TESTES – ETAPA 10 ================== */
 logUI('');
 logUI('🧪 TESTES E DIAGNÓSTICOS – ETAPA 10');
 
@@ -127,9 +154,7 @@ if (window.ValidationSystem) {
         run(`Etapa 10: ${name}`, fn);
         etapa10Counter++;
     });
-
 } else {
-    logUI('(ERR/OK – Proteção ativa) ValidationSystem ausente');
     addResult('ERR/OK', 'ValidationSystem ausente', 'fallback ativo');
 }
 
@@ -147,15 +172,12 @@ run('PdfLogger existe', () => {
 });
 run('PdfLogger.simple()', () => window.PdfLogger.simple('teste'));
 run('Performance PdfLogger (1000x)', () => {
-    for (let i = 0; i < 1000; i++) {
-        window.PdfLogger.simple('x');
-    }
+    for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
 });
 
-/* ---------- Emergency System ---------- */
+/* ---------- Emergency ---------- */
 if (!window.EmergencySystem && !window.emergencyRecovery) {
     addResult('ERR/OK', 'EmergencySystem ausente', 'sistema protegido');
-    logUI('(ERR/OK – Proteção ativa) EmergencySystem ausente');
 } else {
     logUI('(OK) EmergencySystem disponível');
 }
@@ -169,7 +191,7 @@ run('Simulação segura de falha', () => {
     window.properties = original;
 });
 
-/* ---------- Relatório final ---------- */
+/* ================== FINAL ================== */
 logUI('');
 logUI(`🔍 Etapas 10 executadas: ${etapa10Counter}`);
 logUI('📊 RESUMO FINAL');
