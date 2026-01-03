@@ -1,6 +1,3 @@
-// debug/diagnostics.js
-console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo debug');
-
 (function () {
     const isDebug =
         location.search.includes('debug=true') ||
@@ -34,124 +31,80 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         }
     };
 
-    /* ========= TESTES DE INTEGRIDADE DO SISTEMA ========= */
+    /* ========= DETECTAR SCRIPT CARREGADO NO DOCUMENTO ========= */
+    const getLoadedScripts = () => {
+        // Buscar todos os scripts carregados no document
+        const scripts = document.querySelectorAll('script[src]');
+        const scriptNames = [];
 
-    // Verificar módulos carregados do repositório de suporte
-    const jsResources = performance
-        .getEntriesByType('resource')
-        .filter(r => r.initiatorType === 'script' && r.name.endsWith('.js'));
+        scripts.forEach(script => {
+            const src = script.src;
+            const filename = src.substring(src.lastIndexOf('/') + 1);
+            scriptNames.push(filename);
+        });
 
-    // Filtrando apenas arquivos do repositório de suporte
-    const supportModules = jsResources
-        .map(r => {
-            try {
-                const filename = r.name.split('/').pop().split('?')[0];
-                // Filtro por prefixo 'support-' ou caminho contendo '/support/'
-                if (r.name.includes('/support/') || filename.startsWith('support-')) {
-                    return filename;
-                }
-            } catch {
-                return null;
-            }
-        })
-        .filter(Boolean);
+        return scriptNames;
+    };
 
-    const uniqueSupportModules = Array.from(new Set(supportModules)).sort();
+    /* ========= DETECÇÃO DE MÓDULOS DO REPOSITÓRIO DE SUPORTE ========= */
+    const detectedModules = getLoadedScripts();
 
-    if (uniqueSupportModules.length === 0) {
+    if (detectedModules.length === 0) {
         addResult(
             'ERR/OK – Proteção ativa',
             'Nenhum módulo do repositório de suporte detectado → Ambiente protegido',
-            'Nenhum módulo de suporte carregado'
+            'Nenhum módulo carregado'
         );
     } else {
-        uniqueSupportModules.forEach((mod, i) => {
+        detectedModules.forEach((module, index) => {
             addResult(
                 'OK',
-                `Módulo ${i + 1}/${uniqueSupportModules.length}: ${mod} → Carregado`,
-                `Arquivo .js do repositório de suporte detectado no runtime`
+                `Módulo ${index + 1}: ${module} → Carregado`,
+                `Presente no runtime`
             );
         });
     }
 
-    /* ========= OUTROS TESTES IMPORTANTES ========= */
+    /* ========= TESTES DE FUNCIONALIDADE ========= */
+    // Teste 1: Validando a existência do repositório de suporte
+    run('Teste 1: Repositório de Suporte Carregado', () => {
+        if (!window.location.href.includes('weberlessa-support')) {
+            throw new Error('Repositório de Suporte não carregado corretamente');
+        }
+    });
 
-    // Teste do ValidationSystem
-    if (window.ValidationSystem) {
-        run('Etapa 10: ValidationSystem existe', () => true);
-        run('Etapa 10: validateGalleryModule disponível', () => {
-            if (typeof window.ValidationSystem.validateGalleryModule !== 'function')
-                throw new Error('ausente');
+    // Teste 2: Verificando se os módulos carregados são do repositório correto
+    run('Teste 2: Verificação de Módulos de Suporte', () => {
+        detectedModules.forEach(module => {
+            if (!module.includes('weberlessa-support')) {
+                throw new Error(`Módulo inválido detectado: ${module}`);
+            }
         });
-        run('Etapa 10: quickSystemCheck disponível', () => {
-            if (typeof window.ValidationSystem.quickSystemCheck !== 'function')
-                throw new Error('ausente');
+    });
+
+    // Teste 3: Verificação se algum módulo essencial não falhou
+    run('Teste 3: Verificação de Módulos Essenciais', () => {
+        const requiredModules = ['function-verifier.js', 'pdf-logger.js', 'diagnostics.js'];
+        requiredModules.forEach(requiredModule => {
+            if (!detectedModules.includes(requiredModule)) {
+                throw new Error(`Módulo essencial ausente: ${requiredModule}`);
+            }
         });
-        run('Etapa 10: execução quickSystemCheck()', () =>
-            window.ValidationSystem.quickSystemCheck()
-        );
-        run('Etapa 10: validação da galeria', () =>
-            window.ValidationSystem.validateGalleryModule()
-        );
-    } else {
-        addResult(
-            'ERR/OK – Proteção ativa',
-            'Etapa 10: ValidationSystem ausente → Sistema protegido',
-            'ValidationSystem undefined'
-        );
-        addResult(
-            'OK',
-            'Etapa 10: validação da galeria → Fallback acionado',
-            'Fallback validateGalleryModule ativo'
-        );
-    }
-
-    // Teste do PdfLogger
-    run('PdfLogger existe', () => {
-        if (!window.PdfLogger) throw new Error('ausente');
-    });
-    run('PdfLogger.simple()', () => window.PdfLogger.simple('teste'));
-    run('Performance PdfLogger (1000x)', () => {
-        for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
     });
 
-    // Teste de EmergencySystem
-    if (!window.EmergencySystem && !window.emergencyRecovery) {
-        addResult(
-            'ERR/OK – Proteção ativa',
-            'EmergencySystem ausente → Sistema protegido',
-            'Nenhum recovery carregado'
-        );
-    } else {
-        addResult(
-            'OK',
-            'EmergencySystem disponível → Funcionando normalmente',
-            'Recovery detectado'
-        );
-    }
-
-    // Teste de falha segura
-    run('Simulação segura de falha (properties nulo)', () => {
-        const original = window.properties;
-        window.properties = null;
-        window.EmergencySystem?.smartRecovery?.();
-        window.emergencyRecovery?.restoreEssentialData?.();
-        window.properties = original || window.properties;
-    });
-
-    /* ========= PAINEL VISUAL ========= */
+    /* ========= PAINEL DE RESULTADOS ========= */
     const box = document.createElement('div');
     box.style.cssText = `
         position: fixed;
         bottom: 10px;
         right: 10px;
-        width: 540px;
+        width: 520px;
         max-height: 75vh;
         overflow-y: auto;
         background: #f7f7f7;
         color: #000;
         padding: 16px;
-        font-size: 14px;
+        font-size: 16px;
         font-family: monospace;
         z-index: 99999;
         border-radius: 10px;
@@ -161,20 +114,15 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     results.forEach(r => {
         const line = document.createElement('div');
-        let color = '#006400';
+        let color = '#000';
         if (r.status.startsWith('ERR –')) color = '#b00000';
         else if (r.status.includes('ERR/OK')) color = '#b36b00';
+        else color = '#006400';
 
         line.innerHTML = `
-            <div>
-                <span style="font-weight:bold;color:${color}">
-                    (${r.status})
-                </span>
-                ${r.neofitoMsg}
-            </div>
-            <div style="color:#555;margin-left:12px">
-                ${r.tecnicoMsg}
-            </div>
+            <span style="font-weight:bold;color:${color}">(${r.status})</span>
+            ${r.neofitoMsg}
+            <div style="color:#555;margin-left:10px">${r.tecnicoMsg}</div>
         `;
         box.appendChild(line);
     });
