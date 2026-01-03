@@ -1,5 +1,5 @@
 // debug/diagnostics.js
-console.log('🔍 diagnostics.js – runtime interceptor ativo');
+console.log('🔍 diagnostics.js – interceptação real de runtime ativa');
 
 /* ================== FLAGS ================== */
 const params = new URLSearchParams(location.search);
@@ -18,7 +18,7 @@ function ui(msg) {
 if (ACTIVE) {
     panel = document.createElement('div');
     panel.style.cssText = `
-        position:fixed;top:10px;right:10px;width:500px;
+        position:fixed;top:10px;right:10px;width:520px;
         max-height:92vh;overflow:auto;
         background:#0b0b0b;color:#00ff9c;
         font:12px monospace;padding:10px;
@@ -28,20 +28,14 @@ if (ACTIVE) {
     document.body.appendChild(panel);
 }
 
-/* ================== CLASSIFICADOR FUNCIONAL ================== */
-function classifyByBehavior(symbols) {
-    const score = {
-        CORE: 0,
-        PERFORMANCE: 0,
-        SUPPORT: 0,
-        UTIL: 0,
-        EXTERNAL: 0
-    };
+/* ================== CLASSIFICAÇÃO FUNCIONAL ================== */
+function classify(symbols) {
+    const score = { CORE:0, PERFORMANCE:0, SUPPORT:0, UTIL:0, EXTERNAL:0 };
 
     symbols.forEach(({ name, value }) => {
         if (typeof value === 'function') {
             if (/init|load|render|mount|admin|gallery/i.test(name)) score.CORE += 3;
-            if (/optimize|performance|analy|cache/i.test(name)) score.PERFORMANCE += 3;
+            if (/optimi|perform|cache|profil/i.test(name)) score.PERFORMANCE += 3;
             if (/log|recover|emergency|diagnostic|check/i.test(name)) score.SUPPORT += 3;
             if (/format|parse|extract|map|filter/i.test(name)) score.UTIL += 2;
         }
@@ -53,47 +47,48 @@ function classifyByBehavior(symbols) {
         }
     });
 
-    return Object.entries(score).sort((a, b) => b[1] - a[1])[0][0];
+    return Object.entries(score).sort((a,b)=>b[1]-a[1])[0][0];
 }
 
-/* ================== INTERCEPTAÇÃO DE SCRIPT ================== */
-const originalAppend = HTMLScriptElement.prototype.append;
-const moduleRegistry = [];
+/* ================== INTERCEPTAÇÃO appendChild ================== */
+const originalAppendChild = Node.prototype.appendChild;
+const registry = [];
 
-HTMLScriptElement.prototype.append = function (...args) {
-    const before = new Set(Object.keys(window));
+Node.prototype.appendChild = function(node) {
+    if (node.tagName === 'SCRIPT' && node.src) {
+        const before = new Set(Object.keys(window));
+        const srcName = node.src.split('/').pop();
 
-    const result = originalAppend.apply(this, args);
+        node.addEventListener('load', () => {
+            const after = Object.keys(window);
+            const diff = after.filter(k => !before.has(k));
 
-    setTimeout(() => {
-        const after = Object.keys(window);
-        const diff = after.filter(k => !before.has(k));
+            if (!diff.length) return;
 
-        if (!diff.length) return;
+            const symbols = diff.map(k => ({
+                name: k,
+                value: window[k]
+            }));
 
-        const symbols = diff.map(k => ({
-            name: k,
-            value: window[k]
-        }));
+            registry.push({
+                src: srcName,
+                type: classify(symbols),
+                symbols: diff
+            });
+        }, { once: true });
+    }
 
-        const type = classifyByBehavior(symbols);
-        const src = this.src ? this.src.split('/').pop() : 'inline-script';
-
-        moduleRegistry.push({
-            src,
-            type,
-            symbols: diff
-        });
-    }, 0);
-
-    return result;
+    return originalAppendChild.call(this, node);
 };
 
 /* ================== RELATÓRIO FINAL ================== */
 window.addEventListener('load', () => {
-    const grouped = {};
 
-    moduleRegistry.forEach(m => {
+    // congelar interceptação
+    Node.prototype.appendChild = originalAppendChild;
+
+    const grouped = {};
+    registry.forEach(m => {
         grouped[m.type] = grouped[m.type] || [];
         grouped[m.type].push(m);
     });
@@ -107,7 +102,7 @@ window.addEventListener('load', () => {
         ui('');
         ui(`🧩 ${type}`);
         mods.forEach((m, i) =>
-            ui(`(${i + 1}) ${m.src} → ${m.symbols.join(', ')}`)
+            ui(`(${i+1}) ${m.src} → ${m.symbols.join(', ')}`)
         );
     });
 
@@ -118,5 +113,5 @@ window.addEventListener('load', () => {
     ui('');
     ui(`🩺 HEALTH SCORE: ${health}/100`);
 
-    console.log('🔍 registry runtime:', moduleRegistry);
+    console.log('🔍 runtime registry:', registry);
 });
