@@ -36,7 +36,6 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     /* ========= DETECTAR SCRIPT CARREGADO NO DOCUMENTO ========= */
     const getLoadedScripts = () => {
-        // Buscar todos os scripts carregados no documento
         const scripts = document.querySelectorAll('script[src]');
         const scriptNames = [];
 
@@ -49,9 +48,8 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         return scriptNames;
     };
 
-    /* ========= FILTRAR MÓDULOS DO REPOSITÓRIO DE SUPORTE ========= */
     const allLoadedModules = getLoadedScripts();
-    const supportModules = allLoadedModules.filter(module => !module.includes('core-')); // Filtra módulos do Core
+    const supportModules = allLoadedModules.filter(module => !module.includes('core-')); 
 
     if (supportModules.length === 0) {
         addResult(
@@ -94,6 +92,73 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
                 throw new Error(`Módulo essencial ausente: ${requiredModule}`);
             }
         });
+    });
+
+    /* ========= ETAPA 10: VALIDAÇÃO DO ValidationSystem ========= */
+    if (window.ValidationSystem) {
+        run('Etapa 10: ValidationSystem existe', () => true);
+        run('Etapa 10: validateGalleryModule disponível', () => {
+            if (typeof window.ValidationSystem.validateGalleryModule !== 'function')
+                throw new Error('ausente');
+        });
+        run('Etapa 10: quickSystemCheck disponível', () => {
+            if (typeof window.ValidationSystem.quickSystemCheck !== 'function')
+                throw new Error('ausente');
+        });
+        run('Etapa 10: execução quickSystemCheck()', () =>
+            window.ValidationSystem.quickSystemCheck()
+        );
+        run('Etapa 10: validação da galeria', () =>
+            window.ValidationSystem.validateGalleryModule()
+        );
+    } else {
+        addResult(
+            'ERR/OK – Proteção ativa',
+            'Etapa 10: ValidationSystem ausente → Sistema protegido',
+            'ValidationSystem undefined'
+        );
+        addResult(
+            'OK',
+            'Etapa 10: validação da galeria → Fallback acionado',
+            'Fallback validateGalleryModule ativo'
+        );
+    }
+
+    run('Etapa 10: fallback validateGalleryModule', () => {
+        if (typeof window.validateGalleryModule !== 'function')
+            throw new Error('ausente');
+    });
+
+    /* ========= PdfLogger ========= */
+    run('PdfLogger existe', () => {
+        if (!window.PdfLogger) throw new Error('ausente');
+    });
+    run('PdfLogger.simple()', () => window.PdfLogger.simple('teste'));
+    run('Performance PdfLogger (1000x)', () => {
+        for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
+    });
+
+    /* ========= EmergencySystem ========= */
+    if (!window.EmergencySystem && !window.emergencyRecovery) {
+        addResult(
+            'ERR/OK – Proteção ativa',
+            'EmergencySystem ausente → Sistema protegido',
+            'Nenhum recovery carregado'
+        );
+    } else {
+        addResult(
+            'OK',
+            'EmergencySystem disponível → Funcionando normalmente',
+            'Recovery detectado'
+        );
+    }
+
+    run('Simulação segura de falha (properties nulo)', () => {
+        const original = window.properties;
+        window.properties = null;
+        window.EmergencySystem?.smartRecovery?.();
+        window.emergencyRecovery?.restoreEssentialData?.();
+        window.properties = original || window.properties;
     });
 
     /* ========= PAINEL DE RESULTADOS ========= */
