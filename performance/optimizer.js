@@ -43,7 +43,7 @@ window.PerformanceCache = {
     }
 };
 
-// ========== CACHE INTELLIGENTE ==========
+// ========== CACHE INTELIGENTE ==========
 window.SmartCache = {
     invalidate(key, type = 'data') {
         if (PerformanceCache[type] && PerformanceCache[type].has(key)) {
@@ -77,47 +77,18 @@ window.SmartCache = {
         ].filter(Boolean).length;
         console.log(`🏠 Cache de propriedades invalidado (${invalidated} itens)`);
         return invalidated;
-    },
-
-    setWithAutoInvalidation(key, value, type = 'data', ttl = 300000) {
-        PerformanceCache.set(key, value, type, ttl);
-        this.setupAutoInvalidation(key, type);
-        return true;
-    },
-
-    setupAutoInvalidation(key, type) {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList' || mutation.type === 'attributes') {
-                    if (PerformanceCache[type] && PerformanceCache[type].has(key)) {
-                        PerformanceCache[type].delete(key);
-                        console.log(`🔄 Cache auto-invalidado: ${key} (${type}) por mudança DOM`);
-                        observer.disconnect();
-                    }
-                }
-            });
-        });
-
-        const container = document.getElementById('properties-container');
-        if (container) {
-            observer.observe(container, {
-                childList: true,
-                subtree: true,
-                attributes: false
-            });
-        }
     }
 };
 
 // ========== MONITOR DE PERFORMANCE ==========
 window.PerformanceMonitor = {
     metrics: {
-        domLoad: null,
         pageLoad: null,
-        functionCalls: new Map(),
-        apiCalls: new Map(),
-        renderTimes: []
+        functionCalls: new Map()
     },
+
+    _navigationStart: performance.now(),
+    _domContentLoadedTime: null,
 
     start(name) {
         return { name, start: performance.now(), end: null, duration: null };
@@ -138,27 +109,12 @@ window.PerformanceMonitor = {
     },
 
     recordPageLoad() {
+        const now = performance.now();
         this.metrics.pageLoad = {
-            domContentLoaded: performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart,
-            pageLoaded: performance.timing.loadEventEnd - performance.timing.navigationStart
+            domContentLoaded: this._domContentLoadedTime,
+            pageLoaded: now - this._navigationStart
         };
         console.log('📊 Métricas de carregamento:', this.metrics.pageLoad);
-    },
-
-    getStats() {
-        const stats = {};
-        this.metrics.functionCalls.forEach((durations, name) => {
-            if (durations.length > 0) {
-                const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
-                stats[name] = {
-                    calls: durations.length,
-                    average: avg.toFixed(2),
-                    max: Math.max(...durations).toFixed(2),
-                    min: Math.min(...durations).toFixed(2)
-                };
-            }
-        });
-        return stats;
     }
 };
 
@@ -168,252 +124,120 @@ window.OperationMonitor = {
 
     startOperation(name, metadata = {}) {
         const operation = {
-            id: `${name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            name, metadata,
+            id: `${name}_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+            name,
+            metadata,
             startTime: performance.now(),
             endTime: null,
             duration: null,
-            success: null,
-            error: null
+            success: null
         };
         this.operations.set(operation.id, operation);
-        console.log(`🚀 Operação iniciada: ${name} (${operation.id})`);
         return operation.id;
     },
 
-    endOperationSuccess(operationId, result = null) {
+    endOperationSuccess(operationId) {
         const operation = this.operations.get(operationId);
-        if (!operation) return null;
+        if (!operation) return;
         operation.endTime = performance.now();
         operation.duration = operation.endTime - operation.startTime;
         operation.success = true;
-        operation.result = result;
-        console.log(`✅ Operação concluída: ${operation.name} (${operation.duration.toFixed(2)}ms)`);
 
-        if (window.PerformanceMonitor) {
-            PerformanceMonitor.metrics.functionCalls.set(
-                operation.name,
-                (PerformanceMonitor.metrics.functionCalls.get(operation.name) || []).concat(operation.duration)
-            );
+        if (!PerformanceMonitor.metrics.functionCalls.has(operation.name)) {
+            PerformanceMonitor.metrics.functionCalls.set(operation.name, []);
         }
-        return operation;
+        PerformanceMonitor.metrics.functionCalls.get(operation.name).push(operation.duration);
     },
 
-    endOperationError(operationId, error) {
+    endOperationError(operationId) {
         const operation = this.operations.get(operationId);
-        if (!operation) return null;
+        if (!operation) return;
         operation.endTime = performance.now();
         operation.duration = operation.endTime - operation.startTime;
         operation.success = false;
-        operation.error = error.message || error;
-        console.error(`❌ Operação falhou: ${operation.name} (${operation.duration.toFixed(2)}ms)`, error);
-        return operation;
     },
 
     getOperationStats() {
         const stats = {};
-        const operationsArray = Array.from(this.operations.values());
-        const grouped = operationsArray.reduce((acc, op) => {
-            if (!acc[op.name]) acc[op.name] = [];
-            if (op.duration) acc[op.name].push(op.duration);
-            return acc;
-        }, {});
-        Object.entries(grouped).forEach(([name, durations]) => {
-            if (durations.length > 0) {
-                const total = durations.reduce((a, b) => a + b, 0);
-                const avg = total / durations.length;
-                const ops = operationsArray.filter(op => op.name === name);
-                const successes = ops.filter(op => op.success === true).length;
-                const failures = ops.filter(op => op.success === false).length;
-
-                stats[name] = {
-                    count: durations.length,
-                    successes,
-                    failures,
-                    successRate: successes / ops.length * 100,
-                    average: avg.toFixed(2),
-                    max: Math.max(...durations).toFixed(2),
-                    min: Math.min(...durations).toFixed(2),
-                    total: total.toFixed(2)
-                };
+        this.operations.forEach(op => {
+            if (!stats[op.name]) {
+                stats[op.name] = { count: 0, successes: 0, failures: 0, total: 0 };
             }
+            if (op.duration !== null) {
+                stats[op.name].count++;
+                stats[op.name].total += op.duration;
+                op.success ? stats[op.name].successes++ : stats[op.name].failures++;
+            }
+        });
+        Object.keys(stats).forEach(name => {
+            stats[name].average = (stats[name].total / stats[name].count).toFixed(2);
+            stats[name].total = stats[name].total.toFixed(2);
         });
         return stats;
     },
 
     wrapFunction(name, fn) {
         return async (...args) => {
-            const opId = this.startOperation(name, { args: args.length });
+            const id = this.startOperation(name);
             try {
                 const result = await fn(...args);
-                this.endOperationSuccess(opId, result);
+                this.endOperationSuccess(id);
                 return result;
-            } catch (error) {
-                this.endOperationError(opId, error);
-                throw error;
+            } catch (e) {
+                this.endOperationError(id);
+                throw e;
             }
         };
     }
 };
 
-// ========== WRAPPER PARA FUNÇÕES CRÍTICAS ==========
-window.wrapCriticalFunctions = function() {
-    console.log('🔧 Envolvendo funções críticas com monitoramento...');
+// ========== WRAP DE FUNÇÕES CRÍTICAS ==========
+window.wrapCriticalFunctions = function () {
     const functionsToWrap = [
         'initializeProperties',
-        'renderProperties', 
-        'addNewProperty',
-        'updateProperty',
-        'deleteProperty',
+        'renderProperties',
         'savePropertiesToStorage',
-        'supabaseLoadProperties',
-        'handleNewMediaFiles',
-        'processAndSavePdfs'
+        'supabaseLoadProperties'
     ];
-    let wrappedCount = 0;
-    functionsToWrap.forEach(funcName => {
-        if (typeof window[funcName] === 'function' && !window[`_original_${funcName}`]) {
-            window[`_original_${funcName}`] = window[funcName];
-            window[funcName] = OperationMonitor.wrapFunction(funcName, window[funcName]);
-            wrappedCount++;
-            console.log(`✅ ${funcName} envolvida com monitoramento`);
+    functionsToWrap.forEach(fn => {
+        if (typeof window[fn] === 'function' && !window[`_wrapped_${fn}`]) {
+            window[`_wrapped_${fn}`] = true;
+            window[fn] = OperationMonitor.wrapFunction(fn, window[fn]);
         }
     });
-    console.log(`🔧 ${wrappedCount} função(ões) envolvida(s) com monitoramento`);
-    return wrappedCount;
 };
 
-// ========== PERFORMANCE REPORT ==========
+// ========== RELATÓRIO ==========
 window.PerformanceReport = {
     generateReport() {
         console.group('📊 RELATÓRIO DE PERFORMANCE COMPLETO');
-        const pageLoad = PerformanceMonitor.metrics.pageLoad;
-        if (pageLoad) {
-            console.log(`⏱️ DOM Content Loaded: ${pageLoad.domContentLoaded}ms`);
-            console.log(`⏱️ Page Loaded: ${pageLoad.pageLoaded}ms`);
+        if (PerformanceMonitor.metrics.pageLoad) {
+            console.log(`⏱️ DOM Content Loaded: ${PerformanceMonitor.metrics.pageLoad.domContentLoaded}ms`);
+            console.log(`⏱️ Page Loaded: ${PerformanceMonitor.metrics.pageLoad.pageLoaded}ms`);
         }
-
-        let cacheHits = 0, cacheMisses = 0;
-        if (window.performanceCacheLogs) {
-            window.performanceCacheLogs.forEach(log => {
-                if (log.type === 'hit') cacheHits++;
-                if (log.type === 'miss') cacheMisses++;
-            });
-            const total = cacheHits + cacheMisses;
-            const hitRate = total > 0 ? (cacheHits / total * 100).toFixed(1) : 0;
-            console.log(`✅ Cache Hits: ${cacheHits}`);
-            console.log(`❌ Cache Misses: ${cacheMisses}`);
-            console.log(`📊 Hit Rate: ${hitRate}%`);
-        }
-
-        if (window.OperationMonitor) {
-            console.log('\n🚀 OPERAÇÕES MONITORADAS:');
-            const opsStats = OperationMonitor.getOperationStats();
-            Object.entries(opsStats).forEach(([name, stats]) => {
-                console.log(`📋 ${name}:`);
-                console.log(`   🔢 Execuções: ${stats.count}`);
-                console.log(`   ✅ Sucessos: ${stats.successes} (${stats.successRate.toFixed(1)}%)`);
-                console.log(`   ❌ Falhas: ${stats.failures}`);
-                console.log(`   ⏱️ Tempo médio: ${stats.average}ms`);
-                console.log(`   📈 Tempo total: ${stats.total}ms`);
-            });
-        }
-
+        const ops = OperationMonitor.getOperationStats();
+        console.log('🚀 OPERAÇÕES MONITORADAS:', ops);
         console.groupEnd();
-        return {
-            pageLoad,
-            cacheStats: { hits: cacheHits, misses: cacheMisses },
-            operations: window.OperationMonitor ? OperationMonitor.getOperationStats() : {}
-        };
-    },
-
-    startPeriodicReporting(interval = 30000) {
-        if (!window.location.search.includes('debug=true')) return;
-        console.log(`📈 Relatório de performance agendado a cada ${interval/1000}s`);
-        setInterval(() => { this.generateReport(); }, interval);
-        setTimeout(() => this.generateReport(), 5000);
+        return ops;
     }
 };
 
-// Logs de cache
-window.performanceCacheLogs = [];
-const originalCacheGet = PerformanceCache.get;
-const originalCacheSet = PerformanceCache.set;
-
-PerformanceCache.get = function(key, type = 'data') {
-    const result = originalCacheGet.call(this, key, type);
-    window.performanceCacheLogs.push({
-        timestamp: Date.now(),
-        type: result !== null ? 'hit' : 'miss',
-        key,
-        cacheType: type
-    });
-    if (window.performanceCacheLogs.length > 100) {
-        window.performanceCacheLogs = window.performanceCacheLogs.slice(-100);
-    }
-    return result;
-};
-
-PerformanceCache.set = function(key, value, type = 'data', ttl = 300000) {
-    window.performanceCacheLogs.push({
-        timestamp: Date.now(),
-        type: 'set',
-        key,
-        cacheType: type,
-        ttl
-    });
-    return originalCacheSet.call(this, key, value, type, ttl);
-};
-
-// ========== INICIALIZAÇÃO AVANÇADA ==========
-(function initAdvancedPerformance() {
-    console.log('🔧 Inicializando sistema avançado de performance...');
-    if (window.location.search.includes('debug=true')) {
-        setTimeout(() => {
-            PerformanceReport.startPeriodicReporting(60000);
-        }, 3000);
-    }
-    if (window.OperationMonitor && window.wrapCriticalFunctions) {
-        window.wrapCriticalFunctions();
-    }
-    console.log('✅ Sistema avançado de performance inicializado');
-})();
-
-// ========== INICIALIZAÇÃO AUTOMÁTICA ==========
+// ========== INICIALIZAÇÃO ==========
 (function initPerformanceSystem() {
-    console.log('🔧 Inicializando sistema de performance...');
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            PerformanceMonitor.recordPageLoad();
-        });
-    } else {
-        setTimeout(() => PerformanceMonitor.recordPageLoad(), 100);
+    document.addEventListener('DOMContentLoaded', () => {
+        PerformanceMonitor._domContentLoadedTime =
+            performance.now() - PerformanceMonitor._navigationStart;
+    });
+
+    window.addEventListener('load', () => {
+        PerformanceMonitor.recordPageLoad();
+    });
+
+    if (window.wrapCriticalFunctions) {
+        wrapCriticalFunctions();
     }
-    setTimeout(() => {
-        if (typeof window.PerformanceHelpers?.lazyLoadImages === 'function') {
-            PerformanceHelpers.lazyLoadImages();
-        }
-    }, 1000);
+
     console.log('✅ Sistema de performance inicializado');
 })();
 
-// ========== TESTE E DEBUG ==========
-if (window.location.search.includes('debug=true')) {
-    window.testPerformance = function() {
-        console.group('🧪 TESTE DE PERFORMANCE');
-        PerformanceCache.set('test_key', 'test_value', 'data', 5000);
-        const cached = PerformanceCache.get('test_key', 'data');
-        console.log('Cache test:', cached === 'test_value' ? '✅' : '❌');
-        const metric = PerformanceMonitor.start('test_function');
-        setTimeout(() => {
-            PerformanceMonitor.end(metric);
-            const stats = PerformanceMonitor.getStats();
-            console.log('📊 Estatísticas:', stats);
-            console.groupEnd();
-        }, 100);
-    };
-    setTimeout(() => { window.testPerformance(); }, 3000);
-}
-
 console.log('⚡ Sistema de otimização de performance carregado');
-console.log('🔧 Módulos disponíveis: PerformanceCache, PerformanceMonitor, PerformanceHelpers, OperationMonitor, PerformanceReport, wrapCriticalFunctions');
