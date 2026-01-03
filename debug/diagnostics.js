@@ -35,7 +35,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
     };
 
     /* =====================================================
-       ETAPA 10 – TESTES FUNCIONAIS (MANTIDOS)
+       TESTES FUNCIONAIS (MANTIDOS)
        ===================================================== */
 
     if (window.ValidationSystem) {
@@ -97,19 +97,20 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
     });
 
     /* =====================================================
-       AUDITORIA REAL DE MÓDULOS DO SupportSystem (somente)
+       AUDITORIA REAL DE MÓDULOS DO REPOSITÓRIO DE SUPORTE (somente)
        ===================================================== */
 
     const jsResources = performance
         .getEntriesByType('resource')
         .filter(r => r.initiatorType === 'script' && r.name.endsWith('.js'));
 
-    // Filtrando apenas módulos do SupportSystem (prefixo "support-" como exemplo)
+    // Filtrando apenas arquivos do repositório de suporte
     const supportModules = jsResources
         .map(r => {
             try {
                 const filename = r.name.split('/').pop().split('?')[0];
-                if (filename.startsWith('support-')) {
+                // Exemplo de filtro: Arquivos que estão no diretório 'support' ou que possuem prefixo 'support-'
+                if (r.name.includes('/support/') || filename.startsWith('support-')) {
                     return filename;
                 }
             } catch {
@@ -123,15 +124,15 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
     if (uniqueSupportModules.length === 0) {
         addResult(
             'ERR/OK – Proteção ativa',
-            'Nenhum módulo do SupportSystem detectado → Ambiente protegido',
-            'performance.resource vazio ou bloqueado'
+            'Nenhum módulo do repositório de suporte detectado → Ambiente protegido',
+            'Nenhum módulo de suporte carregado'
         );
     } else {
         uniqueSupportModules.forEach((mod, i) => {
             addResult(
                 'OK',
                 `Módulo ${i + 1}/${uniqueSupportModules.length}: ${mod} → Carregado`,
-                'Arquivo .js do SupportSystem detectado no runtime'
+                'Arquivo .js do repositório de suporte detectado no runtime'
             );
         });
     }
