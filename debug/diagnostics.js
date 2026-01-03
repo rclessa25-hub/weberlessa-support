@@ -1,3 +1,6 @@
+// debug/diagnostics.js
+console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo debug');
+
 (function () {
     const isDebug =
         location.search.includes('debug=true') ||
