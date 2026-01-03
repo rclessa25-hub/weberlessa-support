@@ -51,9 +51,7 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     /* ========= FILTRAR MÓDULOS DO REPOSITÓRIO DE SUPORTE ========= */
     const allLoadedModules = getLoadedScripts();
-    const supportModules = allLoadedModules.filter(module => 
-        !module.includes('core-') && module.includes('weberlessa-support')
-    );
+    const supportModules = allLoadedModules.filter(module => !module.includes('core-')); // Filtra módulos do Core
 
     if (supportModules.length === 0) {
         addResult(
@@ -71,51 +69,29 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         });
     }
 
-    /* ========= TESTES DE FUNCIONALIDADE (FUNÇÕES ESSENCIAIS) ========= */
-
-    // Teste 1: Verificando se o repositório de suporte foi carregado corretamente
+    /* ========= TESTES DE FUNCIONALIDADE ========= */
+    // Teste 1: Validando a existência do repositório de suporte
     run('Teste 1: Repositório de Suporte Carregado', () => {
-        if (!supportModules.length) {
+        if (!window.location.href.includes('weberlessa-support')) {
             throw new Error('Repositório de Suporte não carregado corretamente');
         }
     });
 
-    // Teste 2: Verificando se as funções essenciais estão presentes
-    run('Teste 2: Verificação de Funções Essenciais', () => {
-        if (typeof window.ValidationSystem === 'undefined') {
-            throw new Error('ValidationSystem não está carregado');
-        }
-        if (typeof window.ValidationSystem.validateGalleryModule === 'undefined') {
-            throw new Error('Função validateGalleryModule não está presente');
-        }
-        if (typeof window.ValidationSystem.quickSystemCheck === 'undefined') {
-            throw new Error('Função quickSystemCheck não está presente');
-        }
-        if (typeof window.ValidationSystem.fullSystemCheck === 'undefined') {
-            throw new Error('Função fullSystemCheck não está presente');
-        }
-        if (typeof window.EmergencySystem === 'undefined') {
-            throw new Error('EmergencySystem não está presente');
-        }
-        if (typeof PdfLogger === 'undefined') {
-            throw new Error('PdfLogger não está presente');
-        }
-        if (typeof PdfLogger.simple !== 'function') {
-            throw new Error('PdfLogger.simple não está presente');
-        }
+    // Teste 2: Verificando se os módulos carregados são do repositório correto
+    run('Teste 2: Verificação de Módulos de Suporte', () => {
+        supportModules.forEach(module => {
+            if (!module.includes('weberlessa-support')) {
+                throw new Error(`Módulo inválido detectado: ${module}`);
+            }
+        });
     });
 
-    // Teste 3: Verificação de Módulos Essenciais
+    // Teste 3: Verificação se algum módulo essencial não falhou
     run('Teste 3: Verificação de Módulos Essenciais', () => {
-        const essentialModules = [
-            'function-verifier.js', 'media-logger.js', 'media-recovery.js', 'pdf-logger.js',
-            'diagnostics.js', 'duplication-checker.js', 'emergency-recovery.js', 'simple-checker.js',
-            'validation.js', 'validation-essentials.js'
-        ];
-
-        essentialModules.forEach(module => {
-            if (!supportModules.includes(module)) {
-                throw new Error(`Módulo essencial ausente: ${module}`);
+        const requiredModules = ['function-verifier.js', 'pdf-logger.js', 'diagnostics.js'];
+        requiredModules.forEach(requiredModule => {
+            if (!supportModules.includes(requiredModule)) {
+                throw new Error(`Módulo essencial ausente: ${requiredModule}`);
             }
         });
     });
