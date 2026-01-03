@@ -8,30 +8,22 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
 
     if (!isDebug) return;
 
-    /* ========= STORAGE ========= */
-    const coreResults = [];
-    const supportResults = [];
-    const generalResults = [];
+    const results = [];
+    let coreCount = 0;
+    let supportCount = 0;
     let errorCount = 0;
+    let healthScore = 0;
 
-    /* ========= HELPERS ========= */
-    const countIfError = status => {
-        if (status.includes('ERR')) errorCount++;
-    };
+    const addResult = (status, neofitoMsg, tecnicoMsg) => {
+        results.push({ status, neofitoMsg, tecnicoMsg });
 
-    const addSupport = (status, neofitoMsg, tecnicoMsg) => {
-        countIfError(status);
-        supportResults.push({ status, neofitoMsg, tecnicoMsg });
-    };
-
-    const addCore = (status, neofitoMsg, tecnicoMsg) => {
-        countIfError(status);
-        coreResults.push({ status, neofitoMsg, tecnicoMsg });
-    };
-
-    const addGeneral = (status, neofitoMsg, tecnicoMsg) => {
-        countIfError(status);
-        generalResults.push({ status, neofitoMsg, tecnicoMsg });
+        // Atualiza contadores
+        if (status.startsWith('OK')) healthScore += 1;
+        if (status.startsWith('ERR/OK') || status.startsWith('ERR')) {
+            errorCount += 1;
+            healthScore -= 5;
+        }
+        if (status.startsWith('N/A')) healthScore -= 0; // N/A não altera
     };
 
     const run = (name, fn) => {
@@ -39,13 +31,13 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
             const t0 = performance.now();
             fn();
             const t1 = performance.now();
-            addGeneral(
+            addResult(
                 'OK',
                 `${name} → Funcionando normalmente`,
                 `${name} (${(t1 - t0).toFixed(2)}ms)`
             );
         } catch (e) {
-            addGeneral(
+            addResult(
                 'ERR/OK – Proteção ativa',
                 `${name} → Proteção ativa / fallback acionado`,
                 `${name}: ${e.message}`
@@ -53,91 +45,123 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         }
     };
 
-    /* ========= STATUS GERAL ========= */
-    const getOverallStatus = () => {
-        if (errorCount === 0)
-            return { text: 'OPERACIONAL', color: '#006400', level: 'ok' };
-
-        if (errorCount <= 3)
-            return { text: 'OPERACIONAL (COM ALERTAS)', color: '#b36b00', level: 'warn' };
-
-        return {
-            text: 'OPERACIONAL (COM PROTEÇÕES ATIVAS)',
-            color: '#b00000',
-            level: 'error'
-        };
+    /* ========= DETECTAR SCRIPT CARREGADO NO DOCUMENTO ========= */
+    const getLoadedScripts = () => {
+        const scripts = document.querySelectorAll('script[src]');
+        const scriptNames = [];
+        scripts.forEach(script => {
+            const src = script.src;
+            const filename = src.substring(src.lastIndexOf('/') + 1);
+            scriptNames.push(filename);
+        });
+        return scriptNames;
     };
 
-    /* ========= DETECTAR SCRIPTS ========= */
-    const scripts = [...document.querySelectorAll('script[src]')].map(s =>
-        s.src.split('/').pop()
-    );
+    const allLoadedModules = getLoadedScripts();
 
-    const coreModules = scripts.filter(s => s.startsWith('core-'));
-    const supportModules = scripts.filter(s => !s.startsWith('core-'));
+    /* ========= AGRUPAR CORE / SUPORTE ========= */
+    const supportModules = [];
+    const coreModules = [];
 
-    /* ========= LISTAGEM DE MÓDULOS ========= */
-    supportModules.forEach((m, i) =>
-        addSupport('OK', `[MÓDULO SUPORTE ${i + 1}] ${m} → Carregado`, 'SUPORTE NO RUNTIME')
-    );
+    allLoadedModules.forEach(module => {
+        if (module.includes('core-')) coreModules.push(module);
+        else supportModules.push(module);
+    });
 
-    coreModules.forEach((m, i) =>
-        addCore('OK', `[MÓDULO CORE ${i + 1}] ${m} → Carregado`, 'CORE NO RUNTIME')
-    );
+    coreCount = coreModules.length;
+    supportCount = supportModules.length;
 
-    /* ========= TESTES BÁSICOS ========= */
+    /* ========= RELATÓRIO DE MÓDULOS ========= */
+    supportModules.forEach((module, i) => {
+        addResult(
+            'OK',
+            `[MÓDULO SUPORTE ${i + 1}] ${module} → Carregado`,
+            'SUPORTE NO RUNTIME'
+        );
+    });
+
+    coreModules.forEach((module, i) => {
+        addResult(
+            'OK',
+            `[MÓDULO CORE ${i + 1}] ${module} → Carregado`,
+            'CORE NO RUNTIME'
+        );
+    });
+
+    /* ========= TESTES E DIAGNÓSTICOS ========= */
+    let step10Counter = 0;
+
+    // Teste 1: Repositório de suporte
     run('Teste 1: Repositório de Suporte Carregado', () => {
-        if (!location.href.includes('weberlessa-support'))
+        if (!window.location.href.includes('weberlessa-support')) {
             throw new Error('Repositório de Suporte não detectado');
+        }
     });
 
+    // Teste 2: Verificação de módulos de suporte
     run('Teste 2: Verificação de Módulos de Suporte', () => {
-        supportModules.forEach(m => {
-            if (m.startsWith('core-')) throw new Error(`Inválido: ${m}`);
+        supportModules.forEach(module => {
+            if (!module.includes('weberlessa-support')) {
+                throw new Error(`Módulo inválido detectado: ${module}`);
+            }
         });
     });
 
+    // Teste 3: Verificação de módulos essenciais
     run('Teste 3: Módulos Essenciais', () => {
-        ['function-verifier.js', 'pdf-logger.js', 'diagnostics.js'].forEach(r => {
-            if (!scripts.includes(r)) throw new Error(`Ausente: ${r}`);
+        const requiredModules = ['function-verifier.js', 'pdf-logger.js', 'diagnostics.js'];
+        requiredModules.forEach(requiredModule => {
+            if (!supportModules.includes(requiredModule)) {
+                throw new Error(`Módulo essencial ausente: ${requiredModule}`);
+            }
         });
     });
 
-    /* ========= ETAPA 10 — VALIDATIONSYSTEM (DETALHADA) ========= */
-    if (window.ValidationSystem) {
-        run('Etapa 10: ValidationSystem existe', () => true);
+    /* ========= ETAPA 10 ========= */
+    const runStep10 = (label, fn) => {
+        step10Counter += 1;
+        const name = `Etapa 10.${step10Counter}: ${label}`;
+        if (window.ValidationSystem) {
+            run(name, fn);
+        } else {
+            addResult(
+                'N/A',
+                `${name} → Não executada`,
+                'ValidationSystem ausente'
+            );
+        }
+    };
 
-        run('Etapa 10: validateGalleryModule disponível', () => {
+    if (window.ValidationSystem) {
+        runStep10('ValidationSystem existe', () => true);
+        runStep10('validateGalleryModule disponível', () => {
             if (typeof window.ValidationSystem.validateGalleryModule !== 'function')
                 throw new Error('ausente');
         });
-
-        run('Etapa 10: quickSystemCheck disponível', () => {
+        runStep10('quickSystemCheck disponível', () => {
             if (typeof window.ValidationSystem.quickSystemCheck !== 'function')
                 throw new Error('ausente');
         });
-
-        run('Etapa 10: execução quickSystemCheck()', () =>
+        runStep10('execução quickSystemCheck()', () =>
             window.ValidationSystem.quickSystemCheck()
         );
-
-        run('Etapa 10: validação da galeria', () =>
+        runStep10('validação da galeria', () =>
             window.ValidationSystem.validateGalleryModule()
         );
     } else {
-        addGeneral(
+        addResult(
             'ERR/OK – Proteção ativa',
             'Etapa 10: ValidationSystem ausente → Sistema protegido',
             'ValidationSystem undefined'
         );
-
-        addGeneral(
+        addResult(
             'OK',
             'Etapa 10: validação da galeria → Fallback acionado',
             'Fallback validateGalleryModule ativo'
         );
     }
 
+    // Fallback validateGalleryModule
     run('Etapa 10: fallback validateGalleryModule', () => {
         if (typeof window.validateGalleryModule !== 'function')
             throw new Error('ausente');
@@ -147,22 +171,20 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
     run('PdfLogger existe', () => {
         if (!window.PdfLogger) throw new Error('ausente');
     });
-
     run('PdfLogger.simple()', () => window.PdfLogger.simple('teste'));
-
     run('Performance PdfLogger (1000x)', () => {
         for (let i = 0; i < 1000; i++) window.PdfLogger.simple('x');
     });
 
-    /* ========= Emergency ========= */
+    /* ========= Emergency System ========= */
     if (!window.EmergencySystem && !window.emergencyRecovery) {
-        addGeneral(
+        addResult(
             'ERR/OK – Proteção ativa',
             'EmergencySystem ausente → Sistema protegido',
             'Nenhum recovery carregado'
         );
     } else {
-        addGeneral(
+        addResult(
             'OK',
             'EmergencySystem disponível → Funcionando normalmente',
             'Recovery detectado'
@@ -177,96 +199,57 @@ console.log('🔍 diagnostics.js carregado - Sistema de diagnósticos em modo de
         window.properties = original || window.properties;
     });
 
-    /* ========= PAINEL ========= */
+    /* ========= LIMITE SCORE ENTRE 0–100 ========= */
+    healthScore = Math.max(0, Math.min(100, healthScore));
+
+    /* ========= PAINEL DE RESULTADOS ========= */
     const box = document.createElement('div');
     box.style.cssText = `
         position: fixed;
         bottom: 10px;
         right: 10px;
-        width: 580px;
+        width: 550px;
         max-height: 75vh;
         overflow-y: auto;
         background: #f7f7f7;
         color: #000;
-        padding: 14px;
+        padding: 16px;
+        font-size: 16px;
         font-family: monospace;
         z-index: 99999;
         border-radius: 10px;
-        box-shadow: 0 0 14px rgba(0,0,0,.35);
+        box-shadow: 0 0 14px rgba(0,0,0,0.35);
+        user-select: text;
     `;
 
-    const overall = getOverallStatus();
-
-    if (overall.level === 'warn') {
-        box.style.border = '3px solid #b36b00';
-        box.style.background = '#fff8f0';
-    }
-
-    if (overall.level === 'error') {
-        box.style.border = '3px solid #b00000';
-        box.style.background = '#fff0f0';
-        box.style.animation = 'diagnosticPulse 2s infinite';
-    }
-
-    const style = document.createElement('style');
-    style.innerHTML = `
-        @keyframes diagnosticPulse {
-            0% { box-shadow: 0 0 10px rgba(176,0,0,.4); }
-            50% { box-shadow: 0 0 18px rgba(176,0,0,.8); }
-            100% { box-shadow: 0 0 10px rgba(176,0,0,.4); }
-        }
-    `;
-    document.head.appendChild(style);
-
-    /* ========= RESUMO ========= */
+    /* ========= RESUMO DO SISTEMA ========= */
     const summary = document.createElement('div');
-    summary.style.cssText = `
-        margin-bottom: 12px;
-        padding: 10px;
-        background: #fff;
-        border-radius: 8px;
-        border: 2px solid #ccc;
-    `;
+    summary.style.marginBottom = '10px';
+    const statusColor = errorCount > 0 ? '#e68a00' : '#006400';
     summary.innerHTML = `
-        <b>📊 RESUMO DO SISTEMA</b><br>
-        ⚙️ CORE: <b>${coreResults.length}</b><br>
-        🧩 SUPORTE: <b>${supportResults.length}</b><br>
-        ❌ ERROS / ALERTAS: <b>${errorCount}</b><br>
-        <b style="color:${overall.color}">
-            ${overall.level === 'error' ? '🔴' : overall.level === 'warn' ? '🟠' : '🟢'}
-            STATUS GERAL: ${overall.text}
-        </b>
+        📊 <b>RESUMO DO SISTEMA</b><br>
+        ⚙️ CORE: ${coreCount}<br>
+        🧩 SUPORTE: ${supportCount}<br>
+        ❌ ERROS / ALERTAS: ${errorCount}<br>
+        🟠 STATUS GERAL: <span style="color:${statusColor}">${errorCount > 0 ? 'OPERACIONAL (COM ALERTAS)' : 'OPERACIONAL'}</span><br>
+        🩺 HEALTH SCORE: ${healthScore} / 100
     `;
     box.appendChild(summary);
 
-    /* ========= SEÇÕES ========= */
-    const renderSection = (title, icon, list) => {
-        if (!list.length) return;
-        const h = document.createElement('div');
-        h.style.cssText =
-            'margin:10px 0 6px;font-weight:bold;border-bottom:2px solid #ccc';
-        h.textContent = `${icon} ${title} (${list.length})`;
-        box.appendChild(h);
+    results.forEach(r => {
+        const line = document.createElement('div');
+        let color = '#000';
+        if (r.status.startsWith('ERR –') || r.status.startsWith('ERR/OK')) color = '#b36b00';
+        else if (r.status.startsWith('N/A')) color = '#888888';
+        else color = '#006400';
 
-        list.forEach(r => {
-            const d = document.createElement('div');
-            const color = r.status.includes('ERR')
-                ? '#b00000'
-                : r.status.includes('ERR/OK')
-                ? '#b36b00'
-                : '#006400';
-            d.innerHTML = `
-                <span style="color:${color};font-weight:bold">(${r.status})</span>
-                ${r.neofitoMsg}
-                <div style="margin-left:10px;color:#555">${r.tecnicoMsg}</div>
-            `;
-            box.appendChild(d);
-        });
-    };
-
-    renderSection('MÓDULOS SUPORTE', '🧩', supportResults);
-    renderSection('MÓDULOS CORE', '⚙️', coreResults);
-    renderSection('TESTES E DIAGNÓSTICOS', '🧪', generalResults);
+        line.innerHTML = `
+            <span style="font-weight:bold;color:${color}">(${r.status})</span>
+            ${r.neofitoMsg}
+            <div style="color:#555;margin-left:10px">${r.tecnicoMsg}</div>
+        `;
+        box.appendChild(line);
+    });
 
     document.body.appendChild(box);
 })();
