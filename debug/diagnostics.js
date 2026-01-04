@@ -48,7 +48,7 @@ function logToPanel(message, type = 'info') {
         consoleContent.scrollTop = consoleContent.scrollHeight;
     }
     
-    // Também loga no console real
+    // TAMBÉM loga no console real (F12) - como você solicitou
     const consoleFunc = type === 'error' ? console.error : 
                        type === 'warning' ? console.warn : console.log;
     consoleFunc(`[DIAG] ${message}`);
@@ -99,9 +99,8 @@ window.verifyMediaMigration = function() {
         'Sistema de preview ativo': document.getElementById('uploadPreview') !== null
     };
     
-    console.table(checks);
-    
-    // Log detalhado
+    // Log detalhado no painel E no console F12
+    console.log('🔍 VERIFICAÇÃO DA MIGRAÇÃO DE MÍDIA - INICIADA');
     Object.entries(checks).forEach(([check, result]) => {
         logToPanel(`${result ? '✅' : '❌'} ${check}`, result ? 'success' : 'error');
     });
@@ -109,7 +108,10 @@ window.verifyMediaMigration = function() {
     const allValid = Object.values(checks).every(v => v === true);
     
     if (allValid) {
-        logToPanel('✅ TODAS AS VERIFICAÇÕES PASSARAM - PRONTO PARA MIGRAÇÃO FINAL', 'success');
+        const successMessage = '✅ TODAS AS VERIFICAÇÕES PASSARAM - PRONTO PARA MIGRAÇÃO FINAL';
+        logToPanel(successMessage, 'success');
+        console.log(successMessage);
+        console.table(checks);
         
         // Criar relatório detalhado
         const report = {
@@ -156,13 +158,13 @@ window.verifyMediaMigration = function() {
             </div>
             <button id="close-validation-alert" style="
                 background: #00ff9c; color: #000; border: none;
-                padding: 10px 20px; border-radius: 5px; cursor: pointer;
+                padding: 10px 20px; cursor: pointer; border-radius: 5px;
                 font-weight: bold;">
                 ENTENDIDO
             </button>
             <button id="export-migration-report" style="
                 background: #555; color: white; border: none;
-                padding: 10px 20px; border-radius: 5px; cursor: pointer;
+                padding: 10px 20px; cursor: pointer; border-radius: 5px;
                 font-weight: bold; margin-left: 10px;">
                 📊 EXPORTAR RELATÓRIO
             </button>
@@ -187,7 +189,10 @@ window.verifyMediaMigration = function() {
         
         return { valid: true, checks, report };
     } else {
-        logToPanel('❌ VERIFICAÇÕES FALHARAM - NÃO PROSSEGUIR', 'error');
+        const errorMessage = '❌ VERIFICAÇÕES FALHARAM - NÃO PROSSEGUIR';
+        logToPanel(errorMessage, 'error');
+        console.error(errorMessage);
+        console.table(checks);
         
         // Criar relatório de falhas
         const failedChecks = Object.entries(checks).filter(([_, result]) => !result).map(([check]) => check);
@@ -219,7 +224,7 @@ window.verifyMediaMigration = function() {
             </div>
             <button id="close-failure-alert" style="
                 background: #ff5555; color: white; border: none;
-                padding: 10px 20px; border-radius: 5px; cursor: pointer;
+                padding: 10px 20px; cursor: pointer; border-radius: 5px;
                 font-weight: bold;">
                 ENTENDIDO
             </button>
