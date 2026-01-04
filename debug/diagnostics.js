@@ -19,7 +19,8 @@ function logToPanel(message, type = 'info') {
         'error': '#ff5555',
         'warning': '#ffaa00',
         'debug': '#8888ff',
-        'mobile': '#0088cc'
+        'mobile': '#0088cc',
+        'migration': '#ff00ff'
     };
     
     const icons = {
@@ -28,7 +29,8 @@ function logToPanel(message, type = 'info') {
         'error': '❌',
         'warning': '⚠️',
         'debug': '🔍',
-        'mobile': '📱'
+        'mobile': '📱',
+        'migration': '🚀'
     };
     
     const logLine = document.createElement('div');
@@ -58,7 +60,8 @@ function updateStatus(message, type = 'info') {
         statusBar.innerHTML = `<strong>Status:</strong> ${message}`;
         statusBar.style.color = type === 'error' ? '#ff5555' : 
                                type === 'success' ? '#00ff9c' : 
-                               type === 'mobile' ? '#0088cc' : '#888';
+                               type === 'mobile' ? '#0088cc' : 
+                               type === 'migration' ? '#ff00ff' : '#888';
     }
 }
 
@@ -80,6 +83,161 @@ function updateDeviceIndicator() {
         indicator.style.background = isMobile ? '#0088cc' : '#555';
     }
 }
+
+/* ================== VERIFICAÇÃO DE MIGRAÇÃO DE MÍDIA ================== */
+window.verifyMediaMigration = function() {
+    logToPanel('🔍 VERIFICAÇÃO FINAL DA MIGRAÇÃO DE MÍDIA', 'migration');
+    
+    const checks = {
+        'MediaSystem disponível': typeof MediaSystem !== 'undefined',
+        'Funções essenciais presentes': MediaSystem && 
+            typeof MediaSystem.addFiles === 'function' &&
+            typeof MediaSystem.addPdfs === 'function' &&
+            typeof MediaSystem.uploadAll === 'function',
+        'Integração admin funcionando': typeof window.processAndSavePdfs === 'function',
+        'Compatibilidade properties.js': typeof window.getMediaUrlsForProperty === 'function',
+        'Sistema de preview ativo': document.getElementById('uploadPreview') !== null
+    };
+    
+    console.table(checks);
+    
+    // Log detalhado
+    Object.entries(checks).forEach(([check, result]) => {
+        logToPanel(`${result ? '✅' : '❌'} ${check}`, result ? 'success' : 'error');
+    });
+    
+    const allValid = Object.values(checks).every(v => v === true);
+    
+    if (allValid) {
+        logToPanel('✅ TODAS AS VERIFICAÇÕES PASSARAM - PRONTO PARA MIGRAÇÃO FINAL', 'success');
+        
+        // Criar relatório detalhado
+        const report = {
+            timestamp: new Date().toISOString(),
+            checks: checks,
+            status: 'VALIDADO',
+            recommendations: [
+                'Remover módulos antigos (media-*.js, pdf-*.js)',
+                'Manter apenas MediaSystem unificado',
+                'Atualizar imports em admin.js',
+                'Testar uploads de mídia e PDFs',
+                'Verificar compatibilidade com propriedades existentes'
+            ]
+        };
+        
+        // Exibir alerta visual
+        const alertDiv = document.createElement('div');
+        alertDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #001a00;
+            color: #00ff9c;
+            padding: 30px;
+            border: 3px solid #00ff9c;
+            border-radius: 10px;
+            z-index: 1000000;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0, 255, 156, 0.5);
+        `;
+        alertDiv.innerHTML = `
+            <div style="font-size: 24px; margin-bottom: 15px;">✅ SISTEMA VALIDADO!</div>
+            <div style="margin-bottom: 20px;">Pronto para remover módulos antigos.</div>
+            <div style="background: #003300; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: left;">
+                <strong>Ações recomendadas:</strong>
+                <ol style="margin: 10px 0 0 20px; font-size: 12px;">
+                    <li>Remover módulos antigos de mídia e PDF</li>
+                    <li>Manter apenas MediaSystem unificado</li>
+                    <li>Testar todas as funcionalidades</li>
+                    <li>Backup antes de qualquer remoção</li>
+                </ol>
+            </div>
+            <button id="close-validation-alert" style="
+                background: #00ff9c; color: #000; border: none;
+                padding: 10px 20px; border-radius: 5px; cursor: pointer;
+                font-weight: bold;">
+                ENTENDIDO
+            </button>
+            <button id="export-migration-report" style="
+                background: #555; color: white; border: none;
+                padding: 10px 20px; border-radius: 5px; cursor: pointer;
+                font-weight: bold; margin-left: 10px;">
+                📊 EXPORTAR RELATÓRIO
+            </button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        // Configurar eventos dos botões
+        document.getElementById('close-validation-alert').addEventListener('click', () => {
+            document.body.removeChild(alertDiv);
+        });
+        
+        document.getElementById('export-migration-report').addEventListener('click', () => {
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `migration-validation-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            logToPanel('📊 Relatório de migração exportado', 'migration');
+        });
+        
+        return { valid: true, checks, report };
+    } else {
+        logToPanel('❌ VERIFICAÇÕES FALHARAM - NÃO PROSSEGUIR', 'error');
+        
+        // Criar relatório de falhas
+        const failedChecks = Object.entries(checks).filter(([_, result]) => !result).map(([check]) => check);
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a0000;
+            color: #ff5555;
+            padding: 30px;
+            border: 3px solid #ff5555;
+            border-radius: 10px;
+            z-index: 1000000;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.5);
+        `;
+        alertDiv.innerHTML = `
+            <div style="font-size: 24px; margin-bottom: 15px;">⚠️ VERIFICAÇÕES FALHARAM</div>
+            <div style="margin-bottom: 20px;">Não remover módulos antigos.</div>
+            <div style="background: #330000; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: left;">
+                <strong>Problemas encontrados:</strong>
+                <ul style="margin: 10px 0 0 20px; font-size: 12px;">
+                    ${failedChecks.map(check => `<li>${check}</li>`).join('')}
+                </ul>
+            </div>
+            <button id="close-failure-alert" style="
+                background: #ff5555; color: white; border: none;
+                padding: 10px 20px; border-radius: 5px; cursor: pointer;
+                font-weight: bold;">
+                ENTENDIDO
+            </button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        document.getElementById('close-failure-alert').addEventListener('click', () => {
+            document.body.removeChild(alertDiv);
+        });
+        
+        return { 
+            valid: false, 
+            checks, 
+            failedChecks,
+            message: 'Sistema não está pronto para migração'
+        };
+    }
+};
 
 /* ================== CLASSIFICAÇÃO DE MÓDULOS ================== */
 function classifyModule(fileName) {
@@ -151,7 +309,8 @@ function analyzeSystem() {
         'pdfModal': document.getElementById('pdfModal'),
         'pdfPassword': document.getElementById('pdfPassword'),
         'mediaUpload': document.getElementById('mediaUpload'),
-        'adminPanel': document.getElementById('adminPanel')
+        'adminPanel': document.getElementById('adminPanel'),
+        'uploadPreview': document.getElementById('uploadPreview')
     };
     
     return { scripts, systems, criticalElements };
@@ -204,7 +363,32 @@ async function testMediaUnifiedComplete() {
         });
     }
     
-    // Teste 3: Modal de PDF
+    // Teste 3: Funções essenciais de migração
+    logToPanel('🔍 Verificando funções essenciais de migração...', 'migration');
+    
+    const migrationChecks = [
+        { name: 'MediaSystem.addFiles', check: () => typeof MediaSystem.addFiles === 'function' },
+        { name: 'MediaSystem.addPdfs', check: () => typeof MediaSystem.addPdfs === 'function' },
+        { name: 'MediaSystem.uploadAll', check: () => typeof MediaSystem.uploadAll === 'function' },
+        { name: 'window.processAndSavePdfs', check: () => typeof window.processAndSavePdfs === 'function' },
+        { name: 'window.getMediaUrlsForProperty', check: () => typeof window.getMediaUrlsForProperty === 'function' }
+    ];
+    
+    migrationChecks.forEach(check => {
+        const passed = check.check();
+        results.tests.push({ 
+            name: check.name, 
+            passed,
+            message: passed ? 'Função disponível para migração' : 'Função necessária para migração'
+        });
+        
+        logToPanel(`${passed ? '✅' : '❌'} ${check.name}`, passed ? 'success' : 'error');
+        if (passed) results.passed++;
+        else results.failed++;
+        results.total++;
+    });
+    
+    // Teste 4: Modal de PDF
     logToPanel('🔍 Testando modal de PDF...', 'debug');
     const pdfModal = document.getElementById('pdfModal');
     const pdfPassword = document.getElementById('pdfPassword');
@@ -240,30 +424,19 @@ async function testMediaUnifiedComplete() {
     else results.failed++;
     results.total++;
     
-    // Teste 4: Funções globais do admin
-    logToPanel('🔍 Verificando funções globais do admin...', 'debug');
-    
-    const adminFunctions = [
-        'processAndSavePdfs',
-        'clearAllPdfs',
-        'getMediaUrlsForProperty'
-    ];
-    
-    adminFunctions.forEach(func => {
-        const exists = typeof window[func] === 'function';
-        results.tests.push({ 
-            name: `window.${func}`, 
-            passed: exists,
-            message: exists ? 'Função disponível' : 'Função não disponível'
-        });
-        
-        logToPanel(`window.${func}: ${exists ? '✅' : '❌'}`, exists ? 'success' : 'error');
-        if (exists) results.passed++;
-        else results.failed++;
-        results.total++;
+    // Teste 5: Sistema de preview de upload
+    const uploadPreview = document.getElementById('uploadPreview');
+    results.tests.push({
+        name: 'Sistema de preview ativo',
+        passed: !!uploadPreview,
+        message: uploadPreview ? 'Preview disponível para migração' : 'Preview necessário para migração'
     });
+    logToPanel(`Upload Preview: ${uploadPreview ? '✅ Existe' : '❌ Não existe'}`, uploadPreview ? 'success' : 'error');
+    if (uploadPreview) results.passed++;
+    else results.failed++;
+    results.total++;
     
-    // Teste 5: Sistema de propriedades
+    // Teste 6: Sistema de propriedades
     if (window.properties && Array.isArray(window.properties)) {
         results.tests.push({ 
             name: 'Propriedades carregadas', 
@@ -283,7 +456,7 @@ async function testMediaUnifiedComplete() {
     }
     results.total++;
     
-    // Teste 6: Supabase
+    // Teste 7: Supabase
     if (window.supabase) {
         results.tests.push({ 
             name: 'Supabase Client', 
@@ -542,6 +715,21 @@ function updateOverview(data) {
         </div>
         
         <div style="margin-bottom: 20px;">
+            <div style="text-align: center; margin: 20px 0;">
+                <button id="verify-migration-btn" style="
+                    background: linear-gradient(45deg, #ff00ff, #0088cc); 
+                    color: white; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                    font-weight: bold; font-size: 14px; margin: 10px;">
+                    🚀 VERIFICAR MIGRAÇÃO DE MÍDIA
+                </button>
+                <div style="font-size: 11px; color: #888; margin-top: 5px;">
+                    Valida se o sistema está pronto para remover módulos antigos
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
             <h3 style="color: #00ff9c; margin-bottom: 10px;">🔧 SISTEMAS PRINCIPAIS</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
     `;
@@ -589,6 +777,11 @@ function updateOverview(data) {
     `;
     
     overviewContent.innerHTML = html;
+    
+    // Configurar botão de verificação de migração
+    document.getElementById('verify-migration-btn')?.addEventListener('click', () => {
+        window.verifyMediaMigration();
+    });
 }
 
 function updateTestsTab(testResults) {
@@ -677,9 +870,24 @@ function updateTestsTab(testResults) {
                 </div>
             </div>
         </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="run-migration-test" style="
+                background: linear-gradient(45deg, #ff00ff, #0088cc); 
+                color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                font-weight: bold;">
+                🚀 TESTAR PRONTIDÃO PARA MIGRAÇÃO
+            </button>
+        </div>
     `;
     
     testsContent.innerHTML = html;
+    
+    // Configurar botão de teste de migração
+    document.getElementById('run-migration-test')?.addEventListener('click', () => {
+        window.verifyMediaMigration();
+    });
 }
 
 function updatePdfMobileTab(results) {
@@ -987,7 +1195,7 @@ function calculateHealthScore(systemData, testResults) {
     // Penalidades por elementos ausentes
     Object.entries(systemData.criticalElements).forEach(([element, domElement]) => {
         if (!domElement) {
-            const criticalElements = ['pdfModal', 'pdfPassword'];
+            const criticalElements = ['pdfModal', 'pdfPassword', 'uploadPreview'];
             if (criticalElements.includes(element)) score -= 10;
             else score -= 5;
         }
@@ -1023,7 +1231,8 @@ function exportReport() {
             innerWidth: window.innerWidth,
             innerHeight: window.innerHeight
         },
-        testResults: currentTestResults
+        testResults: currentTestResults,
+        migrationStatus: window.verifyMediaMigration ? 'Função disponível' : 'Função não disponível'
     };
     
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
@@ -1097,7 +1306,7 @@ function createDiagnosticsPanel() {
         position: fixed;
         top: 10px;
         right: 10px;
-        width: 850px;
+        width: 900px;
         max-height: 90vh;
         overflow-y: auto;
         background: #0b0b0b;
@@ -1118,6 +1327,13 @@ function createDiagnosticsPanel() {
                 🚀 DIAGNÓSTICO COMPLETO DO SISTEMA
             </div>
             <div style="display: flex; gap: 8px;">
+                <button id="verify-migration-main" style="
+                    background: linear-gradient(45deg, #ff00ff, #0088cc); 
+                    color: white; border: none; 
+                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                    font-size: 10px; font-weight: bold;">
+                    🚀 MIGRAÇÃO
+                </button>
                 <button id="minimize-btn" style="
                     background: #555; color: white; border: none; 
                     padding: 4px 8px; cursor: pointer; border-radius: 3px;
@@ -1215,6 +1431,7 @@ function setupPanelEvents() {
     // Botões de controle
     const closeBtn = document.getElementById('close-btn');
     const minimizeBtn = document.getElementById('minimize-btn');
+    const verifyMigrationBtn = document.getElementById('verify-migration-main');
     
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
@@ -1228,6 +1445,12 @@ function setupPanelEvents() {
             if (content) {
                 content.style.display = content.style.display === 'none' ? 'block' : 'none';
             }
+        });
+    }
+    
+    if (verifyMigrationBtn) {
+        verifyMigrationBtn.addEventListener('click', () => {
+            window.verifyMediaMigration();
         });
     }
     
@@ -1309,3 +1532,6 @@ if (DEBUG_MODE && DIAGNOSTICS_MODE) {
         }, 1000);
     }
 }
+
+// Exportar função globalmente para acesso direto via console
+window.runDiagnostics = runCompleteDiagnosis;
