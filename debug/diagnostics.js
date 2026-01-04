@@ -456,7 +456,7 @@ window.diagnosePdfModalMobile = function() {
         sheets: allStyles.map(ss => ({
             href: ss.href || 'inline',
             disabled: ss.disabled,
-            rulesCount: ss.cssRules ? ss.cssRules.length : 0
+            rulesCount: 0 // Não acessível devido a restrições de CORS
         })).slice(0, 10),
         galleryCss: !!allStyles.find(ss => ss.href && ss.href.includes('gallery.css')),
         adminCss: !!allStyles.find(ss => ss.href && ss.href.includes('admin.css')),
