@@ -8,7 +8,7 @@ const ACTIVE = params.get('debug') === 'true' && params.get('diagnostics') === '
 /* ================== PAINEL ================== */
 let panel;
 function ui(msg) {
-    console.log(msg);
+    console.log('[DIAG]', msg);
     if (!panel) return;
     const d = document.createElement('div');
     d.textContent = msg;
@@ -18,230 +18,293 @@ function ui(msg) {
 if (ACTIVE) {
     panel = document.createElement('div');
     panel.style.cssText = `
-        position:fixed;top:10px;right:10px;width:620px;
-        max-height:92vh;overflow:auto;
-        background:#0b0b0b;color:#00ff9c;
-        font:12px monospace;padding:10px;
-        border:1px solid #00ff9c;z-index:99999;
+        position: fixed; top: 10px; right: 10px; width: 650px;
+        max-height: 92vh; overflow-y: auto;
+        background: #0b0b0b; color: #00ff9c; border: 2px solid #00ff9c;
+        font-family: 'Consolas', 'Monaco', monospace; font-size: 12px;
+        padding: 15px; z-index: 99999; border-radius: 8px;
+        box-shadow: 0 0 25px rgba(0, 255, 156, 0.3);
     `;
     panel.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center">
-            <b>🔍 RUNTIME DIAGNOSTICS</b>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="font-weight: bold; font-size: 14px; color: #00ff9c;">🔍 RUNTIME DIAGNOSTICS</div>
             <button onclick="this.parentNode.parentNode.style.display='none'" 
-                    style="background:#ff5555;color:white;border:none;padding:2px 6px;cursor:pointer">
+                    style="background: #ff5555; color: white; border: none; 
+                           padding: 2px 8px; cursor: pointer; border-radius: 3px;">
                 X
             </button>
         </div>
-        <hr>`;
+        <div style="color: #888; font-size: 11px; margin-bottom: 15px;">
+            Mapeamento automático por comportamento real em runtime
+        </div>
+        <hr style="border-color: #00ff9c; opacity: 0.3;">`;
     document.body.appendChild(panel);
 }
 
 /* ================== ARMAZENAMENTO POR ARQUIVO ================== */
-const fileMap = new Map(); // nome_arquivo -> { CORE: [...], SUPPORT: [...], etc }
+const fileMap = new Map();
+const scriptOrigins = new Map(); // Mapeia scripts carregados
 
-function getCallerFile() {
+/* ================== DETECTA SCRIPTS CARREGADOS ================== */
+// Captura todos os scripts já carregados
+Array.from(document.scripts).forEach(script => {
+    if (script.src) {
+        const fileName = script.src.split('/').pop();
+        scriptOrigins.set(fileName, script.src);
+    }
+});
+
+/* ================== FUNÇÃO SIMPLIFICADA DE DETECÇÃO ================== */
+function recordActivity(type, action, details = '') {
     try {
-        const stack = new Error().stack.split('\n');
-        // Pula as linhas de erro e da própria função getCallerFile
-        for (let i = 2; i < stack.length; i++) {
-            const line = stack[i].trim();
-            // Extrai nome do arquivo de URLs ou caminhos locais
-            const match = line.match(/(https?:\/\/[^\/]+\/)?([^\/:]+\.js)/);
-            if (match) {
-                const fileName = match[2];
-                // Filtra arquivos internos do navegador e diagnostics.js
-                if (!fileName.includes('diagnostics.js') && 
-                    !fileName.startsWith('native') &&
-                    fileName.includes('.js')) {
-                    return fileName;
-                }
+        // Tenta obter o caller da forma mais simples
+        const error = new Error();
+        const stack = error.stack || '';
+        const lines = stack.split('\n');
+        
+        let fileName = 'unknown';
+        for (let i = 2; i < Math.min(lines.length, 6); i++) {
+            const line = lines[i];
+            // Procura por .js na stack
+            const jsMatch = line.match(/\/([^\/:]+\.js)(?::|$)/);
+            if (jsMatch && !jsMatch[1].includes('diagnostics')) {
+                fileName = jsMatch[1];
+                break;
             }
         }
-        return 'unknown';
-    } catch {
-        return 'unknown';
+        
+        if (!fileMap.has(fileName)) {
+            fileMap.set(fileName, {
+                CORE: [],
+                PERFORMANCE: [],
+                SUPPORT: [],
+                UTIL: [],
+                EXTERNAL: []
+            });
+        }
+        
+        const fileData = fileMap.get(fileName);
+        const entry = `${action}${details ? `: ${details}` : ''}`;
+        fileData[type].push(entry);
+        
+    } catch (e) {
+        // Silencioso em caso de erro
     }
 }
 
-function recordActivity(type, action, details = '') {
-    const fileName = getCallerFile();
-    if (!fileMap.has(fileName)) {
-        fileMap.set(fileName, {
-            CORE: [],
-            PERFORMANCE: [],
-            SUPPORT: [],
-            UTIL: [],
-            EXTERNAL: []
-        });
+/* ================== INTERCEPTORES SIMPLIFICADOS ================== */
+
+// 1. Intercepta criação de elementos DOM importantes
+const origCreateElement = document.createElement;
+document.createElement = function(tagName, options) {
+    if (['div', 'button', 'input', 'form', 'iframe'].includes(tagName.toLowerCase())) {
+        recordActivity('CORE', 'createElement', tagName);
     }
-    const fileData = fileMap.get(fileName);
-    const entry = `${action}${details ? ` (${details})` : ''}`;
-    fileData[type].push(entry);
+    return origCreateElement.call(this, tagName, options);
+};
+
+// 2. Intercepta event listeners importantes
+const origAddEventListener = EventTarget.prototype.addEventListener;
+EventTarget.prototype.addEventListener = function(type, listener, options) {
+    const importantEvents = ['click', 'submit', 'change', 'load', 'error', 'message'];
+    if (importantEvents.includes(type)) {
+        recordActivity('CORE', 'addEventListener', type);
+    }
+    return origAddEventListener.call(this, type, listener, options);
+};
+
+// 3. Intercepta fetch requests
+if (window.fetch) {
+    const origFetch = window.fetch;
+    window.fetch = function(...args) {
+        const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || 'unknown';
+        if (url.includes('supabase') || url.includes('api')) {
+            recordActivity('CORE', 'fetch', url.split('/').pop().substring(0, 30));
+        }
+        return origFetch.apply(this, args);
+    };
 }
 
-/* ================== INTERCEPTORES COM CAPTURA DE ORIGEM ================== */
-
-// DOM Creation
-const origCreate = document.createElement;
-document.createElement = function(tag) {
-    recordActivity('CORE', 'createElement', tag);
-    return origCreate.apply(this, arguments);
+// 4. Intercepta console.log por categoria
+const origConsoleLog = console.log;
+console.log = function(...args) {
+    const firstArg = String(args[0] || '');
+    
+    // Classifica pelo conteúdo do log
+    if (firstArg.includes('✅') || firstArg.includes('🎉') || firstArg.includes('✓')) {
+        recordActivity('SUPPORT', 'log.success', firstArg.substring(0, 40));
+    } else if (firstArg.includes('❌') || firstArg.includes('⚠️') || firstArg.includes('🚨')) {
+        recordActivity('SUPPORT', 'log.error', firstArg.substring(0, 40));
+    } else if (firstArg.includes('🔍') || firstArg.includes('📊') || firstArg.includes('🩺')) {
+        recordActivity('SUPPORT', 'log.diagnostic', firstArg.substring(0, 40));
+    } else if (firstArg.includes('⚡') || firstArg.includes('🚀') || firstArg.includes('📈')) {
+        recordActivity('PERFORMANCE', 'log.performance', firstArg.substring(0, 40));
+    } else if (firstArg.includes('🛠️') || firstArg.includes('🔧') || firstArg.includes('⚙️')) {
+        recordActivity('CORE', 'log.core', firstArg.substring(0, 40));
+    } else if (firstArg.includes('supabase') || firstArg.includes('Supabase')) {
+        recordActivity('EXTERNAL', 'log.external', firstArg.substring(0, 40));
+    }
+    
+    return origConsoleLog.apply(console, args);
 };
 
-// Event Listeners
-const origAddListener = EventTarget.prototype.addEventListener;
-EventTarget.prototype.addEventListener = function(type, handler) {
-    recordActivity('CORE', 'addEventListener', type);
-    return origAddListener.apply(this, arguments);
-};
+// 5. Intercepta supabase se ainda não estiver carregado
+if (!window.supabase) {
+    Object.defineProperty(window, 'supabase', {
+        set(value) {
+            recordActivity('EXTERNAL', 'supabase.loaded', 'SDK initialized');
+            // Define a propriedade normalmente
+            Object.defineProperty(window, 'supabase', {
+                value,
+                writable: true,
+                configurable: true
+            });
+        },
+        configurable: true
+    });
+} else {
+    recordActivity('EXTERNAL', 'supabase.present', 'Already loaded');
+}
 
-// Timers
+// 6. Intercepta timers de otimização
 const origSetTimeout = window.setTimeout;
 window.setTimeout = function(fn, delay) {
-    recordActivity('PERFORMANCE', 'setTimeout', `${delay}ms`);
+    if (delay > 100) { // Timers longos são geralmente otimizações
+        recordActivity('PERFORMANCE', 'setTimeout', `${delay}ms`);
+    }
     return origSetTimeout.apply(this, arguments);
 };
 
-const origSetInterval = window.setInterval;
-window.setInterval = function(fn, interval) {
-    recordActivity('PERFORMANCE', 'setInterval', `${interval}ms`);
-    return origSetInterval.apply(this, arguments);
-};
-
-// Console logs (classifica por tipo)
-const origLog = console.log;
-console.log = function(...args) {
-    const firstArg = args[0];
-    let type = 'SUPPORT';
+/* ================== CLASSIFICAÇÃO DOS ARQUIVOS ================== */
+function classifyFile(fileName, behaviors) {
+    // Conta as atividades por tipo
+    const scores = {
+        CORE: behaviors.CORE.length * 3,
+        PERFORMANCE: behaviors.PERFORMANCE.length * 2,
+        SUPPORT: behaviors.SUPPORT.length * 1,
+        EXTERNAL: behaviors.EXTERNAL.length * 5,
+        UTIL: behaviors.UTIL.length * 1
+    };
     
-    if (typeof firstArg === 'string') {
-        if (firstArg.includes('✅') || firstArg.includes('🎉')) {
-            type = 'SUPPORT';
-        } else if (firstArg.includes('⚡') || firstArg.includes('📈')) {
-            type = 'PERFORMANCE';
-        } else if (firstArg.includes('🔧') || firstArg.includes('🛠️')) {
-            type = 'CORE';
-        } else if (firstArg.includes('❌') || firstArg.includes('⚠️')) {
-            type = 'SUPPORT';
-        }
+    // Heurísticas adicionais pelo nome do arquivo
+    if (fileName.includes('core-')) scores.CORE += 5;
+    if (fileName.includes('optimizer')) scores.PERFORMANCE += 5;
+    if (fileName.includes('checker') || fileName.includes('diagnostic')) scores.SUPPORT += 5;
+    if (fileName.includes('utils') || fileName.includes('helper')) scores.UTIL += 3;
+    if (fileName.includes('supabase')) scores.EXTERNAL += 10;
+    if (fileName.includes('admin')) scores.CORE += 10;
+    if (fileName.includes('media-') || fileName.includes('pdf-')) scores.CORE += 3;
+    
+    // Retorna o tipo com maior pontuação
+    return Object.entries(scores).reduce((max, [type, score]) => 
+        score > max.score ? { type, score } : max, 
+        { type: 'CORE', score: 0 }
+    ).type;
+}
+
+/* ================== GERA RELATÓRIO ================== */
+function generateReport() {
+    if (!panel) return;
+    
+    // Limpa conteúdo anterior (exceto cabeçalho)
+    while (panel.children.length > 3) {
+        panel.removeChild(panel.lastChild);
     }
     
-    recordActivity(type, 'console.log', args[0]?.toString().slice(0, 50));
-    return origLog.apply(console, args);
-};
-
-// Fetch/XHR (para detectar integração)
-const origFetch = window.fetch;
-window.fetch = function(...args) {
-    recordActivity('CORE', 'fetch', args[0]?.toString().slice(0, 30));
-    return origFetch.apply(this, arguments);
-};
-
-// Supabase client (detecção específica)
-const originalSupabase = window.supabase;
-Object.defineProperty(window, 'supabase', {
-    set(value) {
-        recordActivity('EXTERNAL', 'supabase', 'SDK loaded');
-        Object.defineProperty(window, 'supabase', { value, writable: true });
-    },
-    configurable: true
-});
-
-/* ================== RELATÓRIO DETALHADO POR ARQUIVO ================== */
-function generateReport() {
-    ui('📊 MAPEAMENTO ARQUIVO → COMPORTAMENTO');
+    ui('\n📊 MAPEAMENTO POR COMPORTAMENTO REAL\n');
     
-    // Agrupa por tipo principal de cada arquivo
-    const classification = new Map();
-    
+    // Classifica cada arquivo
+    const classifiedFiles = [];
     fileMap.forEach((behaviors, fileName) => {
-        // Determina tipo principal pelo comportamento mais frequente
-        let maxType = 'CORE';
-        let maxCount = 0;
+        const type = classifyFile(fileName, behaviors);
+        classifiedFiles.push({ fileName, type, behaviors });
+    });
+    
+    // Agrupa por tipo
+    const grouped = {};
+    classifiedFiles.forEach(file => {
+        grouped[file.type] = grouped[file.type] || [];
+        grouped[file.type].push(file);
+    });
+    
+    // Mostra resumo
+    ui('📈 RESUMO DE CLASSIFICAÇÃO:');
+    Object.entries(grouped).forEach(([type, files]) => {
+        ui(`${type}: ${files.length} arquivo${files.length !== 1 ? 's' : ''}`);
+    });
+    
+    // Mostra detalhes por tipo
+    Object.entries(grouped).forEach(([type, files]) => {
+        ui(`\n🧩 ${type.toUpperCase()} (${files.length})`);
         
-        for (const [type, actions] of Object.entries(behaviors)) {
-            if (actions.length > maxCount) {
-                maxCount = actions.length;
-                maxType = type;
-            }
-        }
-        
-        classification.set(fileName, {
-            type: maxType,
-            behaviors: behaviors
+        files.forEach(file => {
+            // Conta atividades totais
+            const totalActions = Object.values(file.behaviors)
+                .reduce((sum, arr) => sum + arr.length, 0);
+            
+            ui(`\n  📄 ${file.fileName} (${totalActions} ações)`);
+            
+            // Mostra ações mais importantes (máximo 3 por tipo)
+            Object.entries(file.behaviors).forEach(([actionType, actions]) => {
+                if (actions.length > 0) {
+                    const uniqueActions = [...new Set(actions)].slice(0, 2);
+                    ui(`    └─ ${actionType}: ${uniqueActions.join(', ')}${actions.length > 2 ? `... (+${actions.length - 2})` : ''}`);
+                }
+            });
         });
     });
     
-    // Mostra por tipo
-    const grouped = {
-        CORE: [],
-        PERFORMANCE: [],
-        SUPPORT: [],
-        UTIL: [],
-        EXTERNAL: []
-    };
-    
-    classification.forEach((data, fileName) => {
-        grouped[data.type].push({ fileName, behaviors: data.behaviors });
-    });
-    
-    // Resumo
-    ui('\n📈 RESUMO DE CLASSIFICAÇÃO:');
-    Object.entries(grouped).forEach(([type, files]) => {
-        ui(`${type}: ${files.length} arquivos`);
-    });
-    
-    // Detalhamento
-    Object.entries(grouped).forEach(([type, files]) => {
-        if (files.length > 0) {
-            ui(`\n🧩 ${type} (${files.length})`);
-            files.forEach(({ fileName, behaviors }) => {
-                ui(`  📄 ${fileName}`);
-                
-                // Mostra comportamentos mais relevantes
-                Object.entries(behaviors).forEach(([behaviorType, actions]) => {
-                    if (actions.length > 0) {
-                        const uniqueActions = [...new Set(actions.slice(0, 3))];
-                        ui(`    └─ ${behaviorType}: ${uniqueActions.join(', ')}${actions.length > 3 ? `... (+${actions.length - 3})` : ''}`);
-                    }
-                });
-            });
-        }
-    });
-    
-    // Health Score baseado na distribuição
+    // Health Score
     let health = 100;
-    const coreFiles = grouped.CORE.length;
-    const supportFiles = grouped.SUPPORT.length;
+    const coreCount = grouped.CORE?.length || 0;
+    const supportCount = grouped.SUPPORT?.length || 0;
     
-    if (coreFiles < 3) health -= 30;
-    if (supportFiles === 0) health -= 20;
-    if (grouped.EXTERNAL.length === 0 && window.supabase) health -= 10;
+    if (coreCount < 4) health -= (4 - coreCount) * 10;
+    if (supportCount < 2) health -= 10;
+    if (!grouped.EXTERNAL && window.supabase) health += 5;
     
-    ui(`\n🩺 HEALTH SCORE: ${health}/100`);
-    ui(`🎯 CORE: ${coreFiles} | 🧩 SUPORTE: ${supportFiles} | ⚡ PERFORMANCE: ${grouped.PERFORMANCE.length}`);
+    ui(`\n🩺 HEALTH SCORE: ${Math.max(0, health)}/100`);
+    ui(`🎯 Core: ${coreCount} | 🧩 Suporte: ${supportCount} | ⚡ Performance: ${grouped.PERFORMANCE?.length || 0}`);
+    
+    console.log('🔍 File behavior analysis:', Array.from(fileMap.entries()));
 }
 
-/* ================== EXECUÇÃO ================== */
-// Aguarda carregamento completo
+/* ================== EXECUÇÃO AUTOMÁTICA ================== */
+// Aguarda um pouco para capturar atividades iniciais
 setTimeout(() => {
     if (ACTIVE) {
-        generateReport();
-        console.log('🔍 File behavior map:', Object.fromEntries(fileMap));
+        ui('\n⏳ Coletando dados de comportamento...');
+        setTimeout(() => {
+            generateReport();
+            
+            // Adiciona botão para atualizar
+            const refreshBtn = document.createElement('button');
+            refreshBtn.textContent = '🔄 Atualizar Análise';
+            refreshBtn.style.cssText = `
+                margin-top: 15px; padding: 8px 12px;
+                background: #00ff9c; color: #000; border: none;
+                border-radius: 4px; cursor: pointer;
+                font-family: monospace; font-weight: bold;
+            `;
+            refreshBtn.onclick = generateReport;
+            panel.appendChild(refreshBtn);
+            
+        }, 1500);
     }
-}, 2000);
+}, 500);
 
-// Botão para forçar atualização
-if (ACTIVE) {
-    const refreshBtn = document.createElement('button');
-    refreshBtn.textContent = '🔄 Atualizar Diagnóstico';
-    refreshBtn.style.cssText = `
-        position: fixed; bottom: 20px; right: 20px;
-        background: #00ff9c; color: #000; border: none;
-        padding: 8px 12px; font-family: monospace;
-        cursor: pointer; z-index: 99999;
-        border-radius: 4px;
-    `;
-    refreshBtn.onclick = generateReport;
-    document.body.appendChild(refreshBtn);
-}
+/* ================== CAPTURA DE NOVOS SCRIPTS ================== */
+// Monitora adição de novos scripts
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach(mutation => {
+        mutation.addedNodes.forEach(node => {
+            if (node.tagName === 'SCRIPT' && node.src) {
+                const fileName = node.src.split('/').pop();
+                scriptOrigins.set(fileName, node.src);
+                recordActivity('CORE', 'script.loaded', fileName);
+            }
+        });
+    });
+});
+
+observer.observe(document.head, { childList: true });
