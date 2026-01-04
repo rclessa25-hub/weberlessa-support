@@ -1,5 +1,5 @@
 // debug/diagnostics.js
-console.log('🔍 diagnostics.js – diagnóstico completo com análise mobile PDF');
+console.log('🔍 diagnostics.js – diagnóstico completo corrigido');
 
 /* ================== FLAGS ================== */
 const params = new URLSearchParams(location.search);
@@ -7,128 +7,304 @@ const DEBUG_MODE = params.get('debug') === 'true';
 const DIAGNOSTICS_MODE = params.get('diagnostics') === 'true';
 const MOBILE_TEST = params.get('mobiletest') === 'true';
 
-/* ================== PAINEL VISUAL COMPLETO ================== */
+/* ================== VARIÁVEIS GLOBAIS ================== */
 let diagnosticsPanel = null;
+let currentTestResults = null;
 
-function createDiagnosticsPanel() {
-    diagnosticsPanel = document.createElement('div');
-    diagnosticsPanel.id = 'diagnostics-panel-complete';
-    diagnosticsPanel.style.cssText = `
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        width: 850px;
-        max-height: 90vh;
-        overflow-y: auto;
-        background: #0b0b0b;
-        color: #00ff9c;
-        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-        font-size: 12px;
-        padding: 15px;
-        border: 2px solid #00ff9c;
-        border-radius: 8px;
-        z-index: 999999;
-        box-shadow: 0 0 30px rgba(0, 255, 156, 0.4);
+/* ================== FUNÇÕES AUXILIARES ================== */
+function logToPanel(message, type = 'info') {
+    const colors = {
+        'info': '#00ff9c',
+        'success': '#00ff9c',
+        'error': '#ff5555',
+        'warning': '#ffaa00',
+        'debug': '#8888ff',
+        'mobile': '#0088cc'
+    };
+    
+    const icons = {
+        'info': '📝',
+        'success': '✅',
+        'error': '❌',
+        'warning': '⚠️',
+        'debug': '🔍',
+        'mobile': '📱'
+    };
+    
+    const logLine = document.createElement('div');
+    logLine.style.cssText = `
+        margin: 2px 0;
+        padding: 4px;
+        border-left: 3px solid ${colors[type]};
+        background: ${type === 'error' ? '#1a0000' : type === 'warning' ? '#1a1a00' : 'transparent'};
     `;
+    logLine.innerHTML = `<span style="color: ${colors[type]}">${icons[type]} ${message}</span>`;
     
-    // Cabeçalho com controles
-    diagnosticsPanel.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <div style="font-size: 16px; font-weight: bold; color: #00ff9c;">
-                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA
-            </div>
-            <div style="display: flex; gap: 8px;">
-                <button id="minimize-btn" style="
-                    background: #555; color: white; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px;">
-                    ▁
-                </button>
-                <button id="close-btn" style="
-                    background: #ff5555; color: white; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px;">
-                    ✕
-                </button>
-            </div>
-        </div>
-        <div style="color: #888; font-size: 11px; margin-bottom: 20px; display: flex; justify-content: space-between;">
-            <div>
-                Modo: ${DEBUG_MODE ? 'DEBUG' : 'NORMAL'} | 
-                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'}
-            </div>
-            <div id="device-indicator" style="background: #333; padding: 2px 8px; border-radius: 3px;">
-                📱 Detectando dispositivo...
-            </div>
-        </div>
-        <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-            <button id="run-all-tests" style="
-                background: #00ff9c; color: #000; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                🧪 TESTE COMPLETO
-            </button>
-            <button id="test-pdf-mobile" style="
-                background: #0088cc; color: white; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                📱 TESTE MOBILE PDF
-            </button>
-            <button id="export-btn" style="
-                background: #555; color: white; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                📊 EXPORTAR
-            </button>
-        </div>
-        <div id="tabs" style="display: flex; border-bottom: 1px solid #333; margin-bottom: 15px;">
-            <button data-tab="overview" class="tab-btn active" style="
-                background: #333; color: #00ff9c; border: none; border-bottom: 2px solid #00ff9c;
-                padding: 8px 16px; cursor: pointer;">
-                📈 VISÃO GERAL
-            </button>
-            <button data-tab="modules" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                ⚙️ MÓDULOS
-            </button>
-            <button data-tab="tests" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                🧪 TESTES
-            </button>
-            <button data-tab="pdf-mobile" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                📱 PDF MOBILE
-            </button>
-            <button data-tab="console" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                📝 CONSOLE
-            </button>
-        </div>
-        <div id="content-area" style="min-height: 400px; max-height: 60vh; overflow-y: auto;">
-            <div id="overview-content" class="tab-content" style="display: block;"></div>
-            <div id="modules-content" class="tab-content" style="display: none;"></div>
-            <div id="tests-content" class="tab-content" style="display: none;"></div>
-            <div id="pdf-mobile-content" class="tab-content" style="display: none;"></div>
-            <div id="console-content" class="tab-content" style="display: none;"></div>
-        </div>
-        <div id="status-bar" style="
-            margin-top: 15px; padding: 8px; background: #111; 
-            border-radius: 4px; font-size: 11px; color: #888;">
-            Status: Inicializando...
-        </div>
-    `;
+    const consoleContent = document.getElementById('console-content');
+    if (consoleContent) {
+        consoleContent.appendChild(logLine);
+        consoleContent.scrollTop = consoleContent.scrollHeight;
+    }
     
-    document.body.appendChild(diagnosticsPanel);
+    // Também loga no console real
+    const consoleFunc = type === 'error' ? console.error : 
+                       type === 'warning' ? console.warn : console.log;
+    consoleFunc(`[DIAG] ${message}`);
+}
+
+function updateStatus(message, type = 'info') {
+    const statusBar = document.getElementById('status-bar');
+    if (statusBar) {
+        statusBar.innerHTML = `<strong>Status:</strong> ${message}`;
+        statusBar.style.color = type === 'error' ? '#ff5555' : 
+                               type === 'success' ? '#00ff9c' : 
+                               type === 'mobile' ? '#0088cc' : '#888';
+    }
+}
+
+function updateDeviceIndicator() {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isTablet = /iPad|Tablet|Kindle|Samsung Tablet/i.test(navigator.userAgent);
     
-    // Configurar eventos
-    setupPanelEvents();
+    let deviceType = 'DESKTOP';
+    let emoji = '💻';
     
-    // Atualizar indicador de dispositivo
-    updateDeviceIndicator();
+    if (isMobile) {
+        deviceType = isTablet ? 'TABLET' : 'MOBILE';
+        emoji = isTablet ? '📱' : '📱';
+    }
+    
+    const indicator = document.getElementById('device-indicator');
+    if (indicator) {
+        indicator.innerHTML = `${emoji} ${deviceType} (${window.innerWidth}×${window.innerHeight})`;
+        indicator.style.background = isMobile ? '#0088cc' : '#555';
+    }
+}
+
+/* ================== CLASSIFICAÇÃO DE MÓDULOS ================== */
+function classifyModule(fileName) {
+    const coreModules = [
+        'admin.js', 'properties.js', 'gallery.js', 
+        'properties-core.js', 'media-core.js', 'pdf-core.js'
+    ];
+    
+    const performanceModules = [
+        'optimizer.js', 'core-optimizer.js'
+    ];
+    
+    const supportModules = [
+        'diagnostics.js', 'function-verifier.js', 'media-logger.js',
+        'media-recovery.js', 'pdf-logger.js', 'duplication-checker.js',
+        'emergency-recovery.js', 'simple-checker.js', 'validation.js',
+        'validation-essentials.js'
+    ];
+    
+    const uiModules = [
+        'media-ui.js', 'media-integration.js', 'pdf-ui.js', 'pdf-integration.js'
+    ];
+    
+    const utilModules = [
+        'utils.js', 'media-utils.js', 'pdf-utils.js'
+    ];
+    
+    if (coreModules.includes(fileName)) return { type: 'CORE', emoji: '⚙️' };
+    if (performanceModules.includes(fileName)) return { type: 'PERFORMANCE', emoji: '⚡' };
+    if (supportModules.includes(fileName)) return { type: 'SUPPORT', emoji: '🔧' };
+    if (uiModules.includes(fileName)) return { type: 'UI', emoji: '🎨' };
+    if (utilModules.includes(fileName)) return { type: 'UTIL', emoji: '🧰' };
+    if (fileName.includes('supabase')) return { type: 'EXTERNAL', emoji: '📦' };
+    
+    return { type: 'UNKNOWN', emoji: '❓' };
+}
+
+/* ================== ANÁLISE DO SISTEMA ================== */
+function analyzeSystem() {
+    logToPanel('Iniciando análise do sistema...', 'info');
+    updateStatus('Analisando sistema...');
+    
+    // 1. Coleta de scripts
+    const scripts = Array.from(document.scripts)
+        .filter(s => s.src)
+        .map(s => ({
+            src: s.src,
+            fileName: s.src.split('/').pop(),
+            async: s.async,
+            defer: s.defer,
+            type: s.type
+        }));
+    
+    // 2. Sistemas detectados
+    const systems = {
+        MediaSystem: 'MediaSystem' in window,
+        PdfLogger: 'PdfLogger' in window,
+        ValidationSystem: 'ValidationSystem' in window,
+        EmergencySystem: 'EmergencySystem' in window,
+        supabase: 'supabase' in window,
+        properties: 'properties' in window,
+        admin: 'toggleAdminPanel' in window,
+        gallery: 'gallery' in window,
+        optimizer: 'performanceOptimizer' in window
+    };
+    
+    // 3. Elementos críticos do DOM
+    const criticalElements = {
+        'pdfModal': document.getElementById('pdfModal'),
+        'pdfPassword': document.getElementById('pdfPassword'),
+        'mediaUpload': document.getElementById('mediaUpload'),
+        'adminPanel': document.getElementById('adminPanel')
+    };
+    
+    return { scripts, systems, criticalElements };
+}
+
+/* ================== TESTES AUTOMÁTICOS ================== */
+async function testMediaUnifiedComplete() {
+    logToPanel('🧪 Iniciando teste completo do sistema unificado...', 'debug');
+    
+    const results = {
+        passed: 0,
+        failed: 0,
+        total: 0,
+        tests: []
+    };
+    
+    // Teste 1: MediaSystem disponível
+    if (!window.MediaSystem) {
+        results.tests.push({ name: 'MediaSystem disponível', passed: false, message: 'MediaSystem não encontrado' });
+        logToPanel('❌ MediaSystem não disponível', 'error');
+        results.failed++;
+    } else {
+        results.tests.push({ name: 'MediaSystem disponível', passed: true });
+        logToPanel('✅ MediaSystem disponível', 'success');
+        results.passed++;
+    }
+    results.total++;
+    
+    // Teste 2: Funções críticas do MediaSystem
+    if (window.MediaSystem) {
+        const criticalFunctions = [
+            'processAndSavePdfs',
+            'clearAllPdfs',
+            'loadExistingPdfsForEdit',
+            'getPdfsToSave',
+            'getMediaUrlsForProperty'
+        ];
+        
+        criticalFunctions.forEach(func => {
+            const exists = typeof MediaSystem[func] === 'function';
+            results.tests.push({ 
+                name: `MediaSystem.${func}`, 
+                passed: exists 
+            });
+            
+            logToPanel(`${exists ? '✅' : '❌'} ${func}`, exists ? 'success' : 'error');
+            if (exists) results.passed++;
+            else results.failed++;
+            results.total++;
+        });
+    }
+    
+    // Teste 3: Modal de PDF
+    logToPanel('🔍 Testando modal de PDF...', 'debug');
+    const pdfModal = document.getElementById('pdfModal');
+    const pdfPassword = document.getElementById('pdfPassword');
+    
+    const modalExists = !!pdfModal;
+    const passwordExists = !!pdfPassword;
+    
+    results.tests.push({ 
+        name: 'PDF Modal existe', 
+        passed: modalExists,
+        message: modalExists ? 'Modal encontrado' : 'Modal não encontrado'
+    });
+    
+    results.tests.push({ 
+        name: 'PDF Password field existe', 
+        passed: passwordExists,
+        message: passwordExists ? 'Campo encontrado' : 'Campo não encontrado'
+    });
+    
+    logToPanel(`PDF Modal: ${modalExists ? '✅ Existe' : '❌ Não existe'}`, modalExists ? 'success' : 'error');
+    logToPanel(`Password Field: ${passwordExists ? '✅ Existe' : '❌ Não existe'}`, passwordExists ? 'success' : 'error');
+    
+    if (pdfPassword) {
+        logToPanel(`Estilo display: ${pdfPassword.style.display}`, 'info');
+        logToPanel(`Estilo visibility: ${pdfPassword.style.visibility}`, 'info');
+    }
+    
+    if (modalExists) results.passed++;
+    else results.failed++;
+    results.total++;
+    
+    if (passwordExists) results.passed++;
+    else results.failed++;
+    results.total++;
+    
+    // Teste 4: Funções globais do admin
+    logToPanel('🔍 Verificando funções globais do admin...', 'debug');
+    
+    const adminFunctions = [
+        'processAndSavePdfs',
+        'clearAllPdfs',
+        'getMediaUrlsForProperty'
+    ];
+    
+    adminFunctions.forEach(func => {
+        const exists = typeof window[func] === 'function';
+        results.tests.push({ 
+            name: `window.${func}`, 
+            passed: exists,
+            message: exists ? 'Função disponível' : 'Função não disponível'
+        });
+        
+        logToPanel(`window.${func}: ${exists ? '✅' : '❌'}`, exists ? 'success' : 'error');
+        if (exists) results.passed++;
+        else results.failed++;
+        results.total++;
+    });
+    
+    // Teste 5: Sistema de propriedades
+    if (window.properties && Array.isArray(window.properties)) {
+        results.tests.push({ 
+            name: 'Propriedades carregadas', 
+            passed: true,
+            message: `${window.properties.length} propriedades carregadas`
+        });
+        logToPanel(`✅ ${window.properties.length} propriedades carregadas`, 'success');
+        results.passed++;
+    } else {
+        results.tests.push({ 
+            name: 'Propriedades carregadas', 
+            passed: false,
+            message: 'Propriedades não carregadas'
+        });
+        logToPanel('❌ Propriedades não carregadas', 'error');
+        results.failed++;
+    }
+    results.total++;
+    
+    // Teste 6: Supabase
+    if (window.supabase) {
+        results.tests.push({ 
+            name: 'Supabase Client', 
+            passed: true,
+            message: 'Cliente Supabase disponível'
+        });
+        logToPanel('✅ Supabase Client disponível', 'success');
+        results.passed++;
+    } else {
+        results.tests.push({ 
+            name: 'Supabase Client', 
+            passed: false,
+            message: 'Cliente Supabase não disponível'
+        });
+        logToPanel('⚠️  Supabase Client não disponível (pode ser normal em fallback)', 'warning');
+        // Não conta como falha porque pode ser fallback
+    }
+    results.total++;
+    
+    currentTestResults = results;
+    return results;
 }
 
 /* ================== DIAGNÓSTICO MOBILE PDF ================== */
@@ -281,7 +457,7 @@ window.diagnosePdfModalMobile = function() {
             href: ss.href || 'inline',
             disabled: ss.disabled,
             rulesCount: ss.cssRules ? ss.cssRules.length : 0
-        })).slice(0, 10), // Limitar para performance
+        })).slice(0, 10),
         galleryCss: !!allStyles.find(ss => ss.href && ss.href.includes('gallery.css')),
         adminCss: !!allStyles.find(ss => ss.href && ss.href.includes('admin.css')),
         pdfCss: !!allStyles.find(ss => ss.href && ss.href.includes('pdf') && ss.href.includes('.css'))
@@ -324,383 +500,15 @@ window.diagnosePdfModalMobile = function() {
         results.recommendations.push('Considerar modal full-screen em dispositivos muito pequenos');
     }
     
-    // 10. Simular abertura do modal (apenas em debug)
-    if (DEBUG_MODE && pdfModal && !results.modalAnalysis.visible) {
-        console.log('🧪 Testando abertura do modal...');
-        
-        const originalDisplay = pdfModal.style.display;
-        pdfModal.style.display = 'flex';
-        
-        setTimeout(() => {
-            console.log('📱 Modal aberto em modo de teste');
-            
-            // Verificar layout após abertura
-            const afterRect = pdfModal.getBoundingClientRect();
-            console.log('📐 Layout após abertura:', afterRect);
-            
-            // Restaurar estado original
-            pdfModal.style.display = originalDisplay;
-            
-        }, 300);
-    }
-    
     console.groupEnd();
     
     return results;
 };
 
-/* ================== FUNÇÕES DO PAINEL ================== */
-function setupPanelEvents() {
-    // Botões de controle
-    document.getElementById('close-btn').addEventListener('click', () => {
-        diagnosticsPanel.style.display = 'none';
-    });
-    
-    document.getElementById('minimize-btn').addEventListener('click', () => {
-        const content = document.getElementById('content-area');
-        content.style.display = content.style.display === 'none' ? 'block' : 'none';
-    });
-    
-    // Tabs
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Remove active de todas
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.remove('active');
-                b.style.background = 'transparent';
-                b.style.color = '#888';
-                b.style.borderBottom = 'none';
-            });
-            
-            // Ativa atual
-            btn.classList.add('active');
-            btn.style.background = '#333';
-            btn.style.color = '#00ff9c';
-            btn.style.borderBottom = '2px solid #00ff9c';
-            
-            // Mostra conteúdo correto
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.style.display = 'none';
-            });
-            document.getElementById(`${btn.dataset.tab}-content`).style.display = 'block';
-        });
-    });
-    
-    // Botão executar todos testes
-    document.getElementById('run-all-tests').addEventListener('click', async () => {
-        await runCompleteDiagnosis();
-    });
-    
-    // Botão teste mobile PDF
-    document.getElementById('test-pdf-mobile').addEventListener('click', () => {
-        runPdfMobileDiagnosis();
-    });
-    
-    // Botão exportar
-    document.getElementById('export-btn').addEventListener('click', exportReport);
-}
-
-function updateDeviceIndicator() {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const isTablet = /iPad|Tablet|Kindle|Samsung Tablet/i.test(navigator.userAgent);
-    
-    let deviceType = 'DESKTOP';
-    let emoji = '💻';
-    
-    if (isMobile) {
-        deviceType = isTablet ? 'TABLET' : 'MOBILE';
-        emoji = isTablet ? '📱' : '📱';
-    }
-    
-    const indicator = document.getElementById('device-indicator');
-    indicator.innerHTML = `${emoji} ${deviceType} (${window.innerWidth}×${window.innerHeight})`;
-    indicator.style.background = isMobile ? '#0088cc' : '#555';
-}
-
-function logToPanel(message, type = 'info') {
-    const colors = {
-        'info': '#00ff9c',
-        'success': '#00ff9c',
-        'error': '#ff5555',
-        'warning': '#ffaa00',
-        'debug': '#8888ff',
-        'mobile': '#0088cc'
-    };
-    
-    const icons = {
-        'info': '📝',
-        'success': '✅',
-        'error': '❌',
-        'warning': '⚠️',
-        'debug': '🔍',
-        'mobile': '📱'
-    };
-    
-    const logLine = document.createElement('div');
-    logLine.style.cssText = `
-        margin: 2px 0;
-        padding: 4px;
-        border-left: 3px solid ${colors[type]};
-        background: ${type === 'error' ? '#1a0000' : type === 'warning' ? '#1a1a00' : 'transparent'};
-    `;
-    logLine.innerHTML = `<span style="color: ${colors[type]}">${icons[type]} ${message}</span>`;
-    
-    const consoleContent = document.getElementById('console-content');
-    consoleContent.appendChild(logLine);
-    consoleContent.scrollTop = consoleContent.scrollHeight;
-    
-    // Também loga no console real
-    const consoleFunc = type === 'error' ? console.error : 
-                       type === 'warning' ? console.warn : console.log;
-    consoleFunc(`[DIAG] ${message}`);
-}
-
-function updateStatus(message, type = 'info') {
-    const statusBar = document.getElementById('status-bar');
-    statusBar.innerHTML = `<strong>Status:</strong> ${message}`;
-    statusBar.style.color = type === 'error' ? '#ff5555' : 
-                           type === 'success' ? '#00ff9c' : 
-                           type === 'mobile' ? '#0088cc' : '#888';
-}
-
-/* ================== ANÁLISE DO SISTEMA ================== */
-function analyzeSystem() {
-    logToPanel('Iniciando análise do sistema...', 'info');
-    updateStatus('Analisando sistema...');
-    
-    // 1. Coleta de scripts
-    const scripts = Array.from(document.scripts)
-        .filter(s => s.src)
-        .map(s => ({
-            src: s.src,
-            fileName: s.src.split('/').pop(),
-            async: s.async,
-            defer: s.defer,
-            type: s.type
-        }));
-    
-    // 2. Sistemas detectados
-    const systems = {
-        MediaSystem: 'MediaSystem' in window,
-        PdfLogger: 'PdfLogger' in window,
-        ValidationSystem: 'ValidationSystem' in window,
-        EmergencySystem: 'EmergencySystem' in window,
-        supabase: 'supabase' in window,
-        properties: 'properties' in window,
-        admin: 'toggleAdminPanel' in window,
-        gallery: 'gallery' in window,
-        optimizer: 'performanceOptimizer' in window
-    };
-    
-    // 3. Funções críticas
-    const criticalFunctions = {
-        MediaSystem: ['processAndSavePdfs', 'clearAllPdfs', 'loadExistingPdfsForEdit', 'getPdfsToSave', 'getMediaUrlsForProperty'],
-        Global: ['processAndSavePdfs', 'clearAllPdfs', 'getMediaUrlsForProperty']
-    };
-    
-    // 4. Elementos críticos do DOM
-    const criticalElements = {
-        'pdfModal': document.getElementById('pdfModal'),
-        'pdfPassword': document.getElementById('pdfPassword'),
-        'mediaUpload': document.getElementById('mediaUpload'),
-        'adminPanel': document.getElementById('adminPanel')
-    };
-    
-    return { scripts, systems, criticalFunctions, criticalElements };
-}
-
-/* ================== TESTES AUTOMÁTICOS ================== */
-async function testMediaUnifiedComplete() {
-    logToPanel('🧪 Iniciando teste completo do sistema unificado...', 'debug');
-    
-    const results = {
-        passed: 0,
-        failed: 0,
-        tests: []
-    };
-    
-    // Teste 1: MediaSystem disponível
-    if (!window.MediaSystem) {
-        results.tests.push({ name: 'MediaSystem disponível', passed: false, message: 'MediaSystem não encontrado' });
-        logToPanel('❌ MediaSystem não disponível', 'error');
-    } else {
-        results.tests.push({ name: 'MediaSystem disponível', passed: true });
-        logToPanel('✅ MediaSystem disponível', 'success');
-        results.passed++;
-    }
-    
-    // Teste 2: Funções críticas do MediaSystem
-    if (window.MediaSystem) {
-        const criticalFunctions = [
-            'processAndSavePdfs',
-            'clearAllPdfs',
-            'loadExistingPdfsForEdit',
-            'getPdfsToSave',
-            'getMediaUrlsForProperty'
-        ];
-        
-        criticalFunctions.forEach(func => {
-            const exists = typeof MediaSystem[func] === 'function';
-            results.tests.push({ 
-                name: `MediaSystem.${func}`, 
-                passed: exists 
-            });
-            
-            logToPanel(`${exists ? '✅' : '❌'} ${func}`, exists ? 'success' : 'error');
-            if (exists) results.passed++;
-            else results.failed++;
-        });
-    }
-    
-    // Teste 3: Modal de PDF
-    logToPanel('🔍 Testando modal de PDF...', 'debug');
-    const pdfModal = document.getElementById('pdfModal');
-    const pdfPassword = document.getElementById('pdfPassword');
-    
-    const modalExists = !!pdfModal;
-    const passwordExists = !!pdfPassword;
-    
-    results.tests.push({ 
-        name: 'PDF Modal existe', 
-        passed: modalExists,
-        message: modalExists ? 'Modal encontrado' : 'Modal não encontrado'
-    });
-    
-    results.tests.push({ 
-        name: 'PDF Password field existe', 
-        passed: passwordExists,
-        message: passwordExists ? 'Campo encontrado' : 'Campo não encontrado'
-    });
-    
-    logToPanel(`PDF Modal: ${modalExists ? '✅ Existe' : '❌ Não existe'}`, modalExists ? 'success' : 'error');
-    logToPanel(`Password Field: ${passwordExists ? '✅ Existe' : '❌ Não existe'}`, passwordExists ? 'success' : 'error');
-    
-    if (pdfPassword) {
-        logToPanel(`Estilo display: ${pdfPassword.style.display}`, 'info');
-        logToPanel(`Estilo visibility: ${pdfPassword.style.visibility}`, 'info');
-    }
-    
-    if (modalExists) results.passed++;
-    else results.failed++;
-    
-    if (passwordExists) results.passed++;
-    else results.failed++;
-    
-    // Teste 4: Funções globais do admin
-    logToPanel('🔍 Verificando funções globais do admin...', 'debug');
-    
-    const adminFunctions = [
-        'processAndSavePdfs',
-        'clearAllPdfs',
-        'getMediaUrlsForProperty'
-    ];
-    
-    adminFunctions.forEach(func => {
-        const exists = typeof window[func] === 'function';
-        results.tests.push({ 
-            name: `window.${func}`, 
-            passed: exists,
-            message: exists ? 'Função disponível' : 'Função não disponível'
-        });
-        
-        logToPanel(`window.${func}: ${exists ? '✅' : '❌'}`, exists ? 'success' : 'error');
-        if (exists) results.passed++;
-        else results.failed++;
-    });
-    
-    // Teste 5: Sistema de propriedades
-    if (window.properties && Array.isArray(window.properties)) {
-        results.tests.push({ 
-            name: 'Propriedades carregadas', 
-            passed: true,
-            message: `${window.properties.length} propriedades carregadas`
-        });
-        logToPanel(`✅ ${window.properties.length} propriedades carregadas`, 'success');
-        results.passed++;
-    } else {
-        results.tests.push({ 
-            name: 'Propriedades carregadas', 
-            passed: false,
-            message: 'Propriedades não carregadas'
-        });
-        logToPanel('❌ Propriedades não carregadas', 'error');
-        results.failed++;
-    }
-    
-    // Teste 6: Supabase
-    if (window.supabase) {
-        results.tests.push({ 
-            name: 'Supabase Client', 
-            passed: true,
-            message: 'Cliente Supabase disponível'
-        });
-        logToPanel('✅ Supabase Client disponível', 'success');
-        results.passed++;
-    } else {
-        results.tests.push({ 
-            name: 'Supabase Client', 
-            passed: false,
-            message: 'Cliente Supabase não disponível'
-        });
-        logToPanel('⚠️  Supabase Client não disponível (pode ser normal em fallback)', 'warning');
-    }
-    
-    return results;
-}
-
-/* ================== DIAGNÓSTICO MOBILE PDF (PAINEL) ================== */
-function runPdfMobileDiagnosis() {
-    logToPanel('📱 Iniciando diagnóstico mobile PDF...', 'mobile');
-    updateStatus('Analisando layout mobile PDF...', 'mobile');
-    
-    try {
-        const results = window.diagnosePdfModalMobile();
-        
-        // Atualizar aba de diagnóstico mobile
-        updatePdfMobileTab(results);
-        
-        // Logar resultados
-        logToPanel(`📱 Dispositivo: ${results.deviceInfo.type}`, 'mobile');
-        logToPanel(`📏 Viewport: ${results.deviceInfo.viewport.width}×${results.deviceInfo.viewport.height}`, 'mobile');
-        logToPanel(`✅ Modal PDF: ${results.modalAnalysis.exists ? 'PRESENTE' : 'AUSENTE'}`, 
-                   results.modalAnalysis.exists ? 'success' : 'error');
-        
-        if (results.modalAnalysis.exists) {
-            logToPanel(`👁️ Modal visível: ${results.modalAnalysis.visible ? 'SIM' : 'NÃO'}`, 
-                       results.modalAnalysis.visible ? 'success' : 'warning');
-            logToPanel(`🔐 Campo senha: ${results.modalAnalysis.passwordField.exists ? 'PRESENTE' : 'AUSENTE'}`,
-                       results.modalAnalysis.passwordField.exists ? 'success' : 'warning');
-            
-            if (results.layoutIssues.length > 0) {
-                logToPanel('⚠️ Problemas de layout detectados:', 'warning');
-                results.layoutIssues.forEach(issue => {
-                    logToPanel(`   • ${issue}`, 'warning');
-                });
-            }
-            
-            if (results.recommendations.length > 0) {
-                logToPanel('💡 Recomendações:', 'info');
-                results.recommendations.forEach(rec => {
-                    logToPanel(`   • ${rec}`, 'info');
-                });
-            }
-        }
-        
-        logToPanel('✅ Diagnóstico mobile PDF concluído', 'success');
-        updateStatus('Diagnóstico mobile completo', 'success');
-        
-        // Mudar para aba mobile
-        document.querySelector('[data-tab="pdf-mobile"]').click();
-        
-    } catch (error) {
-        logToPanel(`❌ Erro no diagnóstico mobile: ${error.message}`, 'error');
-        updateStatus('Erro no diagnóstico mobile', 'error');
-    }
-}
-
 /* ================== RELATÓRIOS ================== */
 function updateOverview(data) {
     const overviewContent = document.getElementById('overview-content');
+    if (!overviewContent) return;
     
     const { scripts, systems, criticalElements } = data;
     
@@ -783,8 +591,100 @@ function updateOverview(data) {
     overviewContent.innerHTML = html;
 }
 
+function updateTestsTab(testResults) {
+    const testsContent = document.getElementById('tests-content');
+    if (!testsContent) return;
+    
+    if (!testResults) {
+        testsContent.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #888;">
+                <div style="font-size: 48px; margin-bottom: 20px;">🧪</div>
+                <div>Execute os testes para ver os resultados</div>
+                <button id="run-tests-btn" style="
+                    margin-top: 20px; background: #00ff9c; color: #000;
+                    border: none; padding: 10px 20px; border-radius: 4px;
+                    cursor: pointer; font-weight: bold;">
+                    EXECUTAR TESTES
+                </button>
+            </div>
+        `;
+        
+        document.getElementById('run-tests-btn')?.addEventListener('click', async () => {
+            await runCompleteDiagnosis();
+        });
+        
+        return;
+    }
+    
+    const passed = testResults.passed;
+    const failed = testResults.failed;
+    const total = testResults.total;
+    const percentage = total > 0 ? Math.round((passed / total) * 100) : 0;
+    
+    let html = `
+        <div style="margin-bottom: 20px;">
+            <h3 style="color: #00ff9c; margin-bottom: 15px;">🧪 RESULTADO DOS TESTES</h3>
+            
+            <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <div>
+                        <div style="font-size: 11px; color: #888;">STATUS GERAL</div>
+                        <div style="font-size: 24px; color: ${percentage >= 80 ? '#00ff9c' : percentage >= 50 ? '#ffaa00' : '#ff5555'}">
+                            ${percentage}%
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 20px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 11px; color: #888;">PASSARAM</div>
+                            <div style="font-size: 24px; color: #00ff9c;">${passed}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 11px; color: #888;">FALHARAM</div>
+                            <div style="font-size: 24px; color: #ff5555;">${failed}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="height: 10px; background: #333; border-radius: 5px; overflow: hidden;">
+                    <div style="height: 100%; width: ${percentage}%; background: ${percentage >= 80 ? '#00ff9c' : percentage >= 50 ? '#ffaa00' : '#ff5555'};"></div>
+                </div>
+            </div>
+            
+            <div>
+                <h4 style="color: #00ff9c; margin-bottom: 10px;">📋 DETALHES DOS TESTES</h4>
+                <div style="max-height: 300px; overflow-y: auto;">
+    `;
+    
+    testResults.tests.forEach((test, index) => {
+        html += `
+            <div style="
+                background: ${test.passed ? '#001a00' : '#1a0000'};
+                padding: 12px; margin-bottom: 8px; border-radius: 4px;
+                border-left: 3px solid ${test.passed ? '#00ff9c' : '#ff5555'};
+                display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: bold; color: ${test.passed ? '#00ff9c' : '#ff5555'};">
+                        ${test.passed ? '✅' : '❌'} ${test.name}
+                    </div>
+                    ${test.message ? `<div style="font-size: 11px; color: #888; margin-top: 4px;">${test.message}</div>` : ''}
+                </div>
+                <span style="font-size: 10px; color: #888;">#${index + 1}</span>
+            </div>
+        `;
+    });
+    
+    html += `
+                </div>
+            </div>
+        </div>
+    `;
+    
+    testsContent.innerHTML = html;
+}
+
 function updatePdfMobileTab(results) {
     const pdfMobileContent = document.getElementById('pdf-mobile-content');
+    if (!pdfMobileContent) return;
     
     let html = `
         <div style="margin-bottom: 20px;">
@@ -1032,7 +932,355 @@ function applyMobilePdfFixes(results) {
     }
 }
 
-// ... (mantém as outras funções como updateModulesTab, updateTestsTab, etc.) ...
+/* ================== FUNÇÕES PRINCIPAIS ================== */
+async function runCompleteDiagnosis() {
+    try {
+        logToPanel('🚀 Iniciando diagnóstico completo...', 'debug');
+        updateStatus('Diagnóstico em andamento...', 'info');
+        
+        // 1. Análise do sistema
+        logToPanel('🔍 Analisando sistema...', 'debug');
+        const systemData = analyzeSystem();
+        
+        // 2. Atualiza visualizações
+        updateOverview(systemData);
+        
+        // 3. Executa testes
+        logToPanel('🧪 Executando testes...', 'debug');
+        const testResults = await testMediaUnifiedComplete();
+        
+        // 4. Atualiza aba de testes
+        updateTestsTab(testResults);
+        
+        // 5. Calcula health score
+        const healthScore = calculateHealthScore(systemData, testResults);
+        const healthScoreElement = document.getElementById('health-score');
+        if (healthScoreElement) {
+            healthScoreElement.textContent = `${healthScore}%`;
+        }
+        
+        // 6. Atualiza status
+        logToPanel(`✅ Diagnóstico completo! Health Score: ${healthScore}%`, 'success');
+        updateStatus('Diagnóstico completo', 'success');
+        
+        return { systemData, testResults, healthScore };
+        
+    } catch (error) {
+        logToPanel(`❌ Erro no diagnóstico: ${error.message}`, 'error');
+        updateStatus('Erro no diagnóstico', 'error');
+        console.error(error);
+    }
+}
+
+function calculateHealthScore(systemData, testResults) {
+    let score = 100;
+    
+    // Penalidades por sistemas ausentes
+    Object.entries(systemData.systems).forEach(([system, active]) => {
+        if (!active) {
+            const criticalSystems = ['MediaSystem', 'properties', 'supabase'];
+            if (criticalSystems.includes(system)) score -= 10;
+            else score -= 5;
+        }
+    });
+    
+    // Penalidades por elementos ausentes
+    Object.entries(systemData.criticalElements).forEach(([element, domElement]) => {
+        if (!domElement) {
+            const criticalElements = ['pdfModal', 'pdfPassword'];
+            if (criticalElements.includes(element)) score -= 10;
+            else score -= 5;
+        }
+    });
+    
+    // Bonus por testes passados
+    if (testResults && testResults.total > 0) {
+        const percentage = (testResults.passed / testResults.total) * 100;
+        score = Math.min(100, score + (percentage / 10));
+    }
+    
+    return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function exportReport() {
+    const systemData = analyzeSystem();
+    const report = {
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        system: {
+            scripts: systemData.scripts,
+            systems: systemData.systems,
+            criticalElements: Object.keys(systemData.criticalElements).reduce((acc, key) => {
+                acc[key] = !!systemData.criticalElements[key];
+                return acc;
+            }, {}),
+            healthScore: calculateHealthScore(systemData, currentTestResults)
+        },
+        userAgent: navigator.userAgent,
+        screen: {
+            width: window.screen.width,
+            height: window.screen.height,
+            innerWidth: window.innerWidth,
+            innerHeight: window.innerHeight
+        },
+        testResults: currentTestResults
+    };
+    
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `diagnostico-sistema-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    logToPanel('📊 Relatório exportado como JSON', 'success');
+}
+
+function runPdfMobileDiagnosis() {
+    logToPanel('📱 Iniciando diagnóstico mobile PDF...', 'mobile');
+    updateStatus('Analisando layout mobile PDF...', 'mobile');
+    
+    try {
+        const results = window.diagnosePdfModalMobile();
+        
+        // Atualizar aba de diagnóstico mobile
+        updatePdfMobileTab(results);
+        
+        // Logar resultados
+        logToPanel(`📱 Dispositivo: ${results.deviceInfo.type}`, 'mobile');
+        logToPanel(`📏 Viewport: ${results.deviceInfo.viewport.width}×${results.deviceInfo.viewport.height}`, 'mobile');
+        logToPanel(`✅ Modal PDF: ${results.modalAnalysis.exists ? 'PRESENTE' : 'AUSENTE'}`, 
+                   results.modalAnalysis.exists ? 'success' : 'error');
+        
+        if (results.modalAnalysis.exists) {
+            logToPanel(`👁️ Modal visível: ${results.modalAnalysis.visible ? 'SIM' : 'NÃO'}`, 
+                       results.modalAnalysis.visible ? 'success' : 'warning');
+            logToPanel(`🔐 Campo senha: ${results.modalAnalysis.passwordField.exists ? 'PRESENTE' : 'AUSENTE'}`,
+                       results.modalAnalysis.passwordField.exists ? 'success' : 'warning');
+            
+            if (results.layoutIssues.length > 0) {
+                logToPanel('⚠️ Problemas de layout detectados:', 'warning');
+                results.layoutIssues.forEach(issue => {
+                    logToPanel(`   • ${issue}`, 'warning');
+                });
+            }
+            
+            if (results.recommendations.length > 0) {
+                logToPanel('💡 Recomendações:', 'info');
+                results.recommendations.forEach(rec => {
+                    logToPanel(`   • ${rec}`, 'info');
+                });
+            }
+        }
+        
+        logToPanel('✅ Diagnóstico mobile PDF concluído', 'success');
+        updateStatus('Diagnóstico mobile completo', 'success');
+        
+        // Mudar para aba mobile
+        const mobileTabBtn = document.querySelector('[data-tab="pdf-mobile"]');
+        if (mobileTabBtn) {
+            mobileTabBtn.click();
+        }
+        
+    } catch (error) {
+        logToPanel(`❌ Erro no diagnóstico mobile: ${error.message}`, 'error');
+        updateStatus('Erro no diagnóstico mobile', 'error');
+    }
+}
+
+/* ================== PAINEL VISUAL ================== */
+function createDiagnosticsPanel() {
+    diagnosticsPanel = document.createElement('div');
+    diagnosticsPanel.id = 'diagnostics-panel-complete';
+    diagnosticsPanel.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        width: 850px;
+        max-height: 90vh;
+        overflow-y: auto;
+        background: #0b0b0b;
+        color: #00ff9c;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 12px;
+        padding: 15px;
+        border: 2px solid #00ff9c;
+        border-radius: 8px;
+        z-index: 999999;
+        box-shadow: 0 0 30px rgba(0, 255, 156, 0.4);
+    `;
+    
+    // Cabeçalho com controles
+    diagnosticsPanel.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div style="font-size: 16px; font-weight: bold; color: #00ff9c;">
+                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button id="minimize-btn" style="
+                    background: #555; color: white; border: none; 
+                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                    font-size: 10px;">
+                    ▁
+                </button>
+                <button id="close-btn" style="
+                    background: #ff5555; color: white; border: none; 
+                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                    font-size: 10px;">
+                    ✕
+                </button>
+            </div>
+        </div>
+        <div style="color: #888; font-size: 11px; margin-bottom: 20px; display: flex; justify-content: space-between;">
+            <div>
+                Modo: ${DEBUG_MODE ? 'DEBUG' : 'NORMAL'} | 
+                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'}
+            </div>
+            <div id="device-indicator" style="background: #333; padding: 2px 8px; border-radius: 3px;">
+                📱 Detectando dispositivo...
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+            <button id="run-all-tests" style="
+                background: #00ff9c; color: #000; border: none;
+                padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                font-weight: bold; flex: 1;">
+                🧪 TESTE COMPLETO
+            </button>
+            <button id="test-pdf-mobile" style="
+                background: #0088cc; color: white; border: none;
+                padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                font-weight: bold; flex: 1;">
+                📱 TESTE MOBILE PDF
+            </button>
+            <button id="export-btn" style="
+                background: #555; color: white; border: none;
+                padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                font-weight: bold; flex: 1;">
+                📊 EXPORTAR
+            </button>
+        </div>
+        <div id="tabs" style="display: flex; border-bottom: 1px solid #333; margin-bottom: 15px;">
+            <button data-tab="overview" class="tab-btn active" style="
+                background: #333; color: #00ff9c; border: none; border-bottom: 2px solid #00ff9c;
+                padding: 8px 16px; cursor: pointer;">
+                📈 VISÃO GERAL
+            </button>
+            <button data-tab="modules" class="tab-btn" style="
+                background: transparent; color: #888; border: none;
+                padding: 8px 16px; cursor: pointer;">
+                ⚙️ MÓDULOS
+            </button>
+            <button data-tab="tests" class="tab-btn" style="
+                background: transparent; color: #888; border: none;
+                padding: 8px 16px; cursor: pointer;">
+                🧪 TESTES
+            </button>
+            <button data-tab="pdf-mobile" class="tab-btn" style="
+                background: transparent; color: #888; border: none;
+                padding: 8px 16px; cursor: pointer;">
+                📱 PDF MOBILE
+            </button>
+            <button data-tab="console" class="tab-btn" style="
+                background: transparent; color: #888; border: none;
+                padding: 8px 16px; cursor: pointer;">
+                📝 CONSOLE
+            </button>
+        </div>
+        <div id="content-area" style="min-height: 400px; max-height: 60vh; overflow-y: auto;">
+            <div id="overview-content" class="tab-content" style="display: block;"></div>
+            <div id="modules-content" class="tab-content" style="display: none;"></div>
+            <div id="tests-content" class="tab-content" style="display: none;"></div>
+            <div id="pdf-mobile-content" class="tab-content" style="display: none;"></div>
+            <div id="console-content" class="tab-content" style="display: none;"></div>
+        </div>
+        <div id="status-bar" style="
+            margin-top: 15px; padding: 8px; background: #111; 
+            border-radius: 4px; font-size: 11px; color: #888;">
+            Status: Inicializando...
+        </div>
+    `;
+    
+    document.body.appendChild(diagnosticsPanel);
+    
+    // Configurar eventos
+    setupPanelEvents();
+    
+    // Atualizar indicador de dispositivo
+    updateDeviceIndicator();
+}
+
+function setupPanelEvents() {
+    // Botões de controle
+    const closeBtn = document.getElementById('close-btn');
+    const minimizeBtn = document.getElementById('minimize-btn');
+    
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            diagnosticsPanel.style.display = 'none';
+        });
+    }
+    
+    if (minimizeBtn) {
+        minimizeBtn.addEventListener('click', () => {
+            const content = document.getElementById('content-area');
+            if (content) {
+                content.style.display = content.style.display === 'none' ? 'block' : 'none';
+            }
+        });
+    }
+    
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Remove active de todas
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('active');
+                b.style.background = 'transparent';
+                b.style.color = '#888';
+                b.style.borderBottom = 'none';
+            });
+            
+            // Ativa atual
+            btn.classList.add('active');
+            btn.style.background = '#333';
+            btn.style.color = '#00ff9c';
+            btn.style.borderBottom = '2px solid #00ff9c';
+            
+            // Mostra conteúdo correto
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            const targetContent = document.getElementById(`${btn.dataset.tab}-content`);
+            if (targetContent) {
+                targetContent.style.display = 'block';
+            }
+        });
+    });
+    
+    // Botão executar todos testes
+    const runAllTestsBtn = document.getElementById('run-all-tests');
+    if (runAllTestsBtn) {
+        runAllTestsBtn.addEventListener('click', async () => {
+            await runCompleteDiagnosis();
+        });
+    }
+    
+    // Botão teste mobile PDF
+    const testPdfMobileBtn = document.getElementById('test-pdf-mobile');
+    if (testPdfMobileBtn) {
+        testPdfMobileBtn.addEventListener('click', () => {
+            runPdfMobileDiagnosis();
+        });
+    }
+    
+    // Botão exportar
+    const exportBtn = document.getElementById('export-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportReport);
+    }
+}
 
 /* ================== INICIALIZAÇÃO ================== */
 if (DEBUG_MODE && DIAGNOSTICS_MODE) {
@@ -1062,11 +1310,11 @@ if (DEBUG_MODE && DIAGNOSTICS_MODE) {
     }
 }
 
-// Exporta funções globais
+// Exporta funções globais para teste manual
 window.runCompleteDiagnosis = runCompleteDiagnosis;
-window.diagnosePdfModalMobile = diagnosePdfModalMobile;
+window.exportReport = exportReport;
+window.testMediaUnifiedComplete = testMediaUnifiedComplete;
 window.runPdfMobileDiagnosis = runPdfMobileDiagnosis;
 window.applyMobilePdfFixes = applyMobilePdfFixes;
 
-console.log('🚀 Diagnóstico completo carregado com suporte mobile PDF');
-console.log('💡 Use runPdfMobileDiagnosis() para análise específica de mobile');
+console.log('🚀 Diagnóstico completo carregado. Use window.runCompleteDiagnosis() para executar.');
