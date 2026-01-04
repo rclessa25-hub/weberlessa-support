@@ -1,1320 +1,414 @@
 // debug/diagnostics.js
-console.log('🔍 diagnostics.js – diagnóstico completo corrigido');
-
-/* ================== FLAGS ================== */
-const params = new URLSearchParams(location.search);
-const DEBUG_MODE = params.get('debug') === 'true';
-const DIAGNOSTICS_MODE = params.get('diagnostics') === 'true';
-const MOBILE_TEST = params.get('mobiletest') === 'true';
-
-/* ================== VARIÁVEIS GLOBAIS ================== */
-let diagnosticsPanel = null;
-let currentTestResults = null;
-
-/* ================== FUNÇÕES AUXILIARES ================== */
-function logToPanel(message, type = 'info') {
-    const colors = {
-        'info': '#00ff9c',
-        'success': '#00ff9c',
-        'error': '#ff5555',
-        'warning': '#ffaa00',
-        'debug': '#8888ff',
-        'mobile': '#0088cc'
+/* ================== VERIFICAÇÃO FINAL DE MIGRAÇÃO (PARA TERCEIROS) ================== */
+window.verifyMediaMigrationFinal = function() {
+    console.group('🔍 VERIFICAÇÃO FINAL DA MIGRAÇÃO DE MÍDIA');
+    console.log('Esta verificação deve ser executada ANTES de remover módulos antigos.');
+    console.log('Execute no console: window.verifyMediaMigrationFinal()');
+    console.log('---');
+    
+    const checks = {
+        'MediaSystem disponível': typeof MediaSystem !== 'undefined',
+        'Funções essenciais presentes': MediaSystem && 
+            typeof MediaSystem.addFiles === 'function' &&
+            typeof MediaSystem.addPdfs === 'function' &&
+            typeof MediaSystem.uploadAll === 'function',
+        'Integração admin funcionando': typeof window.processAndSavePdfs === 'function',
+        'Compatibilidade properties.js': typeof window.getMediaUrlsForProperty === 'function',
+        'Sistema de preview ativo': document.getElementById('uploadPreview') !== null,
+        'Modal PDF funcional': document.getElementById('pdfModal') !== null,
+        'Campo senha PDF presente': document.getElementById('pdfPassword') !== null,
+        'Interface de upload ativa': document.getElementById('mediaUpload') !== null
     };
     
-    const icons = {
-        'info': '📝',
-        'success': '✅',
-        'error': '❌',
-        'warning': '⚠️',
-        'debug': '🔍',
-        'mobile': '📱'
-    };
-    
-    const logLine = document.createElement('div');
-    logLine.style.cssText = `
-        margin: 2px 0;
-        padding: 4px;
-        border-left: 3px solid ${colors[type]};
-        background: ${type === 'error' ? '#1a0000' : type === 'warning' ? '#1a1a00' : 'transparent'};
-    `;
-    logLine.innerHTML = `<span style="color: ${colors[type]}">${icons[type]} ${message}</span>`;
-    
-    const consoleContent = document.getElementById('console-content');
-    if (consoleContent) {
-        consoleContent.appendChild(logLine);
-        consoleContent.scrollTop = consoleContent.scrollHeight;
-    }
-    
-    // Também loga no console real
-    const consoleFunc = type === 'error' ? console.error : 
-                       type === 'warning' ? console.warn : console.log;
-    consoleFunc(`[DIAG] ${message}`);
-}
-
-function updateStatus(message, type = 'info') {
-    const statusBar = document.getElementById('status-bar');
-    if (statusBar) {
-        statusBar.innerHTML = `<strong>Status:</strong> ${message}`;
-        statusBar.style.color = type === 'error' ? '#ff5555' : 
-                               type === 'success' ? '#00ff9c' : 
-                               type === 'mobile' ? '#0088cc' : '#888';
-    }
-}
-
-function updateDeviceIndicator() {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const isTablet = /iPad|Tablet|Kindle|Samsung Tablet/i.test(navigator.userAgent);
-    
-    let deviceType = 'DESKTOP';
-    let emoji = '💻';
-    
-    if (isMobile) {
-        deviceType = isTablet ? 'TABLET' : 'MOBILE';
-        emoji = isTablet ? '📱' : '📱';
-    }
-    
-    const indicator = document.getElementById('device-indicator');
-    if (indicator) {
-        indicator.innerHTML = `${emoji} ${deviceType} (${window.innerWidth}×${window.innerHeight})`;
-        indicator.style.background = isMobile ? '#0088cc' : '#555';
-    }
-}
-
-/* ================== CLASSIFICAÇÃO DE MÓDULOS ================== */
-function classifyModule(fileName) {
-    const coreModules = [
-        'admin.js', 'properties.js', 'gallery.js', 
-        'properties-core.js', 'media-core.js', 'pdf-core.js'
-    ];
-    
-    const performanceModules = [
-        'optimizer.js', 'core-optimizer.js'
-    ];
-    
-    const supportModules = [
-        'diagnostics.js', 'function-verifier.js', 'media-logger.js',
-        'media-recovery.js', 'pdf-logger.js', 'duplication-checker.js',
-        'emergency-recovery.js', 'simple-checker.js', 'validation.js',
-        'validation-essentials.js'
-    ];
-    
-    const uiModules = [
-        'media-ui.js', 'media-integration.js', 'pdf-ui.js', 'pdf-integration.js'
-    ];
-    
-    const utilModules = [
-        'utils.js', 'media-utils.js', 'pdf-utils.js'
-    ];
-    
-    if (coreModules.includes(fileName)) return { type: 'CORE', emoji: '⚙️' };
-    if (performanceModules.includes(fileName)) return { type: 'PERFORMANCE', emoji: '⚡' };
-    if (supportModules.includes(fileName)) return { type: 'SUPPORT', emoji: '🔧' };
-    if (uiModules.includes(fileName)) return { type: 'UI', emoji: '🎨' };
-    if (utilModules.includes(fileName)) return { type: 'UTIL', emoji: '🧰' };
-    if (fileName.includes('supabase')) return { type: 'EXTERNAL', emoji: '📦' };
-    
-    return { type: 'UNKNOWN', emoji: '❓' };
-}
-
-/* ================== ANÁLISE DO SISTEMA ================== */
-function analyzeSystem() {
-    logToPanel('Iniciando análise do sistema...', 'info');
-    updateStatus('Analisando sistema...');
-    
-    // 1. Coleta de scripts
-    const scripts = Array.from(document.scripts)
-        .filter(s => s.src)
-        .map(s => ({
-            src: s.src,
-            fileName: s.src.split('/').pop(),
-            async: s.async,
-            defer: s.defer,
-            type: s.type
-        }));
-    
-    // 2. Sistemas detectados
-    const systems = {
-        MediaSystem: 'MediaSystem' in window,
-        PdfLogger: 'PdfLogger' in window,
-        ValidationSystem: 'ValidationSystem' in window,
-        EmergencySystem: 'EmergencySystem' in window,
-        supabase: 'supabase' in window,
-        properties: 'properties' in window,
-        admin: 'toggleAdminPanel' in window,
-        gallery: 'gallery' in window,
-        optimizer: 'performanceOptimizer' in window
-    };
-    
-    // 3. Elementos críticos do DOM
-    const criticalElements = {
-        'pdfModal': document.getElementById('pdfModal'),
-        'pdfPassword': document.getElementById('pdfPassword'),
-        'mediaUpload': document.getElementById('mediaUpload'),
-        'adminPanel': document.getElementById('adminPanel')
-    };
-    
-    return { scripts, systems, criticalElements };
-}
-
-/* ================== TESTES AUTOMÁTICOS ================== */
-async function testMediaUnifiedComplete() {
-    logToPanel('🧪 Iniciando teste completo do sistema unificado...', 'debug');
-    
-    const results = {
-        passed: 0,
-        failed: 0,
-        total: 0,
-        tests: []
-    };
-    
-    // Teste 1: MediaSystem disponível
-    if (!window.MediaSystem) {
-        results.tests.push({ name: 'MediaSystem disponível', passed: false, message: 'MediaSystem não encontrado' });
-        logToPanel('❌ MediaSystem não disponível', 'error');
-        results.failed++;
-    } else {
-        results.tests.push({ name: 'MediaSystem disponível', passed: true });
-        logToPanel('✅ MediaSystem disponível', 'success');
-        results.passed++;
-    }
-    results.total++;
-    
-    // Teste 2: Funções críticas do MediaSystem
-    if (window.MediaSystem) {
-        const criticalFunctions = [
-            'processAndSavePdfs',
-            'clearAllPdfs',
-            'loadExistingPdfsForEdit',
-            'getPdfsToSave',
-            'getMediaUrlsForProperty'
-        ];
-        
-        criticalFunctions.forEach(func => {
-            const exists = typeof MediaSystem[func] === 'function';
-            results.tests.push({ 
-                name: `MediaSystem.${func}`, 
-                passed: exists 
-            });
-            
-            logToPanel(`${exists ? '✅' : '❌'} ${func}`, exists ? 'success' : 'error');
-            if (exists) results.passed++;
-            else results.failed++;
-            results.total++;
-        });
-    }
-    
-    // Teste 3: Modal de PDF
-    logToPanel('🔍 Testando modal de PDF...', 'debug');
-    const pdfModal = document.getElementById('pdfModal');
-    const pdfPassword = document.getElementById('pdfPassword');
-    
-    const modalExists = !!pdfModal;
-    const passwordExists = !!pdfPassword;
-    
-    results.tests.push({ 
-        name: 'PDF Modal existe', 
-        passed: modalExists,
-        message: modalExists ? 'Modal encontrado' : 'Modal não encontrado'
-    });
-    
-    results.tests.push({ 
-        name: 'PDF Password field existe', 
-        passed: passwordExists,
-        message: passwordExists ? 'Campo encontrado' : 'Campo não encontrado'
-    });
-    
-    logToPanel(`PDF Modal: ${modalExists ? '✅ Existe' : '❌ Não existe'}`, modalExists ? 'success' : 'error');
-    logToPanel(`Password Field: ${passwordExists ? '✅ Existe' : '❌ Não existe'}`, passwordExists ? 'success' : 'error');
-    
-    if (pdfPassword) {
-        logToPanel(`Estilo display: ${pdfPassword.style.display}`, 'info');
-        logToPanel(`Estilo visibility: ${pdfPassword.style.visibility}`, 'info');
-    }
-    
-    if (modalExists) results.passed++;
-    else results.failed++;
-    results.total++;
-    
-    if (passwordExists) results.passed++;
-    else results.failed++;
-    results.total++;
-    
-    // Teste 4: Funções globais do admin
-    logToPanel('🔍 Verificando funções globais do admin...', 'debug');
-    
-    const adminFunctions = [
+    // Verificação adicional de funções críticas
+    const criticalFunctions = [
         'processAndSavePdfs',
         'clearAllPdfs',
+        'loadExistingPdfsForEdit',
+        'getPdfsToSave',
         'getMediaUrlsForProperty'
     ];
     
-    adminFunctions.forEach(func => {
-        const exists = typeof window[func] === 'function';
-        results.tests.push({ 
-            name: `window.${func}`, 
-            passed: exists,
-            message: exists ? 'Função disponível' : 'Função não disponível'
-        });
-        
-        logToPanel(`window.${func}: ${exists ? '✅' : '❌'}`, exists ? 'success' : 'error');
-        if (exists) results.passed++;
-        else results.failed++;
-        results.total++;
+    criticalFunctions.forEach(func => {
+        checks[`Função ${func}`] = typeof window[func] === 'function';
     });
     
-    // Teste 5: Sistema de propriedades
-    if (window.properties && Array.isArray(window.properties)) {
-        results.tests.push({ 
-            name: 'Propriedades carregadas', 
-            passed: true,
-            message: `${window.properties.length} propriedades carregadas`
-        });
-        logToPanel(`✅ ${window.properties.length} propriedades carregadas`, 'success');
-        results.passed++;
+    console.table(checks);
+    
+    const passedChecks = Object.values(checks).filter(v => v === true).length;
+    const totalChecks = Object.keys(checks).length;
+    const allValid = Object.values(checks).every(v => v === true);
+    
+    console.log('---');
+    console.log(`📊 Resultado: ${passedChecks}/${totalChecks} verificações passaram`);
+    
+    if (allValid) {
+        console.log('✅ TODAS AS VERIFICAÇÕES PASSARAM - PRONTO PARA MIGRAÇÃO FINAL');
+        console.log('✅ SISTEMA VALIDADO! Pronto para remover módulos antigos.');
+        console.log('✅ Você pode remover com segurança:');
+        console.log('   - admin-antigo.js');
+        console.log('   - gallery-antigo.js');
+        console.log('   - Módulos duplicados');
+        console.log('   - Scripts de fallback não mais necessários');
+        
+        alert('✅ SISTEMA VALIDADO COM SUCESSO!\n\nPronto para remover módulos antigos.\n\nPode remover:\n- Módulos admin/gallery antigos\n- Scripts duplicados\n- Código de fallback desnecessário');
+        
+        return {
+            status: 'SUCCESS',
+            message: 'Sistema validado para migração',
+            checks: checks,
+            passed: passedChecks,
+            total: totalChecks,
+            percentage: 100
+        };
     } else {
-        results.tests.push({ 
-            name: 'Propriedades carregadas', 
-            passed: false,
-            message: 'Propriedades não carregadas'
+        console.error('❌ VERIFICAÇÕES FALHARAM - NÃO PROSSEGUIR COM REMOÇÃO');
+        console.error('Verifique os seguintes itens:');
+        
+        Object.entries(checks).forEach(([check, passed]) => {
+            if (!passed) {
+                console.error(`   ❌ ${check}`);
+            }
         });
-        logToPanel('❌ Propriedades não carregadas', 'error');
-        results.failed++;
-    }
-    results.total++;
-    
-    // Teste 6: Supabase
-    if (window.supabase) {
-        results.tests.push({ 
-            name: 'Supabase Client', 
-            passed: true,
-            message: 'Cliente Supabase disponível'
-        });
-        logToPanel('✅ Supabase Client disponível', 'success');
-        results.passed++;
-    } else {
-        results.tests.push({ 
-            name: 'Supabase Client', 
-            passed: false,
-            message: 'Cliente Supabase não disponível'
-        });
-        logToPanel('⚠️  Supabase Client não disponível (pode ser normal em fallback)', 'warning');
-        // Não conta como falha porque pode ser fallback
-    }
-    results.total++;
-    
-    currentTestResults = results;
-    return results;
-}
-
-/* ================== DIAGNÓSTICO MOBILE PDF ================== */
-window.diagnosePdfModalMobile = function() {
-    const results = {
-        deviceInfo: {},
-        modalAnalysis: {},
-        cssAnalysis: {},
-        layoutIssues: [],
-        recommendations: []
-    };
-    
-    console.group('🔍 DIAGNÓSTICO DO MODAL PDF EM MOBILE');
-    
-    // 1. Detectar dispositivo
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const isTablet = /iPad|Tablet|Kindle|Samsung Tablet/i.test(navigator.userAgent);
-    
-    results.deviceInfo = {
-        type: isMobile ? (isTablet ? 'TABLET' : 'MOBILE') : 'DESKTOP',
-        userAgent: navigator.userAgent.substring(0, 80) + '...',
-        viewport: { 
-            width: window.innerWidth, 
-            height: window.innerHeight,
-            pixelRatio: window.devicePixelRatio
-        },
-        touchSupport: 'ontouchstart' in window
-    };
-    
-    console.log('📱 Dispositivo:', results.deviceInfo.type);
-    console.log('📏 Viewport:', window.innerWidth, 'x', window.innerHeight);
-    console.log('👆 Touch:', results.deviceInfo.touchSupport);
-    
-    // 2. Verificar existência do modal
-    const pdfModal = document.getElementById('pdfModal');
-    results.modalAnalysis.exists = !!pdfModal;
-    
-    console.log('✅ Modal PDF existe?', results.modalAnalysis.exists);
-    
-    if (pdfModal) {
-        // 3. Analisar estilo atual
-        const computedStyle = window.getComputedStyle(pdfModal);
-        results.modalAnalysis.style = {
-            display: computedStyle.display,
-            position: computedStyle.position,
-            width: computedStyle.width,
-            height: computedStyle.height,
-            maxWidth: computedStyle.maxWidth,
-            maxHeight: computedStyle.maxHeight,
-            padding: computedStyle.padding,
-            margin: computedStyle.margin,
-            zIndex: computedStyle.zIndex,
-            overflow: computedStyle.overflow
+        
+        console.error('---');
+        console.error('🔧 Ações recomendadas:');
+        console.error('1. Verificar se todos os scripts foram carregados');
+        console.error('2. Confirmar que não há erros no console');
+        console.error('3. Testar funcionalidades manualmente');
+        console.error('4. Executar diagnóstico completo: window.runCompleteDiagnosis()');
+        
+        alert('⚠️ VERIFICAÇÕES FALHARAM!\n\nNão remover módulos antigos ainda.\n\nExecute diagnóstico completo ou verifique:\n1. Console por erros\n2. Scripts carregados\n3. Funcionalidades principais');
+        
+        return {
+            status: 'FAILED',
+            message: 'Não prosseguir com migração',
+            checks: checks,
+            passed: passedChecks,
+            total: totalChecks,
+            percentage: Math.round((passedChecks / totalChecks) * 100),
+            failedChecks: Object.entries(checks).filter(([_, passed]) => !passed).map(([check]) => check)
         };
-        
-        console.log('🎨 Estilo do modal:');
-        Object.entries(results.modalAnalysis.style).forEach(([key, value]) => {
-            console.log(`- ${key}:`, value);
-        });
-        
-        // 4. Analisar conteúdo interno
-        const modalContent = pdfModal.querySelector('.pdf-modal-content');
-        results.modalAnalysis.content = {
-            hasContentDiv: !!modalContent,
-            contentStyle: {}
-        };
-        
-        if (modalContent) {
-            const contentStyle = window.getComputedStyle(modalContent);
-            results.modalAnalysis.content.contentStyle = {
-                width: contentStyle.width,
-                maxWidth: contentStyle.maxWidth,
-                padding: contentStyle.padding,
-                margin: contentStyle.margin,
-                backgroundColor: contentStyle.backgroundColor,
-                borderRadius: contentStyle.borderRadius
-            };
-            
-            console.log('📦 Estilo do conteúdo:');
-            Object.entries(results.modalAnalysis.content.contentStyle).forEach(([key, value]) => {
-                console.log(`- ${key}:`, value);
-            });
-        }
-        
-        // 5. Verificar elementos específicos do problema
-        const passwordInput = document.getElementById('pdfPassword');
-        results.modalAnalysis.passwordField = {
-            exists: !!passwordInput,
-            style: {}
-        };
-        
-        console.log('🔐 Campo de senha:', passwordInput ? 'EXISTE' : 'NÃO EXISTE');
-        if (passwordInput) {
-            const passwordStyle = window.getComputedStyle(passwordInput);
-            results.modalAnalysis.passwordField.style = {
-                display: passwordStyle.display,
-                width: passwordStyle.width,
-                visibility: passwordStyle.visibility,
-                opacity: passwordStyle.opacity,
-                position: passwordStyle.position
-            };
-            
-            Object.entries(results.modalAnalysis.passwordField.style).forEach(([key, value]) => {
-                console.log(`- ${key}:`, value);
-            });
-        }
-        
-        // 6. Verificar visibilidade
-        results.modalAnalysis.visible = pdfModal.style.display === 'flex' || 
-                                      pdfModal.style.display === 'block' ||
-                                      getComputedStyle(pdfModal).display !== 'none';
-        
-        console.log('👁️ Modal visível?', results.modalAnalysis.visible);
-        
-        // 7. Verificar se há problemas de layout
-        if (results.modalAnalysis.visible) {
-            const rect = pdfModal.getBoundingClientRect();
-            results.modalAnalysis.boundingBox = {
-                top: rect.top,
-                right: rect.right,
-                bottom: rect.bottom,
-                left: rect.left,
-                width: rect.width,
-                height: rect.height
-            };
-            
-            console.log('📐 Bounding Box:', rect);
-            
-            // Verificar problemas comuns em mobile
-            if (rect.width > window.innerWidth) {
-                results.layoutIssues.push('Modal mais largo que a viewport');
-            }
-            if (rect.height > window.innerHeight) {
-                results.layoutIssues.push('Modal mais alto que a viewport');
-            }
-            if (rect.left < 0 || rect.right > window.innerWidth) {
-                results.layoutIssues.push('Modal fora da viewport horizontalmente');
-            }
-            if (rect.top < 0 || rect.bottom > window.innerHeight) {
-                results.layoutIssues.push('Modal fora da viewport verticalmente');
-            }
-        }
-    }
-    
-    // 8. Verificar CSS carregado
-    const allStyles = Array.from(document.styleSheets);
-    results.cssAnalysis = {
-        totalSheets: allStyles.length,
-        sheets: allStyles.map(ss => ({
-            href: ss.href || 'inline',
-            disabled: ss.disabled,
-            rulesCount: 0 // Não acessível devido a restrições de CORS
-        })).slice(0, 10),
-        galleryCss: !!allStyles.find(ss => ss.href && ss.href.includes('gallery.css')),
-        adminCss: !!allStyles.find(ss => ss.href && ss.href.includes('admin.css')),
-        pdfCss: !!allStyles.find(ss => ss.href && ss.href.includes('pdf') && ss.href.includes('.css'))
-    };
-    
-    console.log('🎨 CSS Carregado:');
-    console.log('- Total sheets:', results.cssAnalysis.totalSheets);
-    console.log('- gallery.css:', results.cssAnalysis.galleryCss);
-    console.log('- admin.css:', results.cssAnalysis.adminCss);
-    console.log('- pdf*.css:', results.cssAnalysis.pdfCss);
-    
-    // 9. Gerar recomendações
-    if (isMobile || isTablet) {
-        if (!results.modalAnalysis.exists) {
-            results.recommendations.push('Criar modal PDF específico para mobile');
-        } else {
-            // Verificar se o modal é mobile-friendly
-            const modalWidth = parseInt(results.modalAnalysis.style.width) || 0;
-            const viewportWidth = window.innerWidth;
-            
-            if (modalWidth > viewportWidth * 0.95) {
-                results.recommendations.push('Reduzir largura do modal para 95% da viewport');
-            }
-            
-            if (!results.modalAnalysis.style.maxWidth || results.modalAnalysis.style.maxWidth === 'none') {
-                results.recommendations.push('Definir max-width no modal (ex: 95vw)');
-            }
-            
-            if (results.modalAnalysis.passwordField.exists && 
-                results.modalAnalysis.passwordField.style.width === '100%') {
-                results.recommendations.push('Reduzir largura do campo de senha para 90% em mobile');
-            }
-            
-            if (!results.modalAnalysis.content.hasContentDiv) {
-                results.recommendations.push('Adicionar div .pdf-modal-content para melhor controle de layout');
-            }
-        }
-        
-        results.recommendations.push('Adicionar @media queries específicas para mobile');
-        results.recommendations.push('Considerar modal full-screen em dispositivos muito pequenos');
     }
     
     console.groupEnd();
-    
-    return results;
 };
 
-/* ================== RELATÓRIOS ================== */
-function updateOverview(data) {
-    const overviewContent = document.getElementById('overview-content');
-    if (!overviewContent) return;
-    
-    const { scripts, systems, criticalElements } = data;
-    
-    // Agrupa scripts por tipo
-    const modulesByType = {};
-    scripts.forEach(script => {
-        const classification = classifyModule(script.fileName);
-        modulesByType[classification.type] = modulesByType[classification.type] || [];
-        modulesByType[classification.type].push(script);
-    });
-    
-    let html = `
-        <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 10px;">📊 RESUMO DO SISTEMA</h3>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-                <div style="background: #111; padding: 15px; border-radius: 6px;">
-                    <div style="color: #888; font-size: 11px;">SCRIPTS</div>
-                    <div style="font-size: 24px; color: #00ff9c;">${scripts.length}</div>
-                </div>
-                <div style="background: #111; padding: 15px; border-radius: 6px;">
-                    <div style="color: #888; font-size: 11px;">SISTEMAS ATIVOS</div>
-                    <div style="font-size: 24px; color: #00ff9c;">
-                        ${Object.values(systems).filter(Boolean).length}/${Object.keys(systems).length}
-                    </div>
-                </div>
-                <div style="background: #111; padding: 15px; border-radius: 6px;">
-                    <div style="color: #888; font-size: 11px;">HEALTH SCORE</div>
-                    <div style="font-size: 24px; color: #00ff9c;" id="health-score">--</div>
-                </div>
-            </div>
-        </div>
-        
-        <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 10px;">🔧 SISTEMAS PRINCIPAIS</h3>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-    `;
-    
-    Object.entries(systems).forEach(([system, active]) => {
-        html += `
-            <div style="background: #111; padding: 10px; border-radius: 4px; border-left: 3px solid ${active ? '#00ff9c' : '#ff5555'};">
-                <div style="display: flex; justify-content: space-between;">
-                    <span>${system}</span>
-                    <span style="color: ${active ? '#00ff9c' : '#ff5555'}">
-                        ${active ? '✅ ATIVO' : '❌ AUSENTE'}
-                    </span>
-                </div>
-            </div>
-        `;
-    });
-    
-    html += `
-            </div>
-        </div>
-        
-        <div>
-            <h3 style="color: #00ff9c; margin-bottom: 10px;">🎯 ELEMENTOS CRÍTICOS</h3>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-    `;
-    
-    Object.entries(criticalElements).forEach(([element, domElement]) => {
-        const exists = !!domElement;
-        html += `
-            <div style="background: #111; padding: 10px; border-radius: 4px; border-left: 3px solid ${exists ? '#00ff9c' : '#ff5555'};">
-                <div style="display: flex; justify-content: space-between;">
-                    <span>${element}</span>
-                    <span style="color: ${exists ? '#00ff9c' : '#ff5555'}">
-                        ${exists ? '✅ PRESENTE' : '❌ AUSENTE'}
-                    </span>
-                </div>
-                ${exists ? `<div style="font-size: 10px; color: #888; margin-top: 5px;">${domElement.tagName}</div>` : ''}
-            </div>
-        `;
-    });
-    
-    html += `
-            </div>
-        </div>
-    `;
-    
-    overviewContent.innerHTML = html;
-}
-
-function updateTestsTab(testResults) {
-    const testsContent = document.getElementById('tests-content');
-    if (!testsContent) return;
-    
-    if (!testResults) {
-        testsContent.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #888;">
-                <div style="font-size: 48px; margin-bottom: 20px;">🧪</div>
-                <div>Execute os testes para ver os resultados</div>
-                <button id="run-tests-btn" style="
-                    margin-top: 20px; background: #00ff9c; color: #000;
-                    border: none; padding: 10px 20px; border-radius: 4px;
-                    cursor: pointer; font-weight: bold;">
-                    EXECUTAR TESTES
-                </button>
-            </div>
-        `;
-        
-        document.getElementById('run-tests-btn')?.addEventListener('click', async () => {
-            await runCompleteDiagnosis();
-        });
-        
-        return;
-    }
-    
-    const passed = testResults.passed;
-    const failed = testResults.failed;
-    const total = testResults.total;
-    const percentage = total > 0 ? Math.round((passed / total) * 100) : 0;
-    
-    let html = `
-        <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 15px;">🧪 RESULTADO DOS TESTES</h3>
-            
-            <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <div>
-                        <div style="font-size: 11px; color: #888;">STATUS GERAL</div>
-                        <div style="font-size: 24px; color: ${percentage >= 80 ? '#00ff9c' : percentage >= 50 ? '#ffaa00' : '#ff5555'}">
-                            ${percentage}%
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 20px;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #888;">PASSARAM</div>
-                            <div style="font-size: 24px; color: #00ff9c;">${passed}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #888;">FALHARAM</div>
-                            <div style="font-size: 24px; color: #ff5555;">${failed}</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="height: 10px; background: #333; border-radius: 5px; overflow: hidden;">
-                    <div style="height: 100%; width: ${percentage}%; background: ${percentage >= 80 ? '#00ff9c' : percentage >= 50 ? '#ffaa00' : '#ff5555'};"></div>
-                </div>
-            </div>
-            
-            <div>
-                <h4 style="color: #00ff9c; margin-bottom: 10px;">📋 DETALHES DOS TESTES</h4>
-                <div style="max-height: 300px; overflow-y: auto;">
-    `;
-    
-    testResults.tests.forEach((test, index) => {
-        html += `
-            <div style="
-                background: ${test.passed ? '#001a00' : '#1a0000'};
-                padding: 12px; margin-bottom: 8px; border-radius: 4px;
-                border-left: 3px solid ${test.passed ? '#00ff9c' : '#ff5555'};
-                display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-weight: bold; color: ${test.passed ? '#00ff9c' : '#ff5555'};">
-                        ${test.passed ? '✅' : '❌'} ${test.name}
-                    </div>
-                    ${test.message ? `<div style="font-size: 11px; color: #888; margin-top: 4px;">${test.message}</div>` : ''}
-                </div>
-                <span style="font-size: 10px; color: #888;">#${index + 1}</span>
-            </div>
-        `;
-    });
-    
-    html += `
-                </div>
-            </div>
-        </div>
-    `;
-    
-    testsContent.innerHTML = html;
-}
-
-function updatePdfMobileTab(results) {
-    const pdfMobileContent = document.getElementById('pdf-mobile-content');
-    if (!pdfMobileContent) return;
-    
-    let html = `
-        <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 15px;">📱 DIAGNÓSTICO MOBILE PDF</h3>
-            
-            <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                <h4 style="color: #00ff9c; margin-bottom: 10px;">📱 INFORMAÇÕES DO DISPOSITIVO</h4>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                    <div>
-                        <div style="color: #888; font-size: 11px;">TIPO</div>
-                        <div style="font-size: 18px; color: ${results.deviceInfo.type === 'DESKTOP' ? '#00ff9c' : '#0088cc'}">
-                            ${results.deviceInfo.type === 'DESKTOP' ? '💻' : '📱'} ${results.deviceInfo.type}
-                        </div>
-                    </div>
-                    <div>
-                        <div style="color: #888; font-size: 11px;">VIEWPORT</div>
-                        <div style="font-size: 18px; color: #00ff9c;">
-                            ${results.deviceInfo.viewport.width} × ${results.deviceInfo.viewport.height}
-                        </div>
-                    </div>
-                    <div>
-                        <div style="color: #888; font-size: 11px;">TOUCH</div>
-                        <div style="font-size: 18px; color: ${results.deviceInfo.touchSupport ? '#00ff9c' : '#ff5555'}">
-                            ${results.deviceInfo.touchSupport ? '✅ SUPORTADO' : '❌ NÃO SUPORTADO'}
-                        </div>
-                    </div>
-                    <div>
-                        <div style="color: #888; font-size: 11px;">PIXEL RATIO</div>
-                        <div style="font-size: 18px; color: #00ff9c;">
-                            ${results.deviceInfo.viewport.pixelRatio}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                <h4 style="color: #00ff9c; margin-bottom: 10px;">🎯 ANÁLISE DO MODAL PDF</h4>
-    `;
-    
-    // Seção do modal
-    if (results.modalAnalysis.exists) {
-        html += `
-            <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span>Status do Modal</span>
-                    <span style="color: #00ff9c; background: #003300; padding: 4px 8px; border-radius: 3px;">
-                        ✅ PRESENTE
-                    </span>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <div style="color: #888; font-size: 11px; margin-bottom: 5px;">VISIBILIDADE</div>
-                    <div style="color: ${results.modalAnalysis.visible ? '#00ff9c' : '#ffaa00'};">
-                        ${results.modalAnalysis.visible ? '👁️ VISÍVEL' : '👁️‍🗨️ OCULTO'}
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <div style="color: #888; font-size: 11px; margin-bottom: 5px;">CAMPO DE SENHA</div>
-                    <div style="color: ${results.modalAnalysis.passwordField.exists ? '#00ff9c' : '#ff5555'};">
-                        ${results.modalAnalysis.passwordField.exists ? '✅ PRESENTE' : '❌ AUSENTE'}
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <h5 style="color: #888; margin-bottom: 5px;">📐 ESTILO DO MODAL</h5>
-                    <div style="background: #0a0a0a; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px;">
-        `;
-        
-        Object.entries(results.modalAnalysis.style || {}).forEach(([key, value]) => {
-            html += `<div style="margin-bottom: 2px;">${key}: <span style="color: #00ff9c;">${value}</span></div>`;
-        });
-        
-        html += `
-                    </div>
-                </div>
-        `;
-        
-        // Bounding box se disponível
-        if (results.modalAnalysis.boundingBox) {
-            html += `
-                <div style="margin-bottom: 15px;">
-                    <h5 style="color: #888; margin-bottom: 5px;">📏 BOUNDING BOX</h5>
-                    <div style="background: #0a0a0a; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px;">
-                        <div style="margin-bottom: 2px;">width: <span style="color: #00ff9c;">${results.modalAnalysis.boundingBox.width}px</span></div>
-                        <div style="margin-bottom: 2px;">height: <span style="color: #00ff9c;">${results.modalAnalysis.boundingBox.height}px</span></div>
-                        <div style="margin-bottom: 2px;">top: <span style="color: #00ff9c;">${results.modalAnalysis.boundingBox.top}px</span></div>
-                        <div style="margin-bottom: 2px;">left: <span style="color: #00ff9c;">${results.modalAnalysis.boundingBox.left}px</span></div>
-                    </div>
-                </div>
-            `;
-        }
-        
-    } else {
-        html += `
-            <div style="text-align: center; padding: 30px; color: #ff5555;">
-                <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
-                <div style="font-size: 16px;">MODAL PDF NÃO ENCONTRADO</div>
-                <div style="font-size: 12px; color: #888; margin-top: 10px;">
-                    O elemento #pdfModal não existe no DOM
-                </div>
-            </div>
-        `;
-    }
-    
-    html += `
-            </div>
-    `;
-    
-    // Seção de problemas e recomendações
-    if (results.layoutIssues.length > 0 || results.recommendations.length > 0) {
-        html += `
-            <div style="background: ${results.layoutIssues.length > 0 ? '#1a0000' : '#001a00'}; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        `;
-        
-        if (results.layoutIssues.length > 0) {
-            html += `
-                <h4 style="color: #ff5555; margin-bottom: 10px;">⚠️ PROBLEMAS DETECTADOS</h4>
-                <div style="margin-left: 15px;">
-            `;
-            
-            results.layoutIssues.forEach(issue => {
-                html += `
-                    <div style="margin-bottom: 8px; padding: 8px; background: rgba(255, 0, 0, 0.1); border-radius: 4px; border-left: 3px solid #ff5555;">
-                        <span style="color: #ff5555;">•</span> ${issue}
-                    </div>
-                `;
-            });
-            
-            html += `</div>`;
-        }
-        
-        if (results.recommendations.length > 0) {
-            html += `
-                <h4 style="color: #00ff9c; margin-top: ${results.layoutIssues.length > 0 ? '20px' : '0'}; margin-bottom: 10px;">💡 RECOMENDAÇÕES</h4>
-                <div style="margin-left: 15px;">
-            `;
-            
-            results.recommendations.forEach(rec => {
-                html += `
-                    <div style="margin-bottom: 8px; padding: 8px; background: rgba(0, 255, 156, 0.1); border-radius: 4px; border-left: 3px solid #00ff9c;">
-                        <span style="color: #00ff9c;">•</span> ${rec}
-                    </div>
-                `;
-            });
-            
-            html += `</div>`;
-        }
-        
-        html += `</div>`;
-    }
-    
-    // Botão de ação
-    html += `
-        <div style="text-align: center;">
-            <button id="fix-mobile-pdf" style="
-                background: #0088cc; color: white; border: none;
-                padding: 12px 24px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; font-size: 14px;">
-                🛠️ APLICAR CORREÇÕES SUGERIDAS
-            </button>
-            <div style="font-size: 11px; color: #888; margin-top: 10px;">
-                Cria estilos otimizados para mobile
-            </div>
-        </div>
-    `;
-    
-    pdfMobileContent.innerHTML = html;
-    
-    // Configurar botão de correções
-    document.getElementById('fix-mobile-pdf')?.addEventListener('click', () => {
-        applyMobilePdfFixes(results);
-    });
-}
-
-function applyMobilePdfFixes(results) {
-    logToPanel('🛠️ Aplicando correções para mobile PDF...', 'mobile');
-    
-    // Criar estilo otimizado para mobile
-    const styleId = 'diagnostics-mobile-pdf-fixes';
-    let styleTag = document.getElementById(styleId);
-    
-    if (!styleTag) {
-        styleTag = document.createElement('style');
-        styleTag.id = styleId;
-        document.head.appendChild(styleTag);
-    }
-    
-    const css = `
-        /* Correções mobile PDF - Gerado por diagnostics.js */
-        
-        @media (max-width: 768px) {
-            #pdfModal {
-                max-width: 95vw !important;
-                max-height: 90vh !important;
-                padding: 10px !important;
-            }
-            
-            .pdf-modal-content {
-                max-width: 100% !important;
-                padding: 15px !important;
-                margin: 0 !important;
-            }
-            
-            #pdfPassword {
-                width: 90% !important;
-                max-width: 300px !important;
-                font-size: 16px !important; /* Evita zoom em iOS */
-            }
-            
-            /* Tornar mais touch-friendly */
-            .pdf-modal-buttons button {
-                padding: 12px 20px !important;
-                min-height: 44px !important; /* Tamanho mínimo para toque */
-                margin: 5px !important;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            #pdfModal {
-                border-radius: 0 !important;
-                max-height: 100vh !important;
-                max-width: 100vw !important;
-            }
-            
-            .pdf-modal-content {
-                padding: 10px !important;
-            }
-        }
-    `;
-    
-    styleTag.textContent = css;
-    
-    logToPanel('✅ Estilos mobile PDF aplicados', 'success');
-    logToPanel('💡 Recarregue a página para ver as mudanças', 'info');
-    
-    // Forçar recálculo
-    const pdfModal = document.getElementById('pdfModal');
-    if (pdfModal) {
-        pdfModal.style.display = 'none';
-        setTimeout(() => {
-            pdfModal.style.display = 'flex';
-            logToPanel('🔄 Modal recarregado com estilos mobile', 'mobile');
-        }, 100);
-    }
-}
-
-/* ================== FUNÇÕES PRINCIPAIS ================== */
-async function runCompleteDiagnosis() {
-    try {
-        logToPanel('🚀 Iniciando diagnóstico completo...', 'debug');
-        updateStatus('Diagnóstico em andamento...', 'info');
-        
-        // 1. Análise do sistema
-        logToPanel('🔍 Analisando sistema...', 'debug');
-        const systemData = analyzeSystem();
-        
-        // 2. Atualiza visualizações
-        updateOverview(systemData);
-        
-        // 3. Executa testes
-        logToPanel('🧪 Executando testes...', 'debug');
-        const testResults = await testMediaUnifiedComplete();
-        
-        // 4. Atualiza aba de testes
-        updateTestsTab(testResults);
-        
-        // 5. Calcula health score
-        const healthScore = calculateHealthScore(systemData, testResults);
-        const healthScoreElement = document.getElementById('health-score');
-        if (healthScoreElement) {
-            healthScoreElement.textContent = `${healthScore}%`;
-        }
-        
-        // 6. Atualiza status
-        logToPanel(`✅ Diagnóstico completo! Health Score: ${healthScore}%`, 'success');
-        updateStatus('Diagnóstico completo', 'success');
-        
-        return { systemData, testResults, healthScore };
-        
-    } catch (error) {
-        logToPanel(`❌ Erro no diagnóstico: ${error.message}`, 'error');
-        updateStatus('Erro no diagnóstico', 'error');
-        console.error(error);
-    }
-}
-
-function calculateHealthScore(systemData, testResults) {
-    let score = 100;
-    
-    // Penalidades por sistemas ausentes
-    Object.entries(systemData.systems).forEach(([system, active]) => {
-        if (!active) {
-            const criticalSystems = ['MediaSystem', 'properties', 'supabase'];
-            if (criticalSystems.includes(system)) score -= 10;
-            else score -= 5;
-        }
-    });
-    
-    // Penalidades por elementos ausentes
-    Object.entries(systemData.criticalElements).forEach(([element, domElement]) => {
-        if (!domElement) {
-            const criticalElements = ['pdfModal', 'pdfPassword'];
-            if (criticalElements.includes(element)) score -= 10;
-            else score -= 5;
-        }
-    });
-    
-    // Bonus por testes passados
-    if (testResults && testResults.total > 0) {
-        const percentage = (testResults.passed / testResults.total) * 100;
-        score = Math.min(100, score + (percentage / 10));
-    }
-    
-    return Math.max(0, Math.min(100, Math.round(score)));
-}
-
-function exportReport() {
-    const systemData = analyzeSystem();
+/* ================== GERADOR DE RELATÓRIO DE MIGRAÇÃO ================== */
+window.generateMigrationReport = function() {
     const report = {
         timestamp: new Date().toISOString(),
-        url: window.location.href,
-        system: {
-            scripts: systemData.scripts,
-            systems: systemData.systems,
-            criticalElements: Object.keys(systemData.criticalElements).reduce((acc, key) => {
-                acc[key] = !!systemData.criticalElements[key];
-                return acc;
-            }, {}),
-            healthScore: calculateHealthScore(systemData, currentTestResults)
-        },
+        pageUrl: window.location.href,
         userAgent: navigator.userAgent,
-        screen: {
-            width: window.screen.width,
-            height: window.screen.height,
-            innerWidth: window.innerWidth,
-            innerHeight: window.innerHeight
+        systemInfo: {
+            MediaSystem: typeof MediaSystem !== 'undefined',
+            PdfLogger: typeof PdfLogger !== 'undefined',
+            ValidationSystem: typeof ValidationSystem !== 'undefined',
+            supabase: typeof supabase !== 'undefined',
+            properties: typeof properties !== 'undefined'
         },
-        testResults: currentTestResults
+        domElements: {
+            pdfModal: !!document.getElementById('pdfModal'),
+            pdfPassword: !!document.getElementById('pdfPassword'),
+            mediaUpload: !!document.getElementById('mediaUpload'),
+            uploadPreview: !!document.getElementById('uploadPreview'),
+            adminPanel: !!document.getElementById('adminPanel')
+        },
+        functions: {
+            processAndSavePdfs: typeof window.processAndSavePdfs === 'function',
+            clearAllPdfs: typeof window.clearAllPdfs === 'function',
+            getMediaUrlsForProperty: typeof window.getMediaUrlsForProperty === 'function'
+        }
     };
     
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    // Executar verificação e incluir resultados
+    const verification = window.verifyMediaMigrationFinal();
+    report.verification = verification;
+    
+    // Gerar relatório JSON
+    const reportJson = JSON.stringify(report, null, 2);
+    
+    // Criar elemento para download
+    const blob = new Blob([reportJson], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `diagnostico-sistema-${Date.now()}.json`;
+    a.download = `migration-report-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     
-    logToPanel('📊 Relatório exportado como JSON', 'success');
-}
-
-function runPdfMobileDiagnosis() {
-    logToPanel('📱 Iniciando diagnóstico mobile PDF...', 'mobile');
-    updateStatus('Analisando layout mobile PDF...', 'mobile');
+    console.log('📄 Relatório de migração gerado e baixado');
     
-    try {
-        const results = window.diagnosePdfModalMobile();
-        
-        // Atualizar aba de diagnóstico mobile
-        updatePdfMobileTab(results);
-        
-        // Logar resultados
-        logToPanel(`📱 Dispositivo: ${results.deviceInfo.type}`, 'mobile');
-        logToPanel(`📏 Viewport: ${results.deviceInfo.viewport.width}×${results.deviceInfo.viewport.height}`, 'mobile');
-        logToPanel(`✅ Modal PDF: ${results.modalAnalysis.exists ? 'PRESENTE' : 'AUSENTE'}`, 
-                   results.modalAnalysis.exists ? 'success' : 'error');
-        
-        if (results.modalAnalysis.exists) {
-            logToPanel(`👁️ Modal visível: ${results.modalAnalysis.visible ? 'SIM' : 'NÃO'}`, 
-                       results.modalAnalysis.visible ? 'success' : 'warning');
-            logToPanel(`🔐 Campo senha: ${results.modalAnalysis.passwordField.exists ? 'PRESENTE' : 'AUSENTE'}`,
-                       results.modalAnalysis.passwordField.exists ? 'success' : 'warning');
-            
-            if (results.layoutIssues.length > 0) {
-                logToPanel('⚠️ Problemas de layout detectados:', 'warning');
-                results.layoutIssues.forEach(issue => {
-                    logToPanel(`   • ${issue}`, 'warning');
-                });
-            }
-            
-            if (results.recommendations.length > 0) {
-                logToPanel('💡 Recomendações:', 'info');
-                results.recommendations.forEach(rec => {
-                    logToPanel(`   • ${rec}`, 'info');
-                });
-            }
-        }
-        
-        logToPanel('✅ Diagnóstico mobile PDF concluído', 'success');
-        updateStatus('Diagnóstico mobile completo', 'success');
-        
-        // Mudar para aba mobile
-        const mobileTabBtn = document.querySelector('[data-tab="pdf-mobile"]');
-        if (mobileTabBtn) {
-            mobileTabBtn.click();
-        }
-        
-    } catch (error) {
-        logToPanel(`❌ Erro no diagnóstico mobile: ${error.message}`, 'error');
-        updateStatus('Erro no diagnóstico mobile', 'error');
-    }
-}
+    return report;
+};
 
-/* ================== PAINEL VISUAL ================== */
-function createDiagnosticsPanel() {
-    diagnosticsPanel = document.createElement('div');
-    diagnosticsPanel.id = 'diagnostics-panel-complete';
-    diagnosticsPanel.style.cssText = `
+/* ================== CHECKLIST DE MIGRAÇÃO SEGURA ================== */
+window.migrationSafetyChecklist = function() {
+    console.group('📋 CHECKLIST DE MIGRAÇÃO SEGURA');
+    console.log('Execute ESTES passos ANTES de remover qualquer código:');
+    console.log('');
+    console.log('1. ✅ BACKUP COMPLETO');
+    console.log('   - Backup do banco de dados');
+    console.log('   - Backup dos arquivos do projeto');
+    console.log('   - Backup dos uploads/media existentes');
+    console.log('');
+    console.log('2. ✅ TESTES EM AMBIENTE DE STAGING');
+    console.log('   - Testar upload de imagens');
+    console.log('   - Testar upload de PDFs');
+    console.log('   - Testar proteção por senha em PDFs');
+    console.log('   - Testar em diferentes dispositivos');
+    console.log('   - Testar em diferentes navegadores');
+    console.log('');
+    console.log('3. ✅ VALIDAÇÃO TÉCNICA');
+    console.log('   - Executar: window.verifyMediaMigrationFinal()');
+    console.log('   - Executar: window.runCompleteDiagnosis()');
+    console.log('   - Verificar console por erros');
+    console.log('   - Testar performance');
+    console.log('');
+    console.log('4. ✅ PLANO DE ROLLBACK');
+    console.log('   - Manter cópia dos arquivos antigos');
+    console.log('   - Documentar passos para reverter');
+    console.log('   - Definir critérios de falha');
+    console.log('');
+    console.log('5. ✅ COMUNICAÇÃO');
+    console.log('   - Informar equipe sobre manutenção');
+    console.log('   - Agendar janela de manutenção');
+    console.log('   - Preparar mensagem de "em manutenção"');
+    console.log('');
+    console.log('6. ✅ MONITORAMENTO PÓS-MIGRAÇÃO');
+    console.log('   - Monitorar logs por 24h');
+    console.log('   - Testar funcionalidades críticas');
+    console.log('   - Coletar feedback de usuários');
+    console.log('');
+    console.log('✅ Quando TODOS os itens estiverem marcados, prossiga.');
+    console.groupEnd();
+    
+    return {
+        checklist: [
+            'Backup completo realizado',
+            'Testes em staging realizados',
+            'Validação técnica concluída',
+            'Plano de rollback preparado',
+            'Comunicação realizada',
+            'Monitoramento configurado'
+        ],
+        instructions: 'Execute cada passo sequencialmente e marque quando concluído'
+    };
+};
+
+/* ================== INSTRUÇÕES PARA TERCEIROS ================== */
+window.showMigrationInstructions = function() {
+    const instructions = `
+    🚀 INSTRUÇÕES PARA MIGRAÇÃO DE MÍDIA - PARA TERCEIROS
+    
+    ========== ANTES DE INICIAR ==========
+    1. Execute no console: window.migrationSafetyChecklist()
+    2. Siga TODOS os passos do checklist
+    3. NÃO pule nenhuma etapa
+    
+    ========== VALIDAÇÃO OBRIGATÓRIA ==========
+    1. window.verifyMediaMigrationFinal() - DEVE retornar SUCCESS
+    2. window.runCompleteDiagnosis() - Health score deve ser > 90%
+    3. Teste manual: Upload de imagem e PDF
+    
+    ========== SE TUDO VALIDAR ==========
+    Você pode remover com segurança:
+    • Arquivos admin-*.js antigos (exceto admin.js atual)
+    • Arquivos gallery-*.js antigos
+    • Módulos duplicados (media-*.js antigos)
+    • Scripts de fallback não mais necessários
+    
+    ========== EM CASO DE ERROS ==========
+    1. NÃO remova nada
+    2. Execute: window.runPdfMobileDiagnosis()
+    3. Verifique console do navegador
+    4. Consulte logs de erro
+    
+    ========== CONTATO/SUPORTE ==========
+    • Console: Execute funções de diagnóstico
+    • Relatórios: window.generateMigrationReport()
+    • Verificação: window.verifyMediaMigrationFinal()
+    
+    ⚠️ NUNCA REMOVA MÓDULOS ANTIGOS SEM VALIDAÇÃO COMPLETA
+    `;
+    
+    console.log(instructions);
+    
+    // Criar popup visual
+    const popup = document.createElement('div');
+    popup.style.cssText = `
         position: fixed;
-        top: 10px;
-        right: 10px;
-        width: 850px;
-        max-height: 90vh;
-        overflow-y: auto;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 600px;
+        max-height: 80vh;
         background: #0b0b0b;
         color: #00ff9c;
-        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        border: 3px solid #00ff9c;
+        padding: 20px;
+        border-radius: 10px;
+        z-index: 1000000;
+        font-family: monospace;
         font-size: 12px;
-        padding: 15px;
-        border: 2px solid #00ff9c;
-        border-radius: 8px;
-        z-index: 999999;
-        box-shadow: 0 0 30px rgba(0, 255, 156, 0.4);
+        overflow-y: auto;
+        box-shadow: 0 0 50px rgba(0, 255, 156, 0.5);
+        white-space: pre-line;
+        line-height: 1.5;
     `;
     
-    // Cabeçalho com controles
-    diagnosticsPanel.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <div style="font-size: 16px; font-weight: bold; color: #00ff9c;">
-                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA
-            </div>
-            <div style="display: flex; gap: 8px;">
-                <button id="minimize-btn" style="
-                    background: #555; color: white; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px;">
-                    ▁
-                </button>
-                <button id="close-btn" style="
-                    background: #ff5555; color: white; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px;">
-                    ✕
-                </button>
-            </div>
-        </div>
-        <div style="color: #888; font-size: 11px; margin-bottom: 20px; display: flex; justify-content: space-between;">
-            <div>
-                Modo: ${DEBUG_MODE ? 'DEBUG' : 'NORMAL'} | 
-                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'}
-            </div>
-            <div id="device-indicator" style="background: #333; padding: 2px 8px; border-radius: 3px;">
-                📱 Detectando dispositivo...
-            </div>
-        </div>
-        <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-            <button id="run-all-tests" style="
-                background: #00ff9c; color: #000; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                🧪 TESTE COMPLETO
+    popup.innerHTML = `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+            <h2 style="margin: 0; color: #00ff9c;">🚀 INSTRUÇÕES DE MIGRAÇÃO</h2>
+            <button onclick="this.parentElement.parentElement.remove()" style="
+                background: #ff5555; color: white; border: none;
+                padding: 5px 10px; cursor: pointer; border-radius: 3px;">
+                FECHAR
             </button>
-            <button id="test-pdf-mobile" style="
+        </div>
+        <div style="color: #888; margin-bottom: 15px;">
+            Instruções para remover módulos antigos com segurança
+        </div>
+        <div style="margin-bottom: 20px;">
+            ${instructions.replace(/\n/g, '<br>')}
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button onclick="window.verifyMediaMigrationFinal()" style="
+                background: #00ff9c; color: black; border: none;
+                padding: 10px 20px; cursor: pointer; border-radius: 4px;
+                font-weight: bold;">
+                🔍 VALIDAR SISTEMA
+            </button>
+            <button onclick="window.generateMigrationReport()" style="
                 background: #0088cc; color: white; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                📱 TESTE MOBILE PDF
+                padding: 10px 20px; cursor: pointer; border-radius: 4px;
+                font-weight: bold;">
+                📊 GERAR RELATÓRIO
             </button>
-            <button id="export-btn" style="
-                background: #555; color: white; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                📊 EXPORTAR
+            <button onclick="window.migrationSafetyChecklist()" style="
+                background: #ffaa00; color: black; border: none;
+                padding: 10px 20px; cursor: pointer; border-radius: 4px;
+                font-weight: bold;">
+                📋 VER CHECKLIST
             </button>
-        </div>
-        <div id="tabs" style="display: flex; border-bottom: 1px solid #333; margin-bottom: 15px;">
-            <button data-tab="overview" class="tab-btn active" style="
-                background: #333; color: #00ff9c; border: none; border-bottom: 2px solid #00ff9c;
-                padding: 8px 16px; cursor: pointer;">
-                📈 VISÃO GERAL
-            </button>
-            <button data-tab="modules" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                ⚙️ MÓDULOS
-            </button>
-            <button data-tab="tests" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                🧪 TESTES
-            </button>
-            <button data-tab="pdf-mobile" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                📱 PDF MOBILE
-            </button>
-            <button data-tab="console" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                📝 CONSOLE
-            </button>
-        </div>
-        <div id="content-area" style="min-height: 400px; max-height: 60vh; overflow-y: auto;">
-            <div id="overview-content" class="tab-content" style="display: block;"></div>
-            <div id="modules-content" class="tab-content" style="display: none;"></div>
-            <div id="tests-content" class="tab-content" style="display: none;"></div>
-            <div id="pdf-mobile-content" class="tab-content" style="display: none;"></div>
-            <div id="console-content" class="tab-content" style="display: none;"></div>
-        </div>
-        <div id="status-bar" style="
-            margin-top: 15px; padding: 8px; background: #111; 
-            border-radius: 4px; font-size: 11px; color: #888;">
-            Status: Inicializando...
         </div>
     `;
     
-    document.body.appendChild(diagnosticsPanel);
+    document.body.appendChild(popup);
     
-    // Configurar eventos
-    setupPanelEvents();
-    
-    // Atualizar indicador de dispositivo
-    updateDeviceIndicator();
-}
+    return instructions;
+};
 
-function setupPanelEvents() {
-    // Botões de controle
-    const closeBtn = document.getElementById('close-btn');
-    const minimizeBtn = document.getElementById('minimize-btn');
+/* ================== ADICIONAR AO PAINEL DE DIAGNÓSTICO ================== */
+function addMigrationTabToDiagnostics() {
+    // Esta função adiciona uma aba de migração ao painel de diagnóstico existente
+    const tabsContainer = document.getElementById('tabs');
+    if (!tabsContainer) return;
     
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            diagnosticsPanel.style.display = 'none';
-        });
-    }
+    // Adicionar nova aba
+    const migrationTab = document.createElement('button');
+    migrationTab.className = 'tab-btn';
+    migrationTab.dataset.tab = 'migration';
+    migrationTab.innerHTML = '🚀 MIGRAÇÃO';
+    migrationTab.style.cssText = `
+        background: transparent;
+        color: #888;
+        border: none;
+        padding: 8px 16px;
+        cursor: pointer;
+    `;
     
-    if (minimizeBtn) {
-        minimizeBtn.addEventListener('click', () => {
-            const content = document.getElementById('content-area');
-            if (content) {
-                content.style.display = content.style.display === 'none' ? 'block' : 'none';
-            }
-        });
-    }
+    tabsContainer.appendChild(migrationTab);
     
-    // Tabs
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Remove active de todas
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.remove('active');
-                b.style.background = 'transparent';
-                b.style.color = '#888';
-                b.style.borderBottom = 'none';
-            });
+    // Adicionar conteúdo da aba
+    const contentArea = document.getElementById('content-area');
+    if (contentArea) {
+        const migrationContent = document.createElement('div');
+        migrationContent.id = 'migration-content';
+        migrationContent.className = 'tab-content';
+        migrationContent.style.display = 'none';
+        
+        migrationContent.innerHTML = `
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #ffaa00; margin-bottom: 10px;">🚀 VERIFICAÇÃO DE MIGRAÇÃO</h3>
+                <div style="background: #1a1a00; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="color: #ffaa00; margin-bottom: 15px;">
+                        ⚠️ Execute esta verificação ANTES de remover módulos antigos
+                    </p>
+                    <button id="run-migration-check" style="
+                        background: #ffaa00; color: black; border: none;
+                        padding: 12px 24px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; width: 100%; margin-bottom: 10px;">
+                        🔍 EXECUTAR VERIFICAÇÃO FINAL
+                    </button>
+                    <div style="font-size: 11px; color: #888;">
+                        Valida todos os sistemas antes da migração
+                    </div>
+                </div>
+            </div>
             
-            // Ativa atual
-            btn.classList.add('active');
-            btn.style.background = '#333';
-            btn.style.color = '#00ff9c';
-            btn.style.borderBottom = '2px solid #00ff9c';
-            
-            // Mostra conteúdo correto
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.style.display = 'none';
-            });
-            const targetContent = document.getElementById(`${btn.dataset.tab}-content`);
-            if (targetContent) {
-                targetContent.style.display = 'block';
-            }
-        });
-    });
-    
-    // Botão executar todos testes
-    const runAllTestsBtn = document.getElementById('run-all-tests');
-    if (runAllTestsBtn) {
-        runAllTestsBtn.addEventListener('click', async () => {
-            await runCompleteDiagnosis();
-        });
-    }
-    
-    // Botão teste mobile PDF
-    const testPdfMobileBtn = document.getElementById('test-pdf-mobile');
-    if (testPdfMobileBtn) {
-        testPdfMobileBtn.addEventListener('click', () => {
-            runPdfMobileDiagnosis();
-        });
-    }
-    
-    // Botão exportar
-    const exportBtn = document.getElementById('export-btn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', exportReport);
-    }
-}
-
-/* ================== INICIALIZAÇÃO ================== */
-if (DEBUG_MODE && DIAGNOSTICS_MODE) {
-    // Aguarda DOM estar pronto
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                createDiagnosticsPanel();
-                // Inicia análise automática após 2 segundos
-                setTimeout(() => runCompleteDiagnosis(), 2000);
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #ffaa00; margin-bottom: 10px;">📋 CHECKLIST DE SEGURANÇA</h4>
+                <button id="show-checklist" style="
+                    background: #333; color: #ffaa00; border: 1px solid #ffaa00;
+                    padding: 10px 20px; cursor: pointer; border-radius: 4px;
+                    width: 100%; margin-bottom: 15px;">
+                    📋 VER CHECKLIST COMPLETO
+                </button>
                 
-                // Se flag mobile test ativa, executa diagnóstico mobile
-                if (MOBILE_TEST) {
-                    setTimeout(() => runPdfMobileDiagnosis(), 3000);
-                }
-            }, 1000);
-        });
-    } else {
-        setTimeout(() => {
-            createDiagnosticsPanel();
-            setTimeout(() => runCompleteDiagnosis(), 2000);
+                <h4 style="color: #ffaa00; margin-bottom: 10px;">📊 RELATÓRIOS</h4>
+                <button id="generate-report" style="
+                    background: #333; color: #0088cc; border: 1px solid #0088cc;
+                    padding: 10px 20px; cursor: pointer; border-radius: 4px;
+                    width: 100%; margin-bottom: 15px;">
+                    📊 GERAR RELATÓRIO DE MIGRAÇÃO
+                </button>
+            </div>
             
-            if (MOBILE_TEST) {
-                setTimeout(() => runPdfMobileDiagnosis(), 3000);
-            }
-        }, 1000);
+            <div style="background: #001a00; padding: 15px; border-radius: 6px; border-left: 3px solid #00ff9c;">
+                <h4 style="color: #00ff9c; margin-bottom: 10px;">✅ MÓDULOS QUE PODEM SER REMOVIDOS</h4>
+                <ul style="color: #888; font-size: 11px; padding-left: 20px;">
+                    <li>admin-antigo.js / admin-backup.js</li>
+                    <li>gallery-antigo.js / gallery-legacy.js</li>
+                    <li>media-*.js (exceto media-core.js e media-ui.js)</li>
+                    <li>pdf-*.js (exceto pdf-core.js e pdf-ui.js)</li>
+                    <li>Scripts de fallback não utilizados</li>
+                </ul>
+                <p style="color: #ff5555; font-size: 11px; margin-top: 10px;">
+                    ⚠️ Apenas remova após validação completa!
+                </p>
+            </div>
+        `;
+        
+        contentArea.appendChild(migrationContent);
+        
+        // Configurar eventos
+        document.getElementById('run-migration-check')?.addEventListener('click', () => {
+            window.verifyMediaMigrationFinal();
+        });
+        
+        document.getElementById('show-checklist')?.addEventListener('click', () => {
+            window.migrationSafetyChecklist();
+        });
+        
+        document.getElementById('generate-report')?.addEventListener('click', () => {
+            window.generateMigrationReport();
+        });
     }
 }
 
-// Exporta funções globais para teste manual
-window.runCompleteDiagnosis = runCompleteDiagnosis;
-window.exportReport = exportReport;
-window.testMediaUnifiedComplete = testMediaUnifiedComplete;
-window.runPdfMobileDiagnosis = runPdfMobileDiagnosis;
-window.applyMobilePdfFixes = applyMobilePdfFixes;
+// Adicionar a aba de migração quando o painel for criado
+if (DEBUG_MODE && DIAGNOSTICS_MODE) {
+    // Aguardar criação do painel e então adicionar a aba
+    setTimeout(() => {
+        addMigrationTabToDiagnostics();
+    }, 2000);
+}
 
-console.log('🚀 Diagnóstico completo carregado. Use window.runCompleteDiagnosis() para executar.');
+// Adicionar ao final do arquivo, antes das exportações
+console.log('🚀 Módulo de verificação de migração carregado.');
+console.log('Comandos disponíveis:');
+console.log('• window.verifyMediaMigrationFinal() - Validação final');
+console.log('• window.generateMigrationReport() - Relatório completo');
+console.log('• window.migrationSafetyChecklist() - Checklist de segurança');
+console.log('• window.showMigrationInstructions() - Instruções detalhadas');
