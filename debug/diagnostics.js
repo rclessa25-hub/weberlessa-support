@@ -1,5 +1,5 @@
 // debug/diagnostics.js
-console.log('🔍 diagnostics.js – mapeamento arquivo ↔ comportamento');
+console.log('🔍 diagnostics.js – mapeamento completo do sistema');
 
 /* ================== FLAGS ================== */
 const params = new URLSearchParams(location.search);
@@ -18,7 +18,7 @@ function ui(msg) {
 if (ACTIVE) {
     panel = document.createElement('div');
     panel.style.cssText = `
-        position: fixed; top: 10px; right: 10px; width: 650px;
+        position: fixed; top: 10px; right: 10px; width: 700px;
         max-height: 92vh; overflow-y: auto;
         background: #0b0b0b; color: #00ff9c; border: 2px solid #00ff9c;
         font-family: 'Consolas', 'Monaco', monospace; font-size: 12px;
@@ -27,7 +27,9 @@ if (ACTIVE) {
     `;
     panel.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <div style="font-weight: bold; font-size: 14px; color: #00ff9c;">🔍 RUNTIME DIAGNOSTICS</div>
+            <div style="font-weight: bold; font-size: 14px; color: #00ff9c;">
+                🔍 DIAGNÓSTICO COMPLETO DO SISTEMA
+            </div>
             <button onclick="this.parentNode.parentNode.style.display='none'" 
                     style="background: #ff5555; color: white; border: none; 
                            padding: 2px 8px; cursor: pointer; border-radius: 3px;">
@@ -35,276 +37,368 @@ if (ACTIVE) {
             </button>
         </div>
         <div style="color: #888; font-size: 11px; margin-bottom: 15px;">
-            Mapeamento automático por comportamento real em runtime
+            Análise combinada: Scripts + Comportamento + Funções Globais
         </div>
         <hr style="border-color: #00ff9c; opacity: 0.3;">`;
     document.body.appendChild(panel);
 }
 
-/* ================== ARMAZENAMENTO POR ARQUIVO ================== */
-const fileMap = new Map();
-const scriptOrigins = new Map(); // Mapeia scripts carregados
+/* ================== COLETA DE DADOS COMPLETA ================== */
 
-/* ================== DETECTA SCRIPTS CARREGADOS ================== */
-// Captura todos os scripts já carregados
-Array.from(document.scripts).forEach(script => {
-    if (script.src) {
-        const fileName = script.src.split('/').pop();
-        scriptOrigins.set(fileName, script.src);
+// 1. CAPTURA TODOS OS SCRIPTS CARREGADOS
+const allScripts = Array.from(document.scripts)
+    .filter(script => script.src)
+    .map(script => ({
+        url: script.src,
+        fileName: script.src.split('/').pop(),
+        isModule: script.type === 'module',
+        isDefer: script.defer,
+        isAsync: script.async
+    }));
+
+// 2. CAPTURA FUNÇÕES GLOBAIS (do seu log: 194 funções globais analisadas)
+const globalFunctions = {};
+Object.keys(window).forEach(key => {
+    if (typeof window[key] === 'function') {
+        globalFunctions[key] = 'function';
+    } else if (typeof window[key] === 'object' && window[key] !== null) {
+        globalFunctions[key] = 'object';
     }
 });
 
-/* ================== FUNÇÃO SIMPLIFICADA DE DETECÇÃO ================== */
-function recordActivity(type, action, details = '') {
-    try {
-        // Tenta obter o caller da forma mais simples
-        const error = new Error();
-        const stack = error.stack || '';
-        const lines = stack.split('\n');
-        
-        let fileName = 'unknown';
-        for (let i = 2; i < Math.min(lines.length, 6); i++) {
-            const line = lines[i];
-            // Procura por .js na stack
-            const jsMatch = line.match(/\/([^\/:]+\.js)(?::|$)/);
-            if (jsMatch && !jsMatch[1].includes('diagnostics')) {
-                fileName = jsMatch[1];
-                break;
-            }
-        }
-        
-        if (!fileMap.has(fileName)) {
-            fileMap.set(fileName, {
-                CORE: [],
-                PERFORMANCE: [],
-                SUPPORT: [],
-                UTIL: [],
-                EXTERNAL: []
-            });
-        }
-        
-        const fileData = fileMap.get(fileName);
-        const entry = `${action}${details ? `: ${details}` : ''}`;
-        fileData[type].push(entry);
-        
-    } catch (e) {
-        // Silencioso em caso de erro
+// 3. SISTEMAS DETECTADOS (do log F12)
+const detectedSystems = {
+    supabase: !!window.supabase,
+    properties: !!window.properties,
+    admin: !!window.toggleAdminPanel,
+    media: !!window.MediaSystem || !!window.handleNewMediaFiles,
+    pdf: !!window.PdfLogger || !!window.pdfValidateUrl,
+    gallery: !!window.gallery,
+    validation: !!window.ValidationSystem,
+    performance: !!window.performanceOptimizer,
+    emergency: !!window.EmergencySystem || !!window.emergencyRecovery
+};
+
+// 4. CLASSIFICAÇÃO POR NOME E COMPORTAMENTO
+function classifyModule(fileName, globalKeys = []) {
+    const name = fileName.toLowerCase();
+    
+    // CORE BUSINESS LOGIC
+    if (name.includes('admin.js') || 
+        name.includes('properties.js') || 
+        name.includes('gallery.js') ||
+        name.includes('media-core.js') ||
+        name.includes('pdf-core.js') ||
+        fileName === 'admin.js' ||
+        fileName === 'properties.js' ||
+        fileName === 'gallery.js') {
+        return 'CORE';
     }
+    
+    // PERFORMANCE & OPTIMIZATION
+    if (name.includes('optimizer') || 
+        name.includes('performance') ||
+        name.includes('cache') ||
+        fileName === 'core-optimizer.js' ||
+        fileName === 'optimizer.js') {
+        return 'PERFORMANCE';
+    }
+    
+    // SUPPORT & DIAGNOSTICS
+    if (name.includes('diagnostic') ||
+        name.includes('checker') ||
+        name.includes('verifier') ||
+        name.includes('logger') ||
+        name.includes('recovery') ||
+        name.includes('validation') ||
+        name.includes('simple-') ||
+        name.includes('emergency-') ||
+        name.includes('duplication-')) {
+        return 'SUPPORT';
+    }
+    
+    // UTILITIES
+    if (name.includes('utils') ||
+        name.includes('helper') ||
+        name.includes('format') ||
+        name.includes('extract')) {
+        return 'UTIL';
+    }
+    
+    // EXTERNAL LIBS
+    if (name.includes('supabase') ||
+        name.includes('cdn') ||
+        name.includes('unpkg')) {
+        return 'EXTERNAL';
+    }
+    
+    // UI MODULES
+    if (name.includes('ui.js') ||
+        name.includes('-ui.js') ||
+        name.includes('integration.js')) {
+        return 'UI';
+    }
+    
+    // DEFAULT TO CORE
+    return 'CORE';
 }
 
-/* ================== INTERCEPTORES SIMPLIFICADOS ================== */
-
-// 1. Intercepta criação de elementos DOM importantes
-const origCreateElement = document.createElement;
-document.createElement = function(tagName, options) {
-    if (['div', 'button', 'input', 'form', 'iframe'].includes(tagName.toLowerCase())) {
-        recordActivity('CORE', 'createElement', tagName);
+// 5. MAPEAMENTO DETALHADO DE CADA SCRIPT
+const moduleAnalysis = allScripts.map(script => {
+    const type = classifyModule(script.fileName);
+    
+    // Detecta funcionalidades baseadas no comportamento
+    const behaviors = [];
+    
+    // Verifica se o script adicionou funções globais específicas
+    const scriptNameSimple = script.fileName.replace('.js', '');
+    const addedGlobals = Object.keys(globalFunctions).filter(key => 
+        key.toLowerCase().includes(scriptNameSimple.toLowerCase()) ||
+        key.toLowerCase().includes(script.fileName.replace('.js', '').toLowerCase())
+    );
+    
+    if (addedGlobals.length > 0) {
+        behaviors.push(`exporta: ${addedGlobals.slice(0, 3).join(', ')}${addedGlobals.length > 3 ? '...' : ''}`);
     }
-    return origCreateElement.call(this, tagName, options);
-};
-
-// 2. Intercepta event listeners importantes
-const origAddEventListener = EventTarget.prototype.addEventListener;
-EventTarget.prototype.addEventListener = function(type, listener, options) {
-    const importantEvents = ['click', 'submit', 'change', 'load', 'error', 'message'];
-    if (importantEvents.includes(type)) {
-        recordActivity('CORE', 'addEventListener', type);
-    }
-    return origAddEventListener.call(this, type, listener, options);
-};
-
-// 3. Intercepta fetch requests
-if (window.fetch) {
-    const origFetch = window.fetch;
-    window.fetch = function(...args) {
-        const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || 'unknown';
-        if (url.includes('supabase') || url.includes('api')) {
-            recordActivity('CORE', 'fetch', url.split('/').pop().substring(0, 30));
-        }
-        return origFetch.apply(this, args);
+    
+    return {
+        fileName: script.fileName,
+        url: script.url,
+        type,
+        behaviors,
+        addedGlobals: addedGlobals.length
     };
-}
+});
 
-// 4. Intercepta console.log por categoria
-const origConsoleLog = console.log;
-console.log = function(...args) {
-    const firstArg = String(args[0] || '');
-    
-    // Classifica pelo conteúdo do log
-    if (firstArg.includes('✅') || firstArg.includes('🎉') || firstArg.includes('✓')) {
-        recordActivity('SUPPORT', 'log.success', firstArg.substring(0, 40));
-    } else if (firstArg.includes('❌') || firstArg.includes('⚠️') || firstArg.includes('🚨')) {
-        recordActivity('SUPPORT', 'log.error', firstArg.substring(0, 40));
-    } else if (firstArg.includes('🔍') || firstArg.includes('📊') || firstArg.includes('🩺')) {
-        recordActivity('SUPPORT', 'log.diagnostic', firstArg.substring(0, 40));
-    } else if (firstArg.includes('⚡') || firstArg.includes('🚀') || firstArg.includes('📈')) {
-        recordActivity('PERFORMANCE', 'log.performance', firstArg.substring(0, 40));
-    } else if (firstArg.includes('🛠️') || firstArg.includes('🔧') || firstArg.includes('⚙️')) {
-        recordActivity('CORE', 'log.core', firstArg.substring(0, 40));
-    } else if (firstArg.includes('supabase') || firstArg.includes('Supabase')) {
-        recordActivity('EXTERNAL', 'log.external', firstArg.substring(0, 40));
-    }
-    
-    return origConsoleLog.apply(console, args);
-};
+// 6. DETECTA MÓDULOS DO SEU REPOSITÓRIO DE SUPORTE
+const supportRepoModules = allScripts.filter(script => 
+    script.url.includes('rclessa25-hub.github.io/weberlessa-support/')
+).map(script => script.fileName);
 
-// 5. Intercepta supabase se ainda não estiver carregado
-if (!window.supabase) {
-    Object.defineProperty(window, 'supabase', {
-        set(value) {
-            recordActivity('EXTERNAL', 'supabase.loaded', 'SDK initialized');
-            // Define a propriedade normalmente
-            Object.defineProperty(window, 'supabase', {
-                value,
-                writable: true,
-                configurable: true
-            });
-        },
-        configurable: true
-    });
-} else {
-    recordActivity('EXTERNAL', 'supabase.present', 'Already loaded');
-}
+// 7. DETECTA MÓDULOS LOCAIS/CORE
+const coreModules = allScripts.filter(script => 
+    !script.url.includes('rclessa25-hub.github.io/weberlessa-support/') &&
+    !script.url.includes('supabase') &&
+    !script.url.includes('cdn')
+).map(script => script.fileName);
 
-// 6. Intercepta timers de otimização
-const origSetTimeout = window.setTimeout;
-window.setTimeout = function(fn, delay) {
-    if (delay > 100) { // Timers longos são geralmente otimizações
-        recordActivity('PERFORMANCE', 'setTimeout', `${delay}ms`);
-    }
-    return origSetTimeout.apply(this, arguments);
-};
-
-/* ================== CLASSIFICAÇÃO DOS ARQUIVOS ================== */
-function classifyFile(fileName, behaviors) {
-    // Conta as atividades por tipo
-    const scores = {
-        CORE: behaviors.CORE.length * 3,
-        PERFORMANCE: behaviors.PERFORMANCE.length * 2,
-        SUPPORT: behaviors.SUPPORT.length * 1,
-        EXTERNAL: behaviors.EXTERNAL.length * 5,
-        UTIL: behaviors.UTIL.length * 1
-    };
-    
-    // Heurísticas adicionais pelo nome do arquivo
-    if (fileName.includes('core-')) scores.CORE += 5;
-    if (fileName.includes('optimizer')) scores.PERFORMANCE += 5;
-    if (fileName.includes('checker') || fileName.includes('diagnostic')) scores.SUPPORT += 5;
-    if (fileName.includes('utils') || fileName.includes('helper')) scores.UTIL += 3;
-    if (fileName.includes('supabase')) scores.EXTERNAL += 10;
-    if (fileName.includes('admin')) scores.CORE += 10;
-    if (fileName.includes('media-') || fileName.includes('pdf-')) scores.CORE += 3;
-    
-    // Retorna o tipo com maior pontuação
-    return Object.entries(scores).reduce((max, [type, score]) => 
-        score > max.score ? { type, score } : max, 
-        { type: 'CORE', score: 0 }
-    ).type;
-}
-
-/* ================== GERA RELATÓRIO ================== */
-function generateReport() {
+/* ================== RELATÓRIO COMPLETO ================== */
+function generateCompleteReport() {
     if (!panel) return;
     
-    // Limpa conteúdo anterior (exceto cabeçalho)
+    // Limpa conteúdo anterior
     while (panel.children.length > 3) {
         panel.removeChild(panel.lastChild);
     }
     
-    ui('\n📊 MAPEAMENTO POR COMPORTAMENTO REAL\n');
+    ui('\n📊 ANÁLISE COMPLETA DO SISTEMA\n');
     
-    // Classifica cada arquivo
-    const classifiedFiles = [];
-    fileMap.forEach((behaviors, fileName) => {
-        const type = classifyFile(fileName, behaviors);
-        classifiedFiles.push({ fileName, type, behaviors });
+    // 1. RESUMO GERAL
+    ui('🎯 RESUMO GERAL:');
+    ui(`📦 Scripts totais: ${allScripts.length}`);
+    ui(`⚡ Funções globais: ${Object.keys(globalFunctions).length}`);
+    ui(`🔧 Sistemas detectados: ${Object.values(detectedSystems).filter(Boolean).length}/9`);
+    
+    // 2. SISTEMAS DETECTADOS
+    ui('\n🔧 SISTEMAS ATIVOS:');
+    Object.entries(detectedSystems).forEach(([system, active]) => {
+        ui(`${active ? '✅' : '❌'} ${system}: ${active ? 'ATIVO' : 'AUSENTE'}`);
     });
     
-    // Agrupa por tipo
-    const grouped = {};
-    classifiedFiles.forEach(file => {
-        grouped[file.type] = grouped[file.type] || [];
-        grouped[file.type].push(file);
+    // 3. DISTRIBUIÇÃO POR TIPO
+    const typeCount = {};
+    moduleAnalysis.forEach(module => {
+        typeCount[module.type] = (typeCount[module.type] || 0) + 1;
     });
     
-    // Mostra resumo
-    ui('📈 RESUMO DE CLASSIFICAÇÃO:');
-    Object.entries(grouped).forEach(([type, files]) => {
-        ui(`${type}: ${files.length} arquivo${files.length !== 1 ? 's' : ''}`);
+    ui('\n📈 DISTRIBUIÇÃO POR TIPO:');
+    Object.entries(typeCount).forEach(([type, count]) => {
+        ui(`${type}: ${count} módulo${count !== 1 ? 's' : ''}`);
     });
     
-    // Mostra detalhes por tipo
-    Object.entries(grouped).forEach(([type, files]) => {
-        ui(`\n🧩 ${type.toUpperCase()} (${files.length})`);
-        
-        files.forEach(file => {
-            // Conta atividades totais
-            const totalActions = Object.values(file.behaviors)
-                .reduce((sum, arr) => sum + arr.length, 0);
-            
-            ui(`\n  📄 ${file.fileName} (${totalActions} ações)`);
-            
-            // Mostra ações mais importantes (máximo 3 por tipo)
-            Object.entries(file.behaviors).forEach(([actionType, actions]) => {
-                if (actions.length > 0) {
-                    const uniqueActions = [...new Set(actions)].slice(0, 2);
-                    ui(`    └─ ${actionType}: ${uniqueActions.join(', ')}${actions.length > 2 ? `... (+${actions.length - 2})` : ''}`);
-                }
-            });
+    // 4. MÓDULOS DO REPOSITÓRIO DE SUPORTE
+    ui('\n🧩 REPOSITÓRIO DE SUPORTE:');
+    if (supportRepoModules.length > 0) {
+        supportRepoModules.forEach((module, i) => {
+            const analysis = moduleAnalysis.find(m => m.fileName === module);
+            const typeSymbol = analysis ? 
+                (analysis.type === 'CORE' ? '⚙️' : 
+                 analysis.type === 'PERFORMANCE' ? '⚡' : 
+                 analysis.type === 'SUPPORT' ? '🔧' : '📦') : '📄';
+            ui(`${typeSymbol} ${module}${analysis ? ` (${analysis.type})` : ''}`);
         });
-    });
-    
-    // Health Score
-    let health = 100;
-    const coreCount = grouped.CORE?.length || 0;
-    const supportCount = grouped.SUPPORT?.length || 0;
-    
-    if (coreCount < 4) health -= (4 - coreCount) * 10;
-    if (supportCount < 2) health -= 10;
-    if (!grouped.EXTERNAL && window.supabase) health += 5;
-    
-    ui(`\n🩺 HEALTH SCORE: ${Math.max(0, health)}/100`);
-    ui(`🎯 Core: ${coreCount} | 🧩 Suporte: ${supportCount} | ⚡ Performance: ${grouped.PERFORMANCE?.length || 0}`);
-    
-    console.log('🔍 File behavior analysis:', Array.from(fileMap.entries()));
-}
-
-/* ================== EXECUÇÃO AUTOMÁTICA ================== */
-// Aguarda um pouco para capturar atividades iniciais
-setTimeout(() => {
-    if (ACTIVE) {
-        ui('\n⏳ Coletando dados de comportamento...');
-        setTimeout(() => {
-            generateReport();
-            
-            // Adiciona botão para atualizar
-            const refreshBtn = document.createElement('button');
-            refreshBtn.textContent = '🔄 Atualizar Análise';
-            refreshBtn.style.cssText = `
-                margin-top: 15px; padding: 8px 12px;
-                background: #00ff9c; color: #000; border: none;
-                border-radius: 4px; cursor: pointer;
-                font-family: monospace; font-weight: bold;
-            `;
-            refreshBtn.onclick = generateReport;
-            panel.appendChild(refreshBtn);
-            
-        }, 1500);
+    } else {
+        ui('Nenhum módulo do repositório detectado');
     }
-}, 500);
-
-/* ================== CAPTURA DE NOVOS SCRIPTS ================== */
-// Monitora adição de novos scripts
-const observer = new MutationObserver((mutations) => {
-    mutations.forEach(mutation => {
-        mutation.addedNodes.forEach(node => {
-            if (node.tagName === 'SCRIPT' && node.src) {
-                const fileName = node.src.split('/').pop();
-                scriptOrigins.set(fileName, node.src);
-                recordActivity('CORE', 'script.loaded', fileName);
+    
+    // 5. MÓDULOS CORE/PRINCIPAIS
+    ui('\n⚙️ MÓDULOS PRINCIPAIS:');
+    const mainModules = moduleAnalysis.filter(m => 
+        m.type === 'CORE' || 
+        m.type === 'UI' ||
+        m.addedGlobals > 0
+    ).slice(0, 15); // Limita a 15 para não poluir
+    
+    if (mainModules.length > 0) {
+        mainModules.forEach(module => {
+            const typeSymbol = 
+                module.type === 'CORE' ? '⚙️' :
+                module.type === 'UI' ? '🎨' :
+                module.type === 'PERFORMANCE' ? '⚡' :
+                module.type === 'SUPPORT' ? '🔧' : '📦';
+            
+            ui(`\n${typeSymbol} ${module.fileName}`);
+            ui(`  Tipo: ${module.type}`);
+            if (module.addedGlobals > 0) {
+                ui(`  Funções: ${module.addedGlobals} global${module.addedGlobals !== 1 ? 's' : ''}`);
+            }
+            if (module.behaviors.length > 0) {
+                ui(`  Comportamento: ${module.behaviors.join('; ')}`);
             }
         });
-    });
-});
+    }
+    
+    // 6. SAÚDE DO SISTEMA
+    ui('\n🩺 DIAGNÓSTICO DE SAÚDE:');
+    
+    let healthScore = 100;
+    const issues = [];
+    
+    // Verifica sistemas essenciais
+    if (!detectedSystems.properties) {
+        healthScore -= 30;
+        issues.push('❌ Sistema de propriedades ausente');
+    }
+    
+    if (!detectedSystems.supabase) {
+        healthScore -= 10;
+        issues.push('⚠️  Supabase não detectado (pode ser normal em fallback)');
+    }
+    
+    if (typeCount.CORE < 3) {
+        healthScore -= 20;
+        issues.push('⚠️  Poucos módulos CORE detectados');
+    }
+    
+    if (Object.keys(globalFunctions).length < 50) {
+        healthScore -= 10;
+        issues.push('⚠️  Baixo número de funções globais');
+    }
+    
+    // Exibe issues
+    if (issues.length > 0) {
+        ui('\n🚨 POSSÍVEIS PROBLEMAS:');
+        issues.forEach(issue => ui(issue));
+    } else {
+        ui('✅ Sistema aparentemente saudável');
+    }
+    
+    ui(`\n💯 HEALTH SCORE: ${Math.max(0, healthScore)}/100`);
+    
+    // 7. BOTÃO PARA DETALHES TÉCNICOS
+    const detailsBtn = document.createElement('button');
+    detailsBtn.textContent = '📊 Ver Detalhes Técnicos';
+    detailsBtn.style.cssText = `
+        margin-top: 15px; padding: 8px 12px;
+        background: #00ff9c; color: #000; border: none;
+        border-radius: 4px; cursor: pointer;
+        font-family: monospace; font-weight: bold;
+        display: block; width: 100%;
+    `;
+    detailsBtn.onclick = showTechnicalDetails;
+    panel.appendChild(detailsBtn);
+}
 
-observer.observe(document.head, { childList: true });
+/* ================== DETALHES TÉCNICOS (expandido) ================== */
+function showTechnicalDetails() {
+    // Remove botão anterior
+    const lastChild = panel.lastChild;
+    if (lastChild && lastChild.tagName === 'BUTTON') {
+        panel.removeChild(lastChild);
+    }
+    
+    ui('\n🔍 DETALHES TÉCNICOS:');
+    
+    // Lista completa de scripts
+    ui('\n📜 TODOS OS SCRIPTS CARREGADOS:');
+    allScripts.forEach((script, i) => {
+        const analysis = moduleAnalysis.find(m => m.fileName === script.fileName);
+        ui(`${i + 1}. ${script.fileName} (${analysis ? analysis.type : '?'})`);
+        ui(`   ${script.url}`);
+    });
+    
+    // Funções globais mais importantes
+    ui('\n⚡ FUNÇÕES GLOBAIS PRINCIPAIS:');
+    const importantFunctions = Object.keys(globalFunctions)
+        .filter(name => 
+            !name.startsWith('_') && 
+            !name.includes('webkit') &&
+            !name.includes('moz') &&
+            name.length > 3
+        )
+        .slice(0, 20);
+    
+    importantFunctions.forEach(func => {
+        ui(`   ${func}: ${globalFunctions[func]}`);
+    });
+    
+    if (Object.keys(globalFunctions).length > 20) {
+        ui(`   ...e mais ${Object.keys(globalFunctions).length - 20} funções`);
+    }
+    
+    // Módulos por origem
+    ui('\n🌐 ORIGEM DOS MÓDULOS:');
+    const origins = {};
+    allScripts.forEach(script => {
+        const origin = script.url.split('/').slice(0, 3).join('/');
+        origins[origin] = (origins[origin] || 0) + 1;
+    });
+    
+    Object.entries(origins).forEach(([origin, count]) => {
+        ui(`   ${origin}: ${count} módulo${count !== 1 ? 's' : ''}`);
+    });
+    
+    // Botão para voltar
+    const backBtn = document.createElement('button');
+    backBtn.textContent = '⬅️ Voltar ao Resumo';
+    backBtn.style.cssText = `
+        margin-top: 15px; padding: 8px 12px;
+        background: #555; color: white; border: none;
+        border-radius: 4px; cursor: pointer;
+        font-family: monospace; font-weight: bold;
+        display: block; width: 100%;
+    `;
+    backBtn.onclick = () => {
+        // Remove detalhes técnicos
+        while (panel.children.length > 3) {
+            panel.removeChild(panel.lastChild);
+        }
+        generateCompleteReport();
+    };
+    panel.appendChild(backBtn);
+}
+
+/* ================== INICIALIZAÇÃO ================== */
+// Aguarda o carregamento completo
+if (ACTIVE) {
+    // Pequeno delay para capturar tudo
+    setTimeout(() => {
+        ui('\n⏳ Coletando dados do sistema...');
+        setTimeout(generateCompleteReport, 1000);
+    }, 500);
+    
+    // Também escuta por mudanças (scripts dinâmicos)
+    const observer = new MutationObserver(() => {
+        setTimeout(generateCompleteReport, 500);
+    });
+    
+    observer.observe(document.head, { childList: true });
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Exporta função para recarregar diagnóstico
+window.refreshDiagnostics = generateCompleteReport;
+
+console.log('🔍 Diagnóstico completo inicializado');
+console.log(`📦 Scripts detectados: ${allScripts.length}`);
+console.log(`⚡ Funções globais: ${Object.keys(globalFunctions).length}`);
