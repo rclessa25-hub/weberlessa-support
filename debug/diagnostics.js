@@ -1,5 +1,5 @@
 // debug/diagnostics.js
-console.log('🔍 diagnostics.js – diagnóstico completo corrigido');
+console.log('🔍 diagnostics.js – diagnóstico completo corrigido v2');
 
 /* ================== FLAGS ================== */
 const params = new URLSearchParams(location.search);
@@ -96,7 +96,9 @@ window.verifyMediaMigration = function() {
             typeof MediaSystem.uploadAll === 'function',
         'Integração admin funcionando': typeof window.processAndSavePdfs === 'function',
         'Compatibilidade properties.js': typeof window.getMediaUrlsForProperty === 'function',
-        'Sistema de preview ativo': document.getElementById('uploadPreview') !== null
+        'Sistema de preview ativo': document.getElementById('uploadPreview') !== null,
+        'Wrappers de compatibilidade': typeof window.clearAllPdfs === 'function' && 
+                                     typeof window.loadExistingPdfsForEdit === 'function'
     };
     
     // Log detalhado no painel E no console F12
@@ -345,7 +347,7 @@ window.testModuleCompatibility = function() {
             };
         },
         
-        // Teste 4: Verificar funções duplicadas - CORRIGIDO
+        // Teste 4: Verificar funções duplicadas - CORRIGIDO AGORA
         'Funções duplicadas': function() {
             // Lista de funções que DEVEM existir no MediaSystem
             const mediaSystemRequiredFunctions = [
@@ -353,42 +355,81 @@ window.testModuleCompatibility = function() {
                 'addFiles', 'addPdfs', 'uploadAll', 'getMediaUrlsForProperty'
             ];
             
-            // Lista de funções que PODEM existir globalmente como wrapper
-            const allowedGlobalWrappers = ['processAndSavePdfs', 'getMediaUrlsForProperty'];
+            // Lista de funções que DEVEM existir globalmente como wrappers para compatibilidade
+            // Estas são funções que o código antigo pode estar chamando diretamente
+            const requiredGlobalWrappers = [
+                'processAndSavePdfs', 'clearAllPdfs', 'loadExistingPdfsForEdit',
+                'getMediaUrlsForProperty'
+            ];
             
             const duplicates = [];
             const recommendations = [];
+            const missingWrappers = [];
             
             // Verificar funções no MediaSystem
             if (window.MediaSystem) {
+                // 1. Verificar funções necessárias no MediaSystem
                 mediaSystemRequiredFunctions.forEach(funcName => {
                     const hasInMediaSystem = typeof MediaSystem[funcName] === 'function';
-                    const hasGlobally = typeof window[funcName] === 'function';
                     
-                    if (hasInMediaSystem && hasGlobally) {
-                        // É permitido se for uma das funções wrapper
-                        if (!allowedGlobalWrappers.includes(funcName)) {
-                            duplicates.push(funcName);
-                            recommendations.push(`Remover window.${funcName} - use MediaSystem.${funcName}`);
+                    if (!hasInMediaSystem) {
+                        recommendations.push(`Adicionar ${funcName} ao MediaSystem`);
+                    }
+                });
+                
+                // 2. Verificar wrappers globais necessários
+                requiredGlobalWrappers.forEach(funcName => {
+                    const hasGlobally = typeof window[funcName] === 'function';
+                    const hasInMediaSystem = typeof MediaSystem[funcName] === 'function';
+                    
+                    if (!hasGlobally && hasInMediaSystem) {
+                        // Função existe no MediaSystem mas não globalmente - precisa criar wrapper
+                        missingWrappers.push(funcName);
+                        recommendations.push(`Criar wrapper global para ${funcName}`);
+                    } else if (hasGlobally && hasInMediaSystem) {
+                        // Ambas existem - verificar se é um wrapper válido
+                        try {
+                            // Verificar se a função global delega para o MediaSystem
+                            const globalFunc = window[funcName];
+                            const isWrapper = globalFunc.toString().includes('MediaSystem') || 
+                                            globalFunc.toString().includes(funcName);
+                            
+                            if (!isWrapper) {
+                                recommendations.push(`Verificar se window.${funcName} delega para MediaSystem`);
+                            }
+                        } catch (e) {
+                            // Não conseguiu analisar a função
                         }
-                    } else if (!hasInMediaSystem && hasGlobally) {
-                        // Função global sem equivalente no MediaSystem
-                        recommendations.push(`Migrar ${funcName} para MediaSystem`);
+                    }
+                });
+                
+                // 3. Verificar funções globais que NÃO deveriam existir
+                const functionsToCheck = ['addFiles', 'addPdfs', 'uploadAll'];
+                functionsToCheck.forEach(funcName => {
+                    const hasGlobally = typeof window[funcName] === 'function';
+                    const hasInMediaSystem = typeof MediaSystem[funcName] === 'function';
+                    
+                    if (hasGlobally && hasInMediaSystem && !requiredGlobalWrappers.includes(funcName)) {
+                        duplicates.push(funcName);
+                        recommendations.push(`Considerar remover window.${funcName} - use MediaSystem.${funcName}`);
                     }
                 });
             }
             
             return {
-                passed: duplicates.length === 0,
-                message: duplicates.length > 0 ?
-                    `Funções duplicadas problemáticas: ${duplicates.join(', ')}` :
+                passed: duplicates.length === 0 && missingWrappers.length === 0,
+                message: duplicates.length > 0 ? 
+                    `Funções desnecessárias globalmente: ${duplicates.join(', ')}` :
+                    missingWrappers.length > 0 ?
+                    `Wrappers globais ausentes: ${missingWrappers.join(', ')}` :
                     recommendations.length > 0 ?
-                    `OK - wrappers permitidos: ${allowedGlobalWrappers.join(', ')}` :
-                    'Nenhuma função duplicada problemática',
+                    `Recomendações: ${recommendations.slice(0, 2).join('; ')}${recommendations.length > 2 ? '...' : ''}` :
+                    'Todas as funções necessárias disponíveis',
                 details: {
                     duplicates,
-                    recommendations,
-                    allowedGlobalWrappers
+                    missingWrappers,
+                    requiredGlobalWrappers,
+                    recommendations
                 }
             };
         },
@@ -491,18 +532,25 @@ window.testModuleCompatibility = function() {
                 console.warn(`⚠️ ${testName}:`, testResult.message, testResult.details || '');
                 
                 // Adicionar recomendações baseadas no teste falho
-                if (testName === 'Funções duplicadas' && testResult.details.recommendations) {
-                    testResult.details.recommendations.forEach(rec => {
-                        results.recommendations.push(rec);
-                    });
+                if (testName === 'Funções duplicadas') {
+                    if (testResult.details.duplicates && testResult.details.duplicates.length > 0) {
+                        testResult.details.duplicates.forEach(func => {
+                            results.recommendations.push(`🔗 Considerar remover window.${func} (use MediaSystem.${func})`);
+                        });
+                    }
+                    if (testResult.details.missingWrappers && testResult.details.missingWrappers.length > 0) {
+                        testResult.details.missingWrappers.forEach(func => {
+                            results.recommendations.push(`🔗 Criar wrapper global para ${func}`);
+                        });
+                    }
                 } else if (testName === 'Performance de carregamento') {
                     if (testResult.details.syncLargeScripts > 2) {
-                        results.recommendations.push('Adicionar async/defer aos scripts grandes');
+                        results.recommendations.push('⚡ Adicionar async/defer aos scripts grandes');
                     }
                 } else if (testName === 'Dependências críticas') {
                     if (testResult.details.missing && testResult.details.missing.length > 0) {
                         testResult.details.missing.forEach(system => {
-                            results.recommendations.push(`Verificar carregamento de ${system}`);
+                            results.recommendations.push(`📦 Verificar carregamento de ${system}`);
                         });
                     }
                 }
@@ -530,16 +578,23 @@ window.testModuleCompatibility = function() {
     
     // Adicionar recomendações gerais se houver falhas
     if (results.failed > 0) {
-        if (!results.recommendations.includes('• Revisar event listeners para evitar sobreposição')) {
-            results.recommendations.push('• Revisar event listeners para evitar sobreposição');
-        }
+        // Verificar se já existem recomendações de compatibilidade
+        const hasCompatibilityRecs = results.recommendations.some(r => 
+            r.includes('wrapper') || r.includes('window.') || r.includes('async')
+        );
         
-        if (!results.recommendations.includes('• Consolidar estilos CSS em arquivos unificados')) {
-            results.recommendations.push('• Consolidar estilos CSS em arquivos unificados');
-        }
-        
-        if (!results.recommendations.includes('• Testar em diferentes navegadores')) {
-            results.recommendations.push('• Testar em diferentes navegadores');
+        if (!hasCompatibilityRecs) {
+            if (!results.recommendations.includes('🎯 Revisar event listeners para evitar sobreposição')) {
+                results.recommendations.push('🎯 Revisar event listeners para evitar sobreposição');
+            }
+            
+            if (!results.recommendations.includes('🎨 Consolidar estilos CSS em arquivos unificados')) {
+                results.recommendations.push('🎨 Consolidar estilos CSS em arquivos unificados');
+            }
+            
+            if (!results.recommendations.includes('🌐 Testar em diferentes navegadores')) {
+                results.recommendations.push('🌐 Testar em diferentes navegadores');
+            }
         }
         
         // Exibir recomendações
@@ -547,7 +602,14 @@ window.testModuleCompatibility = function() {
             logToPanel('💡 RECOMENDAÇÕES PARA COMPATIBILIDADE:', 'info');
             console.group('💡 RECOMENDAÇÕES:');
             results.recommendations.forEach((rec, index) => {
-                logToPanel(`${index + 1}. ${rec}`, 'info');
+                const icon = rec.includes('wrapper') ? '🔗' : 
+                            rec.includes('window.') ? '🧹' : 
+                            rec.includes('async') ? '⚡' :
+                            rec.includes('carregamento') ? '📦' :
+                            rec.includes('event listeners') ? '🎯' :
+                            rec.includes('CSS') ? '🎨' :
+                            rec.includes('navegadores') ? '🌐' : '•';
+                logToPanel(`${icon} ${rec}`, 'info');
                 console.log(`${index + 1}. ${rec}`);
             });
             console.groupEnd();
@@ -691,15 +753,18 @@ async function testMediaUnifiedComplete() {
         { name: 'MediaSystem.addPdfs', check: () => typeof MediaSystem.addPdfs === 'function' },
         { name: 'MediaSystem.uploadAll', check: () => typeof MediaSystem.uploadAll === 'function' },
         { name: 'window.processAndSavePdfs', check: () => typeof window.processAndSavePdfs === 'function' },
-        { name: 'window.getMediaUrlsForProperty', check: () => typeof window.getMediaUrlsForProperty === 'function' }
+        { name: 'window.getMediaUrlsForProperty', check: () => typeof window.getMediaUrlsForProperty === 'function' },
+        { name: 'window.clearAllPdfs (wrapper)', check: () => typeof window.clearAllPdfs === 'function' },
+        { name: 'window.loadExistingPdfsForEdit (wrapper)', check: () => typeof window.loadExistingPdfsForEdit === 'function' }
     ];
     
     migrationChecks.forEach(check => {
         const passed = check.check();
+        const isWrapper = check.name.includes('wrapper');
         results.tests.push({ 
             name: check.name, 
             passed,
-            message: passed ? 'Função disponível para migração' : 'Função necessária para migração'
+            message: passed ? (isWrapper ? 'Wrapper disponível para compatibilidade' : 'Função disponível para migração') : (isWrapper ? 'Wrapper necessário para compatibilidade' : 'Função necessária para migração')
         });
         
         logToPanel(`${passed ? '✅' : '❌'} ${check.name}`, passed ? 'success' : 'error');
@@ -803,7 +868,7 @@ async function testMediaUnifiedComplete() {
         
         // Avaliar resultados de compatibilidade
         const compatibilityScore = compatibilityResults.passed / compatibilityResults.total;
-        const compatibilityPassed = compatibilityScore >= 0.7; // Pelo menos 70% de sucesso
+        const compatibilityPassed = compatibilityScore >= 0.8; // Pelo menos 80% de sucesso
         
         results.tests.push({
             name: 'Teste de compatibilidade de módulos',
@@ -1082,10 +1147,10 @@ function updateOverview(data) {
                     color: #000; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 6px;
                     font-weight: bold; font-size: 14px; margin: 10px;">
-                    🔍 TESTE DE COMPATIBILIDADE
+                    🔍 TESTE DE COMPATIBILIDADE (v2)
                 </button>
                 <div style="font-size: 11px; color: #888; margin-top: 5px;">
-                    Valida conflitos entre módulos e sistemas (6 testes incluídos)
+                    Valida conflitos entre módulos e sistemas (6 testes incluídos) - VERSÃO CORRIGIDA
                 </div>
             </div>
         </div>
@@ -1171,7 +1236,7 @@ function updateTestsTab(testResults) {
                         color: #000; border: none;
                         padding: 10px 20px; cursor: pointer; border-radius: 4px;
                         font-weight: bold; margin: 5px;">
-                        🔍 TESTE DE COMPATIBILIDADE (6 testes)
+                        🔍 TESTE DE COMPATIBILIDADE v2 (6 testes)
                     </button>
                     <button id="run-migration-test-btn" style="
                         background: linear-gradient(45deg, #ff00ff, #0088cc); 
@@ -1180,6 +1245,9 @@ function updateTestsTab(testResults) {
                         font-weight: bold; margin: 5px;">
                         🚀 TESTE DE MIGRAÇÃO
                     </button>
+                </div>
+                <div style="font-size: 11px; color: #888; margin-top: 10px;">
+                    v2: Corrigida detecção de wrappers necessários (clearAllPdfs, loadExistingPdfsForEdit)
                 </div>
             </div>
         `;
@@ -1241,6 +1309,7 @@ function updateTestsTab(testResults) {
     testResults.tests.forEach((test, index) => {
         const isCompatibilityTest = test.name.includes('compatibilidade');
         const isMigrationTest = test.name.includes('migração') || test.message?.includes('migração');
+        const isWrapperTest = test.name.includes('wrapper');
         
         let backgroundColor = test.passed ? '#001a00' : '#1a0000';
         let borderColor = test.passed ? '#00ff9c' : '#ff5555';
@@ -1250,10 +1319,10 @@ function updateTestsTab(testResults) {
             backgroundColor = test.passed ? '#001a1a' : '#1a0000';
             borderColor = test.passed ? '#0088cc' : '#ff5555';
             emoji = test.passed ? '🔍' : '⚠️';
-        } else if (isMigrationTest) {
+        } else if (isMigrationTest || isWrapperTest) {
             backgroundColor = test.passed ? '#001a00' : '#1a0000';
             borderColor = test.passed ? '#ff00ff' : '#ff5555';
-            emoji = test.passed ? '🚀' : '❌';
+            emoji = test.passed ? '🔗' : '❌';
         }
         
         html += `
@@ -1291,8 +1360,11 @@ function updateTestsTab(testResults) {
                 color: #000; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
                 font-weight: bold;">
-                🔍 TESTAR COMPATIBILIDADE
+                🔍 TESTAR COMPATIBILIDADE v2
             </button>
+        </div>
+        <div style="font-size: 11px; color: #888; text-align: center; margin-top: 10px;">
+            v2: clearAllPdfs e loadExistingPdfsForEdit são wrappers necessários para compatibilidade
         </div>
     `;
     
@@ -1501,7 +1573,7 @@ function applyMobilePdfFixes(results) {
     }
     
     const css = `
-        /* Correções mobile PDF - Gerado por diagnostics.js */
+        /* Correções mobile PDF - Gerado por diagnostics.js v2 */
         
         @media (max-width: 768px) {
             #pdfModal {
@@ -1652,7 +1724,7 @@ function exportReport() {
         },
         testResults: currentTestResults,
         migrationStatus: window.verifyMediaMigration ? 'Função disponível' : 'Função não disponível',
-        compatibilityStatus: window.testModuleCompatibility ? 'Função disponível' : 'Função não disponível'
+        compatibilityStatus: window.testModuleCompatibility ? 'Função disponível v2' : 'Função não disponível'
     };
     
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
@@ -1744,7 +1816,7 @@ function createDiagnosticsPanel() {
     diagnosticsPanel.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <div style="font-size: 16px; font-weight: bold; color: #00ff9c;">
-                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA
+                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA v2
             </div>
             <div style="display: flex; gap: 8px;">
                 <button id="test-compatibility-main" style="
@@ -1752,7 +1824,7 @@ function createDiagnosticsPanel() {
                     color: #000; border: none; 
                     padding: 4px 8px; cursor: pointer; border-radius: 3px;
                     font-size: 10px; font-weight: bold;">
-                    🔍 COMPATIBILIDADE
+                    🔍 COMPATIBILIDADE v2
                 </button>
                 <button id="verify-migration-main" style="
                     background: linear-gradient(45deg, #ff00ff, #0088cc); 
@@ -1778,7 +1850,7 @@ function createDiagnosticsPanel() {
         <div style="color: #888; font-size: 11px; margin-bottom: 20px; display: flex; justify-content: space-between;">
             <div>
                 Modo: ${DEBUG_MODE ? 'DEBUG' : 'NORMAL'} | 
-                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'}
+                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'} | v2
             </div>
             <div id="device-indicator" style="background: #333; padding: 2px 8px; border-radius: 3px;">
                 📱 Detectando dispositivo...
@@ -1789,7 +1861,7 @@ function createDiagnosticsPanel() {
                 background: #00ff9c; color: #000; border: none;
                 padding: 8px 12px; cursor: pointer; border-radius: 4px;
                 font-weight: bold; flex: 1;">
-                🧪 TESTE COMPLETO
+                🧪 TESTE COMPLETO v2
             </button>
             <button id="test-pdf-mobile" style="
                 background: #0088cc; color: white; border: none;
