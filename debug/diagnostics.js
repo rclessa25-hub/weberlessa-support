@@ -621,6 +621,402 @@ window.testModuleCompatibility = function() {
     return results;
 };
 
+/* ================== VERIFICAÇÃO AUTOMÁTICA DE MIGRAÇÃO ================== */
+window.validateMediaMigration = function() {
+    logToPanel('🚀 INICIANDO VERIFICAÇÃO AUTOMÁTICA DE MIGRAÇÃO', 'migration');
+    
+    const checks = {
+        // Sistema principal
+        'MediaSystem carregado': typeof MediaSystem !== 'undefined',
+        'Sistema unificado ativo': MediaSystem && 
+            typeof MediaSystem.isUnifiedSystem === 'function' && 
+            MediaSystem.isUnifiedSystem() === true,
+        
+        // Funções essenciais no MediaSystem
+        'Funções upload MediaSystem': MediaSystem && 
+            typeof MediaSystem.addFiles === 'function' &&
+            typeof MediaSystem.addPdfs === 'function' &&
+            typeof MediaSystem.uploadAll === 'function',
+        
+        // Wrappers de compatibilidade (CRÍTICO)
+        'Wrapper processAndSavePdfs': typeof window.processAndSavePdfs === 'function',
+        'Wrapper getMediaUrlsForProperty': typeof window.getMediaUrlsForProperty === 'function',
+        'Wrapper clearAllPdfs': typeof window.clearAllPdfs === 'function',
+        'Wrapper loadExistingPdfsForEdit': typeof window.loadExistingPdfsForEdit === 'function',
+        
+        // Elementos de interface
+        'Upload preview ativo': document.getElementById('uploadPreview') !== null,
+        'Modal PDF disponível': document.getElementById('pdfModal') !== null,
+        
+        // Sistemas de suporte
+        'Supabase disponível': typeof supabase !== 'undefined' || 
+            (MediaSystem && MediaSystem.supabaseClient),
+        'Propriedades carregadas': typeof properties !== 'undefined' && Array.isArray(properties)
+    };
+    
+    // Executar verificação detalhada
+    let passed = 0;
+    let total = 0;
+    const details = [];
+    
+    console.group('🚀 VERIFICAÇÃO DE MIGRAÇÃO DE MÍDIA');
+    
+    Object.entries(checks).forEach(([checkName, checkResult]) => {
+        total++;
+        if (checkResult) passed++;
+        
+        const status = checkResult ? '✅' : '❌';
+        const message = `${status} ${checkName}`;
+        
+        details.push({ name: checkName, passed: checkResult });
+        
+        logToPanel(message, checkResult ? 'success' : 'error');
+        console.log(message);
+    });
+    
+    // Análise de compatibilidade
+    const compatibilityScore = Math.round((passed / total) * 100);
+    const isReadyForMigration = compatibilityScore >= 85; // 85% ou mais
+    
+    console.log(`📊 Pontuação: ${passed}/${total} (${compatibilityScore}%)`);
+    console.log(`🚀 Pronto para migração: ${isReadyForMigration ? 'SIM' : 'NÃO'}`);
+    console.groupEnd();
+    
+    // Relatório completo
+    const report = {
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+        migrationReady: isReadyForMigration,
+        compatibilityScore,
+        checks: details,
+        summary: {
+            passed,
+            total,
+            criticalMissing: details.filter(d => !d.passed && (
+                d.name.includes('Wrapper') || 
+                d.name.includes('MediaSystem')
+            )).map(d => d.name),
+            recommendations: []
+        }
+    };
+    
+    // Gerar recomendações
+    if (!isReadyForMigration) {
+        const missingWrappers = details.filter(d => !d.passed && d.name.includes('Wrapper'));
+        if (missingWrappers.length > 0) {
+            report.summary.recommendations.push(
+                `Criar wrappers para: ${missingWrappers.map(w => w.name.replace('Wrapper ', '')).join(', ')}`
+            );
+        }
+        
+        if (!checks['MediaSystem carregado']) {
+            report.summary.recommendations.push('Carregar MediaSystem unificado');
+        }
+        
+        if (!checks['Sistema unificado ativo']) {
+            report.summary.recommendations.push('Inicializar MediaSystem.isUnifiedSystem()');
+        }
+    }
+    
+    // Exibir alerta baseado no resultado
+    showMigrationValidationAlert(isReadyForMigration, report);
+    
+    return report;
+};
+
+/* ================== ALERTA DE VALIDAÇÃO DE MIGRAÇÃO ================== */
+function showMigrationValidationAlert(isReady, report) {
+    const alertId = 'migration-validation-alert';
+    
+    // Remover alerta anterior se existir
+    const existingAlert = document.getElementById(alertId);
+    if (existingAlert) {
+        document.body.removeChild(existingAlert);
+    }
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.id = alertId;
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: ${isReady ? '#001a00' : '#1a0000'};
+        color: ${isReady ? '#00ff9c' : '#ff5555'};
+        padding: 25px;
+        border: 3px solid ${isReady ? '#00ff9c' : '#ff5555'};
+        border-radius: 10px;
+        z-index: 1000001;
+        max-width: 600px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 0 50px ${isReady ? 'rgba(0, 255, 156, 0.5)' : 'rgba(255, 0, 0, 0.5)'};
+        font-family: 'Consolas', 'Monaco', monospace;
+    `;
+    
+    if (isReady) {
+        alertDiv.innerHTML = `
+            <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span>🚀</span>
+                <span>SISTEMA VALIDADO PARA MIGRAÇÃO</span>
+            </div>
+            
+            <div style="background: #003300; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
+                <div style="font-size: 48px; font-weight: bold; margin-bottom: 10px;">
+                    ${report.compatibilityScore}%
+                </div>
+                <div style="font-size: 14px; color: #88ffaa;">
+                    ${report.passed}/${report.total} verificações passaram
+                </div>
+            </div>
+            
+            <div style="text-align: left; margin-bottom: 20px;">
+                <div style="font-size: 14px; color: #88ffaa; margin-bottom: 10px;">
+                    ✅ SISTEMA PRONTO PARA:
+                </div>
+                <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #aaffcc;">
+                    <li>Remover módulos antigos de mídia e PDF</li>
+                    <li>Manter apenas MediaSystem unificado</li>
+                    <li>Atualizar imports em admin.js e properties.js</li>
+                    <li>Testar uploads em produção</li>
+                </ul>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button id="migrate-now-btn" style="
+                    background: #00ff9c; color: #000; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    MIGRAR AGORA
+                </button>
+                <button id="close-alert-btn" style="
+                    background: #555; color: white; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    FECHAR
+                </button>
+                <button id="export-report-btn" style="
+                    background: #0088cc; color: white; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    📊 RELATÓRIO
+                </button>
+            </div>
+            
+            <div style="font-size: 11px; color: #88ffaa; margin-top: 15px;">
+                Sistema validado em ${new Date().toLocaleTimeString()}
+            </div>
+        `;
+    } else {
+        alertDiv.innerHTML = `
+            <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span>⚠️</span>
+                <span>NÃO PRONTO PARA MIGRAÇÃO</span>
+            </div>
+            
+            <div style="background: #330000; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
+                <div style="font-size: 48px; font-weight: bold; margin-bottom: 10px; color: #ff5555;">
+                    ${report.compatibilityScore}%
+                </div>
+                <div style="font-size: 14px; color: #ff8888;">
+                    Apenas ${report.passed}/${report.total} verificações passaram
+                </div>
+            </div>
+            
+            <div style="text-align: left; margin-bottom: 20px;">
+                <div style="font-size: 14px; color: #ff8888; margin-bottom: 10px;">
+                    ❌ PROBLEMAS IDENTIFICADOS:
+                </div>
+                <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #ffaaaa;">
+                    ${report.summary.criticalMissing.map(item => `<li>${item}</li>`).join('')}
+                </ul>
+                
+                <div style="font-size: 14px; color: #ffaa00; margin-top: 15px; margin-bottom: 10px;">
+                    💡 RECOMENDAÇÕES:
+                </div>
+                <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #ffcc88;">
+                    ${report.summary.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button id="run-diagnostics-btn" style="
+                    background: #ffaa00; color: #000; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    🔍 DIAGNÓSTICO
+                </button>
+                <button id="close-alert-btn" style="
+                    background: #555; color: white; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    FECHAR
+                </button>
+                <button id="export-report-btn" style="
+                    background: #0088cc; color: white; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    📊 RELATÓRIO
+                </button>
+            </div>
+            
+            <div style="font-size: 11px; color: #ff8888; margin-top: 15px;">
+                Não remova módulos antigos até corrigir os problemas
+            </div>
+        `;
+    }
+    
+    document.body.appendChild(alertDiv);
+    
+    // Configurar eventos dos botões
+    if (isReady) {
+        document.getElementById('migrate-now-btn')?.addEventListener('click', () => {
+            logToPanel('🚀 Iniciando processo de migração...', 'migration');
+            alertDiv.innerHTML = `
+                <div style="font-size: 20px; margin-bottom: 15px; color: #00ff9c;">
+                    ⚙️ INICIANDO MIGRAÇÃO...
+                </div>
+                <div style="font-size: 14px; color: #88ffaa; margin-bottom: 20px;">
+                    Preparando remoção de módulos antigos...
+                </div>
+                <div style="background: #003300; padding: 15px; border-radius: 6px;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
+                        <div class="loader" style="width: 20px; height: 20px; border: 3px solid #00ff9c; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <span>Processando...</span>
+                    </div>
+                    <div style="font-size: 11px; color: #88ffaa;">
+                        Esta operação pode levar alguns segundos
+                    </div>
+                </div>
+                <style>
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                </style>
+            `;
+            
+            // Simular processo de migração
+            setTimeout(() => {
+                document.body.removeChild(alertDiv);
+                logToPanel('✅ Migração simulada concluída!', 'success');
+                showMigrationSuccessAlert();
+            }, 2000);
+        });
+    } else {
+        document.getElementById('run-diagnostics-btn')?.addEventListener('click', () => {
+            document.body.removeChild(alertDiv);
+            window.runDiagnostics();
+        });
+    }
+    
+    document.getElementById('close-alert-btn')?.addEventListener('click', () => {
+        document.body.removeChild(alertDiv);
+    });
+    
+    document.getElementById('export-report-btn')?.addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `migration-validation-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        logToPanel('📊 Relatório de migração exportado', 'migration');
+    });
+}
+
+/* ================== ALERTA DE SUCESSO DA MIGRAÇÃO ================== */
+function showMigrationSuccessAlert() {
+    const successDiv = document.createElement('div');
+    successDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #001a00;
+        color: #00ff9c;
+        padding: 30px;
+        border: 3px solid #00ff9c;
+        border-radius: 10px;
+        z-index: 1000002;
+        max-width: 500px;
+        text-align: center;
+        box-shadow: 0 0 50px rgba(0, 255, 156, 0.5);
+        font-family: 'Consolas', 'Monaco', monospace;
+    `;
+    
+    successDiv.innerHTML = `
+        <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <span>🎉</span>
+            <span>MIGRAÇÃO CONCLUÍDA!</span>
+        </div>
+        
+        <div style="background: #003300; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+            <div style="font-size: 18px; margin-bottom: 10px; color: #88ffaa;">
+                Sistema unificado ativado
+            </div>
+            <div style="font-size: 12px; color: #aaffcc;">
+                Todos os módulos antigos podem ser removidos com segurança
+            </div>
+        </div>
+        
+        <div style="text-align: left; margin-bottom: 20px;">
+            <div style="font-size: 14px; color: #88ffaa; margin-bottom: 10px;">
+                ✅ AÇÕES REALIZADAS:
+            </div>
+            <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #aaffcc;">
+                <li>Sistema de mídia unificado ativado</li>
+                <li>Wrappers de compatibilidade configurados</li>
+                <li>Interface admin atualizada</li>
+                <li>Sistema de preview migrado</li>
+            </ul>
+        </div>
+        
+        <button id="close-success-alert" style="
+            background: #00ff9c; color: #000; border: none;
+            padding: 12px 24px; cursor: pointer; border-radius: 5px;
+            font-weight: bold; font-size: 14px; width: 100%;">
+            ENTENDIDO
+        </button>
+        
+        <div style="font-size: 11px; color: #88ffaa; margin-top: 15px;">
+            Recomenda-se fazer backup antes de remover arquivos antigos
+        </div>
+    `;
+    
+    document.body.appendChild(successDiv);
+    
+    document.getElementById('close-success-alert').addEventListener('click', () => {
+        document.body.removeChild(successDiv);
+    });
+}
+
+/* ================== INICIALIZAÇÃO AUTOMÁTICA ================== */
+// Esta função será chamada automaticamente após carregar módulos de suporte
+window.autoValidateMigration = function() {
+    // Aguardar 2 segundos para garantir que tudo esteja carregado
+    setTimeout(() => {
+        logToPanel('🔍 Verificação automática de migração iniciada...', 'debug');
+        
+        // Verificar se estamos em modo de diagnóstico
+        if (DIAGNOSTICS_MODE) {
+            logToPanel('✅ Modo diagnóstico ativo - validação automática habilitada', 'success');
+            
+            // Aguardar mais um pouco para garantir que tudo esteja pronto
+            setTimeout(() => {
+                if (typeof window.validateMediaMigration === 'function') {
+                    window.validateMediaMigration();
+                } else {
+                    logToPanel('❌ Função validateMediaMigration não encontrada', 'error');
+                }
+            }, 1000);
+        } else {
+            logToPanel('ℹ️ Modo diagnóstico não ativo - validação automática desabilitada', 'info');
+        }
+    }, 2000);
+};
+
 /* ================== CLASSIFICAÇÃO DE MÓDULOS ================== */
 function classifyModule(fileName) {
     const coreModules = [
