@@ -1,5 +1,5 @@
-// debug/diagnostics.js - VERSÃO COMPLETA 5.0 COM VERIFICAÇÃO DE REFERÊNCIAS CRUZADAS
-console.log('🔍 diagnostics.js – diagnóstico completo v5.0 (com verificação de referências cruzadas e risco 404)');
+// debug/diagnostics.js - VERSÃO COMPLETA 5.1 COM VERIFICAÇÃO IMEDIATA PDF
+console.log('🔍 diagnostics.js – diagnóstico completo v5.1 (com verificação imediata PDF unificado)');
 
 /* ================== FLAGS ================== */
 const params = new URLSearchParams(location.search);
@@ -7,6 +7,109 @@ const DEBUG_MODE = params.get('debug') === 'true';
 const DIAGNOSTICS_MODE = params.get('diagnostics') === 'true';
 const MOBILE_TEST = params.get('mobiletest') === 'true';
 const REFERENCE_CHECK = params.get('refcheck') === 'true';
+
+/* ================== VERIFICAÇÃO IMEDIATA PDF UNIFICADO ================== */
+(function immediatePdfValidation() {
+    if (!DEBUG_MODE && !DIAGNOSTICS_MODE) return;
+    
+    console.log('🔍 VERIFICAÇÃO IMEDIATA PDF UNIFICADO');
+    
+    const tests = {
+        'PdfSystem carregado': () => typeof window.PdfSystem !== 'undefined',
+        'Função showModal': () => typeof window.PdfSystem?.showModal === 'function',
+        'Função processAndSavePdfs': () => typeof window.PdfSystem?.processAndSavePdfs === 'function',
+        'Modal existe no DOM': () => !!document.getElementById('pdfModal'),
+        'Campo senha existe': () => !!document.getElementById('pdfPassword'),
+        'Admin.js integrado': () => typeof window.processAndSavePdfs === 'function',
+        'Preview container existe': () => !!document.getElementById('pdfUploadPreview'),
+        'Estado inicializado': () => window.PdfSystem?.state && Array.isArray(window.PdfSystem.state.files)
+    };
+    
+    let passed = 0;
+    const total = Object.keys(tests).length;
+    
+    console.group('🔍 VERIFICAÇÃO IMEDIATA PDF UNIFICADO');
+    
+    Object.entries(tests).forEach(([name, test]) => {
+        try {
+            const result = test();
+            console.log(`${result ? '✅' : '❌'} ${name}: ${result}`);
+            if (result) passed++;
+        } catch (e) {
+            console.log(`❌ ${name}: ERRO - ${e.message}`);
+        }
+    });
+    
+    const score = Math.round((passed / total) * 100);
+    console.log(`📊 Score inicial: ${passed}/${total} (${score}%)`);
+    
+    if (score < 80) {
+        console.error('⚠️  PROBLEMAS DETECTADOS - aplicar correções imediatamente');
+        
+        // Tentar correção automática
+        if (!document.getElementById('pdfModal')) {
+            console.log('🔄 Criando modal PDF automaticamente...');
+            const modal = document.createElement('div');
+            modal.id = 'pdfModal';
+            modal.className = 'pdf-modal';
+            modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10000;align-items:center;justify-content:center;';
+            modal.innerHTML = `
+                <div class="pdf-modal-content" style="background:#1a1a1a;padding:30px;border-radius:10px;max-width:90%;max-height:90%;overflow:auto;">
+                    <h2 style="color:#fff;margin-bottom:20px;">PDF System</h2>
+                    <input type="password" id="pdfPassword" placeholder="Senha para PDF" style="padding:10px;width:100%;margin-bottom:20px;">
+                    <div id="pdfUploadPreview"></div>
+                    <div style="display:flex;gap:10px;margin-top:20px;">
+                        <button onclick="window.PdfSystem?.hideModal?.()" style="padding:10px 20px;background:#555;color:white;border:none;cursor:pointer;">Cancelar</button>
+                        <button onclick="window.processAndSavePdfs?.()" style="padding:10px 20px;background:#00ff9c;color:black;border:none;cursor:pointer;">Processar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        // Verificar se PdfSystem existe, senão criar básico
+        if (typeof window.PdfSystem === 'undefined') {
+            console.log('🔄 Criando PdfSystem básico...');
+            window.PdfSystem = {
+                state: { files: [] },
+                showModal: function() {
+                    const modal = document.getElementById('pdfModal');
+                    if (modal) modal.style.display = 'flex';
+                },
+                hideModal: function() {
+                    const modal = document.getElementById('pdfModal');
+                    if (modal) modal.style.display = 'none';
+                },
+                processAndSavePdfs: function() {
+                    console.warn('PdfSystem.processAndSavePdfs chamado (placeholder)');
+                    if (window.processAndSavePdfs) {
+                        return window.processAndSavePdfs();
+                    }
+                }
+            };
+        }
+        
+        // Verificar funções críticas
+        if (typeof window.processAndSavePdfs !== 'function') {
+            console.log('🔄 Criando função processAndSavePdfs placeholder...');
+            window.processAndSavePdfs = function() {
+                console.warn('processAndSavePdfs chamado (placeholder)');
+                alert('Sistema PDF em modo de compatibilidade. Atualize para a versão completa.');
+            };
+        }
+    } else {
+        console.log('✅ Sistema PDF verificado com sucesso!');
+    }
+    
+    console.groupEnd();
+    
+    // Adicionar ao painel de diagnóstico se disponível
+    if (typeof window.logToPanel === 'function') {
+        window.logToPanel(`📊 Verificação PDF: ${passed}/${total} (${score}%)`, score >= 80 ? 'success' : 'warning');
+    }
+    
+    return { passed, total, score };
+})();
 
 /* ================== VARIÁVEIS GLOBAIS ================== */
 let diagnosticsPanel = null;
@@ -25,7 +128,8 @@ function logToPanel(message, type = 'info') {
         'mobile': '#0088cc',
         'migration': '#ff00ff',
         'placeholder': '#ff5500',
-        'reference': '#ff8800'
+        'reference': '#ff8800',
+        'pdf-check': '#00aaff'
     };
     
     const icons = {
@@ -37,7 +141,8 @@ function logToPanel(message, type = 'info') {
         'mobile': '📱',
         'migration': '🚀',
         'placeholder': '🗑️',
-        'reference': '🔗'
+        'reference': '🔗',
+        'pdf-check': '📄'
     };
     
     const logLine = document.createElement('div');
@@ -48,7 +153,8 @@ function logToPanel(message, type = 'info') {
         background: ${type === 'error' ? '#1a0000' : 
                     type === 'warning' ? '#1a1a00' : 
                     type === 'placeholder' ? '#1a0a00' : 
-                    type === 'reference' ? '#1a0a00' : 
+                    type === 'reference' ? '#1a0a00' :
+                    type === 'pdf-check' ? '#001a33' : 
                     'transparent'};
     `;
     logLine.innerHTML = `<span style="color: ${colors[type]}">${icons[type]} ${message}</span>`;
@@ -74,7 +180,8 @@ function updateStatus(message, type = 'info') {
                                type === 'mobile' ? '#0088cc' : 
                                type === 'migration' ? '#ff00ff' : 
                                type === 'placeholder' ? '#ff5500' : 
-                               type === 'reference' ? '#ff8800' : '#888';
+                               type === 'reference' ? '#ff8800' :
+                               type === 'pdf-check' ? '#00aaff' : '#888';
     }
 }
 
@@ -1504,7 +1611,9 @@ window.verifyMediaMigration = function() {
         'Compatibilidade properties.js': typeof window.getMediaUrlsForProperty === 'function',
         'Sistema de preview ativo': document.getElementById('uploadPreview') !== null,
         'Wrappers de compatibilidade': typeof window.clearAllPdfs === 'function' && 
-                                     typeof window.loadExistingPdfsForEdit === 'function'
+                                     typeof window.loadExistingPdfsForEdit === 'function',
+        'PdfSystem verificado': typeof window.PdfSystem !== 'undefined',
+        'PdfModal disponível': document.getElementById('pdfModal') !== null
     };
     
     console.log('🔍 VERIFICAÇÃO DA MIGRAÇÃO DE MÍDIA - INICIADA');
@@ -2532,7 +2641,11 @@ window.validateMediaMigration = function() {
         // Sistemas de suporte
         'Supabase disponível': typeof supabase !== 'undefined' || 
             (MediaSystem && MediaSystem.supabaseClient),
-        'Propriedades carregadas': typeof properties !== 'undefined' && Array.isArray(properties)
+        'Propriedades carregadas': typeof properties !== 'undefined' && Array.isArray(properties),
+        
+        // Verificação PDF específica
+        'PdfSystem carregado': typeof window.PdfSystem !== 'undefined',
+        'Campo senha PDF existe': document.getElementById('pdfPassword') !== null
     };
     
     let passed = 0;
@@ -2574,7 +2687,8 @@ window.validateMediaMigration = function() {
             total,
             criticalMissing: details.filter(d => !d.passed && (
                 d.name.includes('Wrapper') || 
-                d.name.includes('MediaSystem')
+                d.name.includes('MediaSystem') ||
+                d.name.includes('PdfSystem')
             )).map(d => d.name),
             recommendations: []
         }
@@ -2594,6 +2708,10 @@ window.validateMediaMigration = function() {
         
         if (!checks['MediaSystem funcional']) {
             report.summary.recommendations.push('Inicializar funções básicas do MediaSystem');
+        }
+        
+        if (!checks['PdfSystem carregado']) {
+            report.summary.recommendations.push('Verificar carregamento do PdfSystem');
         }
     }
     
@@ -2947,6 +3065,7 @@ function analyzeSystem() {
         PdfLogger: 'PdfLogger' in window,
         ValidationSystem: 'ValidationSystem' in window,
         EmergencySystem: 'EmergencySystem' in window,
+        PdfSystem: 'PdfSystem' in window,
         supabase: 'supabase' in window,
         properties: 'properties' in window,
         admin: 'toggleAdminPanel' in window,
@@ -3504,7 +3623,7 @@ function updateOverview(data) {
     
     let html = `
         <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 10px;">📊 RESUMO DO SISTEMA v5.0</h3>
+            <h3 style="color: #00ff9c; margin-bottom: 10px;">📊 RESUMO DO SISTEMA v5.1</h3>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
                 <div style="background: #111; padding: 15px; border-radius: 6px;">
                     <div style="color: #888; font-size: 11px;">SCRIPTS</div>
@@ -3560,8 +3679,15 @@ function updateOverview(data) {
                     font-weight: bold; font-size: 14px; margin: 10px;">
                     🔗 ANALISAR REFERÊNCIAS (404s)
                 </button>
+                <button id="run-pdf-check-btn" style="
+                    background: linear-gradient(45deg, #00aaff, #0088cc); 
+                    color: white; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                    font-weight: bold; font-size: 14px; margin: 10px;">
+                    📄 VERIFICAÇÃO PDF
+                </button>
                 <div style="font-size: 11px; color: #888; margin-top: 5px;">
-                    v5.0: Inclui verificação de referências cruzadas para prevenir 404s
+                    v5.1: Inclui verificação imediata de PDF unificado
                 </div>
             </div>
         </div>
@@ -3651,6 +3777,44 @@ function updateOverview(data) {
             logToPanel('❌ Função analyzeBrokenReferences não encontrada', 'error');
         }
     });
+    
+    document.getElementById('run-pdf-check-btn')?.addEventListener('click', () => {
+        // Executar verificação PDF imediata
+        const pdfCheck = (function() {
+            console.log('🔍 VERIFICAÇÃO IMEDIATA PDF UNIFICADO');
+            
+            const tests = {
+                'PdfSystem carregado': () => typeof window.PdfSystem !== 'undefined',
+                'Função showModal': () => typeof window.PdfSystem?.showModal === 'function',
+                'Função processAndSavePdfs': () => typeof window.PdfSystem?.processAndSavePdfs === 'function',
+                'Modal existe no DOM': () => !!document.getElementById('pdfModal'),
+                'Campo senha existe': () => !!document.getElementById('pdfPassword'),
+                'Admin.js integrado': () => typeof window.processAndSavePdfs === 'function',
+                'Preview container existe': () => !!document.getElementById('pdfUploadPreview'),
+                'Estado inicializado': () => window.PdfSystem?.state && Array.isArray(window.PdfSystem.state.files)
+            };
+            
+            let passed = 0;
+            const total = Object.keys(tests).length;
+            
+            Object.entries(tests).forEach(([name, test]) => {
+                try {
+                    const result = test();
+                    logToPanel(`${result ? '✅' : '❌'} ${name}: ${result}`, result ? 'success' : 'error');
+                    if (result) passed++;
+                } catch (e) {
+                    logToPanel(`❌ ${name}: ERRO - ${e.message}`, 'error');
+                }
+            });
+            
+            const score = Math.round((passed / total) * 100);
+            logToPanel(`📊 Score PDF: ${passed}/${total} (${score}%)`, score >= 80 ? 'success' : 'warning');
+            
+            return { passed, total, score };
+        })();
+        
+        logToPanel(`📄 Verificação PDF completa: ${pdfCheck.passed}/${pdfCheck.total} (${pdfCheck.score}%)`, 'pdf-check');
+    });
 }
 
 function updateTestsTab(testResults) {
@@ -3704,9 +3868,16 @@ function updateTestsTab(testResults) {
                         font-weight: bold; margin: 5px;">
                         🔗 VERIFICAÇÃO DE REFERÊNCIAS
                     </button>
+                    <button id="run-pdf-check-btn" style="
+                        background: linear-gradient(45deg, #00aaff, #0088cc); 
+                        color: white; border: none;
+                        padding: 10px 20px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; margin: 5px;">
+                        📄 VERIFICAÇÃO PDF
+                    </button>
                 </div>
                 <div style="font-size: 11px; color: #888; margin-top: 10px;">
-                    v5.0: Inclui verificação de referências cruzadas para prevenir 404s
+                    v5.1: Inclui verificação imediata de PDF unificado
                 </div>
             </div>
         `;
@@ -3739,6 +3910,44 @@ function updateTestsTab(testResults) {
             if (typeof window.analyzeBrokenReferences === 'function') {
                 window.analyzeBrokenReferences();
             }
+        });
+        
+        document.getElementById('run-pdf-check-btn')?.addEventListener('click', () => {
+            // Executar verificação PDF
+            const pdfCheck = (function() {
+                console.log('🔍 VERIFICAÇÃO IMEDIATA PDF UNIFICADO');
+                
+                const tests = {
+                    'PdfSystem carregado': () => typeof window.PdfSystem !== 'undefined',
+                    'Função showModal': () => typeof window.PdfSystem?.showModal === 'function',
+                    'Função processAndSavePdfs': () => typeof window.PdfSystem?.processAndSavePdfs === 'function',
+                    'Modal existe no DOM': () => !!document.getElementById('pdfModal'),
+                    'Campo senha existe': () => !!document.getElementById('pdfPassword'),
+                    'Admin.js integrado': () => typeof window.processAndSavePdfs === 'function',
+                    'Preview container existe': () => !!document.getElementById('pdfUploadPreview'),
+                    'Estado inicializado': () => window.PdfSystem?.state && Array.isArray(window.PdfSystem.state.files)
+                };
+                
+                let passed = 0;
+                const total = Object.keys(tests).length;
+                
+                Object.entries(tests).forEach(([name, test]) => {
+                    try {
+                        const result = test();
+                        logToPanel(`${result ? '✅' : '❌'} ${name}: ${result}`, result ? 'success' : 'error');
+                        if (result) passed++;
+                    } catch (e) {
+                        logToPanel(`❌ ${name}: ERRO - ${e.message}`, 'error');
+                    }
+                });
+                
+                const score = Math.round((passed / total) * 100);
+                logToPanel(`📊 Score PDF: ${passed}/${total} (${score}%)`, score >= 80 ? 'success' : 'warning');
+                
+                return { passed, total, score };
+            })();
+            
+            logToPanel(`📄 Verificação PDF completa: ${pdfCheck.passed}/${pdfCheck.total} (${pdfCheck.score}%)`, 'pdf-check');
         });
         
         return;
@@ -3860,9 +4069,16 @@ function updateTestsTab(testResults) {
                 font-weight: bold; margin: 5px;">
                 🔗 VERIFICAÇÃO REFERÊNCIAS
             </button>
+            <button id="run-pdf-check" style="
+                background: linear-gradient(45deg, #00aaff, #0088cc); 
+                color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                font-weight: bold; margin: 5px;">
+                📄 VERIFICAÇÃO PDF
+            </button>
         </div>
         <div style="font-size: 11px; color: #888; text-align: center; margin-top: 10px;">
-            v5.0: Inclui verificação de referências cruzadas para prevenir 404s
+            v5.1: Inclui verificação imediata de PDF unificado
         </div>
     `;
     
@@ -3892,6 +4108,44 @@ function updateTestsTab(testResults) {
         if (typeof window.analyzeBrokenReferences === 'function') {
             window.analyzeBrokenReferences();
         }
+    });
+    
+    document.getElementById('run-pdf-check')?.addEventListener('click', () => {
+        // Executar verificação PDF
+        const pdfCheck = (function() {
+            console.log('🔍 VERIFICAÇÃO IMEDIATA PDF UNIFICADO');
+            
+            const tests = {
+                'PdfSystem carregado': () => typeof window.PdfSystem !== 'undefined',
+                'Função showModal': () => typeof window.PdfSystem?.showModal === 'function',
+                'Função processAndSavePdfs': () => typeof window.PdfSystem?.processAndSavePdfs === 'function',
+                'Modal existe no DOM': () => !!document.getElementById('pdfModal'),
+                'Campo senha existe': () => !!document.getElementById('pdfPassword'),
+                'Admin.js integrado': () => typeof window.processAndSavePdfs === 'function',
+                'Preview container existe': () => !!document.getElementById('pdfUploadPreview'),
+                'Estado inicializado': () => window.PdfSystem?.state && Array.isArray(window.PdfSystem.state.files)
+            };
+            
+            let passed = 0;
+            const total = Object.keys(tests).length;
+            
+            Object.entries(tests).forEach(([name, test]) => {
+                try {
+                    const result = test();
+                    logToPanel(`${result ? '✅' : '❌'} ${name}: ${result}`, result ? 'success' : 'error');
+                    if (result) passed++;
+                } catch (e) {
+                    logToPanel(`❌ ${name}: ERRO - ${e.message}`, 'error');
+                }
+            });
+            
+            const score = Math.round((passed / total) * 100);
+            logToPanel(`📊 Score PDF: ${passed}/${total} (${score}%)`, score >= 80 ? 'success' : 'warning');
+            
+            return { passed, total, score };
+        })();
+        
+        logToPanel(`📄 Verificação PDF completa: ${pdfCheck.passed}/${pdfCheck.total} (${pdfCheck.score}%)`, 'pdf-check');
     });
     
     if (lastMigrationReport) {
@@ -4159,7 +4413,7 @@ function applyMobilePdfFixes(results) {
 /* ================== FUNÇÕES PRINCIPAIS ================== */
 async function runCompleteDiagnosis() {
     try {
-        logToPanel('🚀 Iniciando diagnóstico completo v5.0...', 'debug');
+        logToPanel('🚀 Iniciando diagnóstico completo v5.1...', 'debug');
         updateStatus('Diagnóstico em andamento...', 'info');
         
         const systemData = analyzeSystem();
@@ -4193,7 +4447,7 @@ function calculateHealthScore(systemData, testResults) {
     
     Object.entries(systemData.systems).forEach(([system, active]) => {
         if (!active) {
-            const criticalSystems = ['MediaSystem', 'properties', 'supabase'];
+            const criticalSystems = ['MediaSystem', 'PdfSystem', 'properties', 'supabase'];
             if (criticalSystems.includes(system)) score -= 10;
             else score -= 5;
         }
@@ -4242,19 +4496,19 @@ function exportReport() {
         migrationStatus: window.verifyMediaMigration ? 'Função disponível' : 'Função não disponível',
         compatibilityStatus: window.testModuleCompatibility ? 'Função disponível' : 'Função não disponível',
         autoValidationStatus: window.autoValidateMigration ? 'Função disponível' : 'Função não disponível',
-        placeholderAnalysisStatus: window.analyzePlaceholders ? 'Função disponível v5.0' : 'Função não disponível',
-        referenceAnalysisStatus: window.analyzeBrokenReferences ? 'Função disponível v5.0' : 'Função não disponível'
+        placeholderAnalysisStatus: window.analyzePlaceholders ? 'Função disponível v5.1' : 'Função não disponível',
+        referenceAnalysisStatus: window.analyzeBrokenReferences ? 'Função disponível v5.1' : 'Função não disponível'
     };
     
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `diagnostico-sistema-v5.0-${Date.now()}.json`;
+    a.download = `diagnostico-sistema-v5.1-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     
-    logToPanel('📊 Relatório exportado como JSON (v5.0)', 'success');
+    logToPanel('📊 Relatório exportado como JSON (v5.1)', 'success');
 }
 
 function runPdfMobileDiagnosis() {
@@ -4331,7 +4585,7 @@ function createDiagnosticsPanel() {
     diagnosticsPanel.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <div style="font-size: 16px; font-weight: bold; color: #00ff9c;">
-                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA v5.0
+                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA v5.1
             </div>
             <div style="display: flex; gap: 8px;">
                 <button id="test-compatibility-main" style="
@@ -4369,6 +4623,13 @@ function createDiagnosticsPanel() {
                     font-size: 10px; font-weight: bold;">
                     🔗 REFERÊNCIAS
                 </button>
+                <button id="run-pdf-check-main" style="
+                    background: linear-gradient(45deg, #00aaff, #0088cc); 
+                    color: white; border: none; 
+                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                    font-size: 10px; font-weight: bold;">
+                    📄 PDF CHECK
+                </button>
                 <button id="minimize-btn" style="
                     background: #555; color: white; border: none; 
                     padding: 4px 8px; cursor: pointer; border-radius: 3px;
@@ -4386,7 +4647,7 @@ function createDiagnosticsPanel() {
         <div style="color: #888; font-size: 11px; margin-bottom: 20px; display: flex; justify-content: space-between;">
             <div>
                 Modo: ${DEBUG_MODE ? 'DEBUG' : 'NORMAL'} | 
-                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'} | v5.0
+                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'} | v5.1
             </div>
             <div id="device-indicator" style="background: #333; padding: 2px 8px; border-radius: 3px;">
                 📱 Detectando dispositivo...
@@ -4397,7 +4658,7 @@ function createDiagnosticsPanel() {
                 background: #00ff9c; color: #000; border: none;
                 padding: 8px 12px; cursor: pointer; border-radius: 4px;
                 font-weight: bold; flex: 1;">
-                🧪 TESTE COMPLETO v5.0
+                🧪 TESTE COMPLETO v5.1
             </button>
             <button id="test-pdf-mobile" style="
                 background: #0088cc; color: white; border: none;
@@ -4410,6 +4671,12 @@ function createDiagnosticsPanel() {
                 padding: 8px 12px; cursor: pointer; border-radius: 4px;
                 font-weight: bold; flex: 1;">
                 🔗 REFERÊNCIAS 404
+            </button>
+            <button id="run-pdf-check-btn" style="
+                background: #00aaff; color: white; border: none;
+                padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                font-weight: bold; flex: 1;">
+                📄 VERIFICAÇÃO PDF
             </button>
             <button id="export-btn" style="
                 background: #555; color: white; border: none;
@@ -4474,6 +4741,7 @@ function setupPanelEvents() {
     const autoMigrationBtn = document.getElementById('auto-migration-main');
     const analyzePlaceholdersBtn = document.getElementById('analyze-placeholders-main');
     const analyzeReferencesBtn = document.getElementById('analyze-references-main');
+    const runPdfCheckBtn = document.getElementById('run-pdf-check-main');
     
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
@@ -4526,6 +4794,46 @@ function setupPanelEvents() {
         });
     }
     
+    if (runPdfCheckBtn) {
+        runPdfCheckBtn.addEventListener('click', () => {
+            // Executar verificação PDF
+            const pdfCheck = (function() {
+                console.log('🔍 VERIFICAÇÃO IMEDIATA PDF UNIFICADO');
+                
+                const tests = {
+                    'PdfSystem carregado': () => typeof window.PdfSystem !== 'undefined',
+                    'Função showModal': () => typeof window.PdfSystem?.showModal === 'function',
+                    'Função processAndSavePdfs': () => typeof window.PdfSystem?.processAndSavePdfs === 'function',
+                    'Modal existe no DOM': () => !!document.getElementById('pdfModal'),
+                    'Campo senha existe': () => !!document.getElementById('pdfPassword'),
+                    'Admin.js integrado': () => typeof window.processAndSavePdfs === 'function',
+                    'Preview container existe': () => !!document.getElementById('pdfUploadPreview'),
+                    'Estado inicializado': () => window.PdfSystem?.state && Array.isArray(window.PdfSystem.state.files)
+                };
+                
+                let passed = 0;
+                const total = Object.keys(tests).length;
+                
+                Object.entries(tests).forEach(([name, test]) => {
+                    try {
+                        const result = test();
+                        logToPanel(`${result ? '✅' : '❌'} ${name}: ${result}`, result ? 'success' : 'error');
+                        if (result) passed++;
+                    } catch (e) {
+                        logToPanel(`❌ ${name}: ERRO - ${e.message}`, 'error');
+                    }
+                });
+                
+                const score = Math.round((passed / total) * 100);
+                logToPanel(`📊 Score PDF: ${passed}/${total} (${score}%)`, score >= 80 ? 'success' : 'warning');
+                
+                return { passed, total, score };
+            })();
+            
+            logToPanel(`📄 Verificação PDF completa: ${pdfCheck.passed}/${pdfCheck.total} (${pdfCheck.score}%)`, 'pdf-check');
+        });
+    }
+    
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => {
@@ -4570,6 +4878,47 @@ function setupPanelEvents() {
             if (typeof window.analyzeBrokenReferences === 'function') {
                 window.analyzeBrokenReferences();
             }
+        });
+    }
+    
+    const runPdfCheckPanelBtn = document.getElementById('run-pdf-check-btn');
+    if (runPdfCheckPanelBtn) {
+        runPdfCheckPanelBtn.addEventListener('click', () => {
+            // Executar verificação PDF
+            const pdfCheck = (function() {
+                console.log('🔍 VERIFICAÇÃO IMEDIATA PDF UNIFICADO');
+                
+                const tests = {
+                    'PdfSystem carregado': () => typeof window.PdfSystem !== 'undefined',
+                    'Função showModal': () => typeof window.PdfSystem?.showModal === 'function',
+                    'Função processAndSavePdfs': () => typeof window.PdfSystem?.processAndSavePdfs === 'function',
+                    'Modal existe no DOM': () => !!document.getElementById('pdfModal'),
+                    'Campo senha existe': () => !!document.getElementById('pdfPassword'),
+                    'Admin.js integrado': () => typeof window.processAndSavePdfs === 'function',
+                    'Preview container existe': () => !!document.getElementById('pdfUploadPreview'),
+                    'Estado inicializado': () => window.PdfSystem?.state && Array.isArray(window.PdfSystem.state.files)
+                };
+                
+                let passed = 0;
+                const total = Object.keys(tests).length;
+                
+                Object.entries(tests).forEach(([name, test]) => {
+                    try {
+                        const result = test();
+                        logToPanel(`${result ? '✅' : '❌'} ${name}: ${result}`, result ? 'success' : 'error');
+                        if (result) passed++;
+                    } catch (e) {
+                        logToPanel(`❌ ${name}: ERRO - ${e.message}`, 'error');
+                    }
+                });
+                
+                const score = Math.round((passed / total) * 100);
+                logToPanel(`📊 Score PDF: ${passed}/${total} (${score}%)`, score >= 80 ? 'success' : 'warning');
+                
+                return { passed, total, score };
+            })();
+            
+            logToPanel(`📄 Verificação PDF completa: ${pdfCheck.passed}/${pdfCheck.total} (${pdfCheck.score}%)`, 'pdf-check');
         });
     }
     
@@ -4634,7 +4983,7 @@ if (DEBUG_MODE && DIAGNOSTICS_MODE) {
 
 window.runDiagnostics = runCompleteDiagnosis;
 window.diagnosticsLoaded = true;
-console.log('✅ diagnostics.js v5.0 carregado com sucesso! (com verificação de referências cruzadas)');
+console.log('✅ diagnostics.js v5.1 carregado com sucesso! (com verificação imediata PDF unificado)');
 
 // Adicionar listener para capturar erros 404 em tempo real
 window.addEventListener('error', function(e) {
