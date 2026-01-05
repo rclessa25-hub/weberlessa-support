@@ -244,6 +244,222 @@ window.verifyMediaMigration = function() {
     }
 };
 
+/* ================== NOVO TESTE DE COMPATIBILIDADE DE MÓDULOS ================== */
+window.testModuleCompatibility = function() {
+    logToPanel('🧪 INICIANDO NOVO TESTE DE COMPATIBILIDADE DE MÓDULOS', 'debug');
+    
+    const tests = {
+        // Teste 1: Verificar conflitos entre módulos
+        'Conflitos de variáveis globais': function() {
+            const globalVars = ['MediaSystem', 'PdfLogger', 'ValidationSystem', 'EmergencySystem'];
+            const conflicts = [];
+            
+            globalVars.forEach(varName => {
+                if (window[varName]) {
+                    const type = typeof window[varName];
+                    conflicts.push(`${varName}: ${type}`);
+                }
+            });
+            
+            return {
+                passed: conflicts.length <= 2, // Permite até 2 sistemas coexistirem
+                message: conflicts.length > 0 ? 
+                    `Variáveis globais encontradas: ${conflicts.join(', ')}` :
+                    'Nenhum conflito de variáveis globais'
+            };
+        },
+        
+        // Teste 2: Verificar sobreposição de eventos
+        'Sobrescrita de event listeners': function() {
+            const elementsToCheck = ['pdfPassword', 'mediaUpload', 'uploadPreview'];
+            let totalListeners = 0;
+            let elementsWithListeners = [];
+            
+            elementsToCheck.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    // Esta é uma aproximação - não podemos acessar diretamente os listeners
+                    const hasClick = element.onclick !== null;
+                    const hasChange = element.onchange !== null;
+                    const hasInput = element.oninput !== null;
+                    
+                    if (hasClick || hasChange || hasInput) {
+                        totalListeners++;
+                        elementsWithListeners.push(id);
+                    }
+                }
+            });
+            
+            return {
+                passed: totalListeners <= elementsToCheck.length,
+                message: elementsWithListeners.length > 0 ?
+                    `Elementos com listeners: ${elementsWithListeners.join(', ')}` :
+                    'Nenhum listener detectado (pode ser normal)'
+            };
+        },
+        
+        // Teste 3: Verificar CSS conflitante
+        'Conflitos de CSS': function() {
+            const conflictingStyles = [];
+            const styleSheets = Array.from(document.styleSheets);
+            
+            // Verificar múltiplas definições para elementos críticos
+            const criticalSelectors = ['#pdfModal', '.pdf-modal-content', '#pdfPassword'];
+            
+            criticalSelectors.forEach(selector => {
+                let count = 0;
+                styleSheets.forEach(sheet => {
+                    try {
+                        const rules = Array.from(sheet.cssRules || sheet.rules || []);
+                        rules.forEach(rule => {
+                            if (rule.selectorText && rule.selectorText.includes(selector)) {
+                                count++;
+                            }
+                        });
+                    } catch (e) {
+                        // Ignorar erros de CORS
+                    }
+                });
+                
+                if (count > 1) {
+                    conflictingStyles.push(`${selector} definido ${count} vezes`);
+                }
+            });
+            
+            return {
+                passed: conflictingStyles.length === 0,
+                message: conflictingStyles.length > 0 ?
+                    `Conflitos de CSS: ${conflictingStyles.join('; ')}` :
+                    'Nenhum conflito de CSS detectado'
+            };
+        },
+        
+        // Teste 4: Verificar funções duplicadas
+        'Funções duplicadas': function() {
+            const functionGroups = {
+                'Funções de PDF': ['processAndSavePdfs', 'clearAllPdfs', 'loadExistingPdfsForEdit'],
+                'Funções de Mídia': ['addFiles', 'uploadAll', 'getMediaUrlsForProperty'],
+                'Funções de Admin': ['toggleAdminPanel', 'saveProperty']
+            };
+            
+            const duplicates = [];
+            
+            Object.entries(functionGroups).forEach(([group, functions]) => {
+                const availableFuncs = functions.filter(fn => typeof window[fn] === 'function');
+                if (availableFuncs.length > 0) {
+                    // Verificar se também existem no MediaSystem
+                    const mediaSystemFuncs = functions.filter(fn => 
+                        MediaSystem && typeof MediaSystem[fn] === 'function'
+                    );
+                    
+                    if (mediaSystemFuncs.length > 0 && availableFuncs.length > 0) {
+                        const commonFuncs = availableFuncs.filter(fn => mediaSystemFuncs.includes(fn));
+                        if (commonFuncs.length > 0) {
+                            duplicates.push(`${group}: ${commonFuncs.join(', ')}`);
+                        }
+                    }
+                }
+            });
+            
+            return {
+                passed: duplicates.length === 0,
+                message: duplicates.length > 0 ?
+                    `Funções possivelmente duplicadas: ${duplicates.join('; ')}` :
+                    'Nenhuma função duplicada detectada'
+            };
+        },
+        
+        // Teste 5: Verificar performance de carregamento
+        'Performance de carregamento': function() {
+            const scripts = Array.from(document.scripts);
+            const jsScripts = scripts.filter(s => s.src && s.src.endsWith('.js'));
+            
+            const syncScripts = jsScripts.filter(s => !s.async && !s.defer);
+            const largeScripts = jsScripts.filter(s => {
+                // Tentativa de detectar scripts grandes
+                const fileName = s.src.split('/').pop();
+                return fileName.includes('admin') || 
+                       fileName.includes('properties') || 
+                       fileName.includes('gallery');
+            });
+            
+            return {
+                passed: syncScripts.length <= 5 && largeScripts.length <= 3,
+                message: `Scripts sync: ${syncScripts.length}, Scripts grandes: ${largeScripts.length}`
+            };
+        }
+    };
+    
+    // Executar todos os testes
+    const results = {
+        total: Object.keys(tests).length,
+        passed: 0,
+        failed: 0,
+        details: []
+    };
+    
+    Object.entries(tests).forEach(([testName, testFunction]) => {
+        try {
+            const testResult = testFunction();
+            results.details.push({
+                name: testName,
+                passed: testResult.passed,
+                message: testResult.message
+            });
+            
+            if (testResult.passed) {
+                results.passed++;
+                logToPanel(`✅ ${testName}: ${testResult.message}`, 'success');
+            } else {
+                results.failed++;
+                logToPanel(`⚠️ ${testName}: ${testResult.message}`, 'warning');
+            }
+        } catch (error) {
+            results.failed++;
+            results.details.push({
+                name: testName,
+                passed: false,
+                message: `Erro: ${error.message}`
+            });
+            logToPanel(`❌ ${testName}: Erro - ${error.message}`, 'error');
+        }
+    });
+    
+    // Exibir resumo
+    const summaryMessage = `📊 RESULTADO: ${results.passed}/${results.total} testes passaram`;
+    logToPanel(summaryMessage, results.passed === results.total ? 'success' : 'warning');
+    
+    // Adicionar recomendação baseada nos resultados
+    if (results.failed > 0) {
+        const recommendations = [];
+        
+        results.details.forEach(detail => {
+            if (!detail.passed) {
+                if (detail.name.includes('Conflitos')) {
+                    recommendations.push('• Verificar e consolidar variáveis globais');
+                } else if (detail.name.includes('Sobrescrita')) {
+                    recommendations.push('• Revisar event listeners para evitar sobreposição');
+                } else if (detail.name.includes('CSS')) {
+                    recommendations.push('• Consolidar estilos CSS em arquivos unificados');
+                } else if (detail.name.includes('duplicadas')) {
+                    recommendations.push('• Remover funções duplicadas entre sistemas');
+                } else if (detail.name.includes('Performance')) {
+                    recommendations.push('• Considerar async/defer para scripts grandes');
+                }
+            }
+        });
+        
+        if (recommendations.length > 0) {
+            logToPanel('💡 RECOMENDAÇÕES:', 'info');
+            recommendations.forEach(rec => {
+                logToPanel(rec, 'info');
+            });
+        }
+    }
+    
+    return results;
+};
+
 /* ================== CLASSIFICAÇÃO DE MÓDULOS ================== */
 function classifyModule(fileName) {
     const coreModules = [
@@ -480,6 +696,35 @@ async function testMediaUnifiedComplete() {
         // Não conta como falha porque pode ser fallback
     }
     results.total++;
+    
+    // Teste 8: NOVO TESTE DE COMPATIBILIDADE
+    logToPanel('🔍 Executando novo teste de compatibilidade de módulos...', 'debug');
+    try {
+        const compatibilityResults = window.testModuleCompatibility();
+        results.tests.push({
+            name: 'Teste de compatibilidade de módulos',
+            passed: compatibilityResults.passed === compatibilityResults.total,
+            message: `${compatibilityResults.passed}/${compatibilityResults.total} testes de compatibilidade passaram`
+        });
+        
+        if (compatibilityResults.passed === compatibilityResults.total) {
+            logToPanel('✅ Compatibilidade de módulos validada', 'success');
+            results.passed++;
+        } else {
+            logToPanel(`⚠️ Compatibilidade: ${compatibilityResults.passed}/${compatibilityResults.total} testes passaram`, 'warning');
+            results.failed++;
+        }
+        results.total++;
+    } catch (error) {
+        results.tests.push({
+            name: 'Teste de compatibilidade de módulos',
+            passed: false,
+            message: `Erro: ${error.message}`
+        });
+        logToPanel(`❌ Erro no teste de compatibilidade: ${error.message}`, 'error');
+        results.failed++;
+        results.total++;
+    }
     
     currentTestResults = results;
     return results;
@@ -728,8 +973,15 @@ function updateOverview(data) {
                     font-weight: bold; font-size: 14px; margin: 10px;">
                     🚀 VERIFICAR MIGRAÇÃO DE MÍDIA
                 </button>
+                <button id="test-compatibility-btn" style="
+                    background: linear-gradient(45deg, #00ff9c, #0088cc); 
+                    color: #000; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                    font-weight: bold; font-size: 14px; margin: 10px;">
+                    🔍 TESTE DE COMPATIBILIDADE
+                </button>
                 <div style="font-size: 11px; color: #888; margin-top: 5px;">
-                    Valida se o sistema está pronto para remover módulos antigos
+                    Valida conflitos entre módulos e sistemas
                 </div>
             </div>
         </div>
@@ -787,6 +1039,11 @@ function updateOverview(data) {
     document.getElementById('verify-migration-btn')?.addEventListener('click', () => {
         window.verifyMediaMigration();
     });
+    
+    // Configurar botão de teste de compatibilidade
+    document.getElementById('test-compatibility-btn')?.addEventListener('click', () => {
+        window.testModuleCompatibility();
+    });
 }
 
 function updateTestsTab(testResults) {
@@ -802,13 +1059,37 @@ function updateTestsTab(testResults) {
                     margin-top: 20px; background: #00ff9c; color: #000;
                     border: none; padding: 10px 20px; border-radius: 4px;
                     cursor: pointer; font-weight: bold;">
-                    EXECUTAR TESTES
+                    EXECUTAR TESTES COMPLETOS
                 </button>
+                <div style="margin-top: 15px;">
+                    <button id="run-compatibility-test-btn" style="
+                        background: linear-gradient(45deg, #00ff9c, #0088cc); 
+                        color: #000; border: none;
+                        padding: 10px 20px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; margin: 5px;">
+                        🔍 TESTE DE COMPATIBILIDADE
+                    </button>
+                    <button id="run-migration-test-btn" style="
+                        background: linear-gradient(45deg, #ff00ff, #0088cc); 
+                        color: white; border: none;
+                        padding: 10px 20px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; margin: 5px;">
+                        🚀 TESTE DE MIGRAÇÃO
+                    </button>
+                </div>
             </div>
         `;
         
         document.getElementById('run-tests-btn')?.addEventListener('click', async () => {
             await runCompleteDiagnosis();
+        });
+        
+        document.getElementById('run-compatibility-test-btn')?.addEventListener('click', () => {
+            window.testModuleCompatibility();
+        });
+        
+        document.getElementById('run-migration-test-btn')?.addEventListener('click', () => {
+            window.verifyMediaMigration();
         });
         
         return;
@@ -854,15 +1135,16 @@ function updateTestsTab(testResults) {
     `;
     
     testResults.tests.forEach((test, index) => {
+        const isCompatibilityTest = test.name.includes('compatibilidade');
         html += `
             <div style="
-                background: ${test.passed ? '#001a00' : '#1a0000'};
+                background: ${test.passed ? (isCompatibilityTest ? '#001a1a' : '#001a00') : '#1a0000'};
                 padding: 12px; margin-bottom: 8px; border-radius: 4px;
-                border-left: 3px solid ${test.passed ? '#00ff9c' : '#ff5555'};
+                border-left: 3px solid ${test.passed ? (isCompatibilityTest ? '#0088cc' : '#00ff9c') : '#ff5555'};
                 display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <div style="font-weight: bold; color: ${test.passed ? '#00ff9c' : '#ff5555'};">
-                        ${test.passed ? '✅' : '❌'} ${test.name}
+                    <div style="font-weight: bold; color: ${test.passed ? (isCompatibilityTest ? '#0088cc' : '#00ff9c') : '#ff5555'};">
+                        ${test.passed ? (isCompatibilityTest ? '🔍' : '✅') : '❌'} ${test.name}
                     </div>
                     ${test.message ? `<div style="font-size: 11px; color: #888; margin-top: 4px;">${test.message}</div>` : ''}
                 </div>
@@ -876,13 +1158,20 @@ function updateTestsTab(testResults) {
             </div>
         </div>
         
-        <div style="text-align: center; margin-top: 20px;">
+        <div style="text-align: center; margin-top: 20px; display: flex; justify-content: center; gap: 15px;">
             <button id="run-migration-test" style="
                 background: linear-gradient(45deg, #ff00ff, #0088cc); 
                 color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
                 font-weight: bold;">
-                🚀 TESTAR PRONTIDÃO PARA MIGRAÇÃO
+                🚀 TESTAR MIGRAÇÃO
+            </button>
+            <button id="run-compatibility-test" style="
+                background: linear-gradient(45deg, #00ff9c, #0088cc); 
+                color: #000; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                font-weight: bold;">
+                🔍 TESTAR COMPATIBILIDADE
             </button>
         </div>
     `;
@@ -892,6 +1181,11 @@ function updateTestsTab(testResults) {
     // Configurar botão de teste de migração
     document.getElementById('run-migration-test')?.addEventListener('click', () => {
         window.verifyMediaMigration();
+    });
+    
+    // Configurar botão de teste de compatibilidade
+    document.getElementById('run-compatibility-test')?.addEventListener('click', () => {
+        window.testModuleCompatibility();
     });
 }
 
@@ -1237,7 +1531,8 @@ function exportReport() {
             innerHeight: window.innerHeight
         },
         testResults: currentTestResults,
-        migrationStatus: window.verifyMediaMigration ? 'Função disponível' : 'Função não disponível'
+        migrationStatus: window.verifyMediaMigration ? 'Função disponível' : 'Função não disponível',
+        compatibilityStatus: window.testModuleCompatibility ? 'Função disponível' : 'Função não disponível'
     };
     
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
@@ -1332,6 +1627,13 @@ function createDiagnosticsPanel() {
                 🚀 DIAGNÓSTICO COMPLETO DO SISTEMA
             </div>
             <div style="display: flex; gap: 8px;">
+                <button id="test-compatibility-main" style="
+                    background: linear-gradient(45deg, #00ff9c, #0088cc); 
+                    color: #000; border: none; 
+                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                    font-size: 10px; font-weight: bold;">
+                    🔍 COMPATIBILIDADE
+                </button>
                 <button id="verify-migration-main" style="
                     background: linear-gradient(45deg, #ff00ff, #0088cc); 
                     color: white; border: none; 
@@ -1437,6 +1739,7 @@ function setupPanelEvents() {
     const closeBtn = document.getElementById('close-btn');
     const minimizeBtn = document.getElementById('minimize-btn');
     const verifyMigrationBtn = document.getElementById('verify-migration-main');
+    const testCompatibilityBtn = document.getElementById('test-compatibility-main');
     
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
@@ -1456,6 +1759,12 @@ function setupPanelEvents() {
     if (verifyMigrationBtn) {
         verifyMigrationBtn.addEventListener('click', () => {
             window.verifyMediaMigration();
+        });
+    }
+    
+    if (testCompatibilityBtn) {
+        testCompatibilityBtn.addEventListener('click', () => {
+            window.testModuleCompatibility();
         });
     }
     
@@ -1538,5 +1847,5 @@ if (DEBUG_MODE && DIAGNOSTICS_MODE) {
     }
 }
 
-// Exportar função globalmente para acesso direto via console
+// Exportar funções globalmente para acesso direto via console
 window.runDiagnostics = runCompleteDiagnosis;
