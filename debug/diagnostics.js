@@ -1,5 +1,5 @@
-// debug/diagnostics.js - VERSÃO COMPLETA ATUALIZADA
-console.log('🔍 diagnostics.js – diagnóstico completo corrigido v3 (com validação automática)');
+// debug/diagnostics.js - VERSÃO COMPLETA ATUALIZADA COM VERIFICAÇÃO DE PLACEHOLDERS
+console.log('🔍 diagnostics.js – diagnóstico completo corrigido v4 (com verificação de placeholders)');
 
 /* ================== FLAGS ================== */
 const params = new URLSearchParams(location.search);
@@ -21,7 +21,8 @@ function logToPanel(message, type = 'info') {
         'warning': '#ffaa00',
         'debug': '#8888ff',
         'mobile': '#0088cc',
-        'migration': '#ff00ff'
+        'migration': '#ff00ff',
+        'placeholder': '#ff5500'
     };
     
     const icons = {
@@ -31,7 +32,8 @@ function logToPanel(message, type = 'info') {
         'warning': '⚠️',
         'debug': '🔍',
         'mobile': '📱',
-        'migration': '🚀'
+        'migration': '🚀',
+        'placeholder': '🗑️'
     };
     
     const logLine = document.createElement('div');
@@ -39,7 +41,7 @@ function logToPanel(message, type = 'info') {
         margin: 2px 0;
         padding: 4px;
         border-left: 3px solid ${colors[type]};
-        background: ${type === 'error' ? '#1a0000' : type === 'warning' ? '#1a1a00' : 'transparent'};
+        background: ${type === 'error' ? '#1a0000' : type === 'warning' ? '#1a1a00' : type === 'placeholder' ? '#1a0a00' : 'transparent'};
     `;
     logLine.innerHTML = `<span style="color: ${colors[type]}">${icons[type]} ${message}</span>`;
     
@@ -62,7 +64,8 @@ function updateStatus(message, type = 'info') {
         statusBar.style.color = type === 'error' ? '#ff5555' : 
                                type === 'success' ? '#00ff9c' : 
                                type === 'mobile' ? '#0088cc' : 
-                               type === 'migration' ? '#ff00ff' : '#888';
+                               type === 'migration' ? '#ff00ff' : 
+                               type === 'placeholder' ? '#ff5500' : '#888';
     }
 }
 
@@ -241,6 +244,514 @@ window.verifyMediaMigration = function() {
         };
     }
 };
+
+/* ================== VERIFICAÇÃO DE PLACEHOLDERS PARA EXCLUSÃO ================== */
+window.analyzePlaceholders = function() {
+    logToPanel('🔍 ANALISANDO ARQUIVOS PLACEHOLDER PARA EXCLUSÃO', 'placeholder');
+    
+    const placeholderPatterns = {
+        // Módulos antigos que podem ser substituídos pelo MediaSystem
+        mediaModules: [
+            'media-*.js',
+            'media-core.js',
+            'media-ui.js',
+            'media-integration.js',
+            'media-utils.js',
+            'media-logger.js',
+            'media-recovery.js'
+        ],
+        
+        // Módulos PDF antigos
+        pdfModules: [
+            'pdf-*.js',
+            'pdf-core.js',
+            'pdf-ui.js',
+            'pdf-integration.js',
+            'pdf-utils.js',
+            'pdf-logger.js'
+        ],
+        
+        // Módulos de diagnóstico antigos ou duplicados
+        diagnosticModules: [
+            'duplication-checker.js',
+            'emergency-recovery.js',
+            'simple-checker.js',
+            'validation-essentials.js'
+        ],
+        
+        // CSS antigos
+        cssFiles: [
+            'media-*.css',
+            'pdf-*.css',
+            'old-*.css'
+        ]
+    };
+    
+    // Coletar todos os scripts e estilos carregados
+    const allScripts = Array.from(document.scripts)
+        .filter(s => s.src)
+        .map(s => s.src.split('/').pop());
+    
+    const allStyles = Array.from(document.styleSheets)
+        .filter(ss => ss.href)
+        .map(ss => {
+            const href = ss.href;
+            return href.substring(href.lastIndexOf('/') + 1);
+        });
+    
+    // Função para verificar padrão wildcard
+    function matchesPattern(fileName, pattern) {
+        if (pattern.includes('*')) {
+            const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+            return regex.test(fileName);
+        }
+        return fileName === pattern;
+    }
+    
+    // Analisar cada arquivo
+    const analysis = {
+        scripts: {},
+        styles: {},
+        recommendations: []
+    };
+    
+    console.group('🔍 ANÁLISE DE PLACEHOLDERS');
+    
+    // Analisar scripts
+    allScripts.forEach(script => {
+        let status = 'NECESSÁRIO';
+        let reason = 'Arquivo ativo no sistema';
+        let safeToDelete = false;
+        let category = 'CORE';
+        
+        // Verificar se é um placeholder
+        for (const [categoryName, patterns] of Object.entries(placeholderPatterns)) {
+            for (const pattern of patterns) {
+                if (matchesPattern(script, pattern)) {
+                    status = 'CANDIDATO A EXCLUSÃO';
+                    category = categoryName.toUpperCase();
+                    
+                    // Verificar se há equivalente no MediaSystem
+                    const scriptName = script.replace('.js', '');
+                    const hasMediaSystemEquivalent = window.MediaSystem && 
+                        (scriptName.includes('media') || scriptName.includes('pdf')) &&
+                        (typeof MediaSystem.addFiles === 'function' ||
+                         typeof MediaSystem.addPdfs === 'function');
+                    
+                    if (hasMediaSystemEquivalent) {
+                        reason = `Substituído por MediaSystem`;
+                        safeToDelete = true;
+                        analysis.recommendations.push(`✅ ${script} - Pode ser excluído (substituído por MediaSystem)`);
+                    } else {
+                        reason = `Verificar dependências antes de excluir`;
+                        analysis.recommendations.push(`⚠️ ${script} - Verificar dependências antes de excluir`);
+                    }
+                    break;
+                }
+            }
+        }
+        
+        analysis.scripts[script] = {
+            status,
+            reason,
+            safeToDelete,
+            category
+        };
+        
+        console.log(`${safeToDelete ? '✅' : '⚠️'} ${script}: ${status} - ${reason}`);
+    });
+    
+    // Analisar estilos
+    allStyles.forEach(style => {
+        let status = 'NECESSÁRIO';
+        let reason = 'Estilo ativo no sistema';
+        let safeToDelete = false;
+        let category = 'CSS';
+        
+        for (const pattern of placeholderPatterns.cssFiles) {
+            if (matchesPattern(style, pattern)) {
+                status = 'CANDIDATO A EXCLUSÃO';
+                reason = 'CSS antigo ou duplicado';
+                safeToDelete = true;
+                analysis.recommendations.push(`✅ ${style} - Pode ser excluído`);
+                break;
+            }
+        }
+        
+        analysis.styles[style] = {
+            status,
+            reason,
+            safeToDelete,
+            category
+        };
+    });
+    
+    // Verificar dependências cruzadas
+    const criticalModules = ['admin.js', 'properties.js', 'gallery.js', 'diagnostics.js'];
+    criticalModules.forEach(module => {
+        if (analysis.scripts[module]) {
+            analysis.scripts[module].safeToDelete = false;
+            analysis.scripts[module].reason = 'Módulo crítico do sistema';
+            analysis.scripts[module].status = 'CRÍTICO - NÃO EXCLUIR';
+            
+            // Remover da lista de recomendações se estiver lá
+            analysis.recommendations = analysis.recommendations.filter(
+                rec => !rec.includes(module)
+            );
+            analysis.recommendations.push(`❌ ${module} - NÃO EXCLUIR (módulo crítico)`);
+        }
+    });
+    
+    // Verificar MediaSystem
+    if (window.MediaSystem) {
+        const mediaSystemFunctions = Object.getOwnPropertyNames(MediaSystem)
+            .filter(prop => typeof MediaSystem[prop] === 'function');
+        
+        analysis.mediaSystemStatus = {
+            functionsCount: mediaSystemFunctions.length,
+            canReplaceModules: mediaSystemFunctions.length >= 5, // Pelo menos 5 funções principais
+            functions: mediaSystemFunctions.slice(0, 10) // Mostrar primeiras 10
+        };
+        
+        if (analysis.mediaSystemStatus.canReplaceModules) {
+            analysis.recommendations.unshift('✅ MediaSystem pode substituir todos os módulos antigos');
+        }
+    }
+    
+    console.log('📊 RESUMO DA ANÁLISE:');
+    console.log('- Scripts analisados:', Object.keys(analysis.scripts).length);
+    console.log('- Estilos analisados:', Object.keys(analysis.styles).length);
+    console.log('- Recomendações:', analysis.recommendations.length);
+    console.groupEnd();
+    
+    // Gerar relatório visual
+    showPlaceholderAnalysis(analysis);
+    
+    return analysis;
+};
+
+/* ================== PAINEL DE ANÁLISE DE PLACEHOLDERS ================== */
+function showPlaceholderAnalysis(analysis) {
+    const alertId = 'placeholder-analysis-alert';
+    
+    const existingAlert = document.getElementById(alertId);
+    if (existingAlert) {
+        document.body.removeChild(existingAlert);
+    }
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.id = alertId;
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #000a1a;
+        color: #00aaff;
+        padding: 25px;
+        border: 3px solid #00aaff;
+        border-radius: 10px;
+        z-index: 1000003;
+        max-width: 800px;
+        max-height: 80vh;
+        overflow-y: auto;
+        width: 95%;
+        box-shadow: 0 0 50px rgba(0, 170, 255, 0.5);
+        font-family: 'Consolas', 'Monaco', monospace;
+    `;
+    
+    // Contar estatísticas
+    const totalScripts = Object.keys(analysis.scripts).length;
+    const safeToDelete = Object.values(analysis.scripts).filter(s => s.safeToDelete).length;
+    const totalStyles = Object.keys(analysis.styles).length;
+    const safeStyles = Object.values(analysis.styles).filter(s => s.safeToDelete).length;
+    
+    let html = `
+        <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #00aaff;">
+            <span>🗑️</span>
+            <span>ANÁLISE DE ARQUIVOS PARA EXCLUSÃO</span>
+        </div>
+        
+        <div style="background: #001a33; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <div style="font-size: 11px; color: #88aaff;">SCRIPTS</div>
+                    <div style="font-size: 24px; color: #00aaff;">${totalScripts}</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #88aaff;">SEGUROS PARA EXCLUIR</div>
+                    <div style="font-size: 24px; color: ${safeToDelete > 0 ? '#00ff9c' : '#ffaa00'}">${safeToDelete}</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #88aaff;">ESTILOS</div>
+                    <div style="font-size: 24px; color: #00aaff;">${totalStyles}</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #88aaff;">SEGUROS PARA EXCLUIR</div>
+                    <div style="font-size: 24px; color: ${safeStyles > 0 ? '#00ff9c' : '#ffaa00'}">${safeStyles}</div>
+                </div>
+            </div>
+            
+            <div style="font-size: 12px; color: #88aaff;">
+                ${analysis.mediaSystemStatus?.canReplaceModules ? 
+                    '✅ MediaSystem pode substituir módulos antigos' : 
+                    '⚠️ Verificar se MediaSystem tem todas as funções necessárias'}
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: #00aaff; margin-bottom: 10px; border-bottom: 1px solid #003366; padding-bottom: 5px;">
+                📋 RECOMENDAÇÕES DE EXCLUSÃO
+            </h4>
+            <div style="max-height: 200px; overflow-y: auto; background: #001122; padding: 10px; border-radius: 4px;">
+    `;
+    
+    if (analysis.recommendations.length > 0) {
+        analysis.recommendations.forEach(rec => {
+            const color = rec.includes('✅') ? '#00ff9c' : 
+                         rec.includes('⚠️') ? '#ffaa00' : 
+                         rec.includes('❌') ? '#ff5555' : '#88aaff';
+            
+            html += `
+                <div style="margin-bottom: 5px; padding: 8px; background: rgba(0, 170, 255, 0.1); border-radius: 4px; border-left: 3px solid ${color};">
+                    <span style="color: ${color};">${rec.includes('✅') ? '✅' : rec.includes('⚠️') ? '⚠️' : rec.includes('❌') ? '❌' : '•'}</span>
+                    <span style="color: ${color}; margin-left: 8px;">${rec.replace(/^(✅|⚠️|❌)\s*/, '')}</span>
+                </div>
+            `;
+        });
+    } else {
+        html += `
+            <div style="text-align: center; padding: 20px; color: #888;">
+                Nenhuma recomendação de exclusão disponível
+            </div>
+        `;
+    }
+    
+    html += `
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: #00aaff; margin-bottom: 10px; border-bottom: 1px solid #003366; padding-bottom: 5px;">
+                📊 DETALHES DOS ARQUIVOS
+            </h4>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px; max-height: 300px; overflow-y: auto;">
+    `;
+    
+    // Mostrar scripts
+    Object.entries(analysis.scripts).forEach(([script, info]) => {
+        const bgColor = info.safeToDelete ? '#001a00' : 
+                       info.status.includes('CRÍTICO') ? '#1a0000' : '#001a1a';
+        const borderColor = info.safeToDelete ? '#00ff9c' : 
+                           info.status.includes('CRÍTICO') ? '#ff5555' : '#00aaff';
+        
+        html += `
+            <div style="background: ${bgColor}; padding: 10px; border-radius: 4px; border-left: 3px solid ${borderColor};">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: bold; color: ${borderColor};">
+                            ${info.safeToDelete ? '✅' : info.status.includes('CRÍTICO') ? '❌' : '⚠️'} ${script}
+                        </div>
+                        <div style="font-size: 11px; color: #88aaff; margin-top: 4px;">
+                            ${info.reason} | ${info.category}
+                        </div>
+                    </div>
+                    <span style="font-size: 10px; color: #888; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">
+                        ${info.status}
+                    </span>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
+            <button id="generate-delete-script" style="
+                background: ${safeToDelete > 0 ? '#00ff9c' : '#555'}; 
+                color: ${safeToDelete > 0 ? '#000' : 'white'}; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; font-size: 14px; min-width: 140px;">
+                📜 GERAR SCRIPT DE EXCLUSÃO
+            </button>
+            <button id="export-analysis-report" style="
+                background: #0088cc; color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; font-size: 14px; min-width: 140px;">
+                📊 EXPORTAR RELATÓRIO
+            </button>
+            <button id="close-analysis-btn" style="
+                background: #555; color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; font-size: 14px; min-width: 140px;">
+                FECHAR
+            </button>
+        </div>
+        
+        <div style="font-size: 11px; color: #88aaff; text-align: center; margin-top: 15px;">
+            ⚠️ Sempre faça backup antes de excluir arquivos
+        </div>
+    `;
+    
+    alertDiv.innerHTML = html;
+    document.body.appendChild(alertDiv);
+    
+    // Configurar eventos
+    document.getElementById('generate-delete-script')?.addEventListener('click', () => {
+        generateDeleteScript(analysis);
+    });
+    
+    document.getElementById('export-analysis-report')?.addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(analysis, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `placeholder-analysis-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        logToPanel('📊 Relatório de análise exportado', 'migration');
+    });
+    
+    document.getElementById('close-analysis-btn')?.addEventListener('click', () => {
+        document.body.removeChild(alertDiv);
+    });
+}
+
+/* ================== GERAR SCRIPT DE EXCLUSÃO ================== */
+function generateDeleteScript(analysis) {
+    const safeToDelete = Object.entries(analysis.scripts)
+        .filter(([_, info]) => info.safeToDelete)
+        .map(([script]) => script);
+    
+    const safeStyles = Object.entries(analysis.styles)
+        .filter(([_, info]) => info.safeToDelete)
+        .map(([style]) => style);
+    
+    if (safeToDelete.length === 0 && safeStyles.length === 0) {
+        alert('⚠️ Nenhum arquivo seguro para exclusão identificado.');
+        return;
+    }
+    
+    // Criar script de exclusão
+    const deleteScript = `
+// ==============================================
+// SCRIPT DE EXCLUSÃO SEGURA - Gerado por diagnostics.js
+// Data: ${new Date().toISOString()}
+// ==============================================
+// ⚠️ IMPORTANTE: Faça backup antes de executar!
+// ==============================================
+
+// Arquivos JavaScript identificados como seguros para exclusão:
+const filesToDelete = [
+    ${safeToDelete.map(file => `'${file}'`).join(',\n    ')}
+];
+
+// Arquivos CSS identificados como seguros para exclusão:
+const stylesToDelete = [
+    ${safeStyles.map(style => `'${style}'`).join(',\n    ')}
+];
+
+// ==============================================
+// MÉTODOS DE EXCLUSÃO RECOMENDADOS:
+// ==============================================
+
+// 1. EXCLUSÃO MANUAL (recomendado):
+console.log('📁 Para exclusão manual:');
+filesToDelete.forEach(file => {
+    console.log('   rm -f', file);
+});
+stylesToDelete.forEach(style => {
+    console.log('   rm -f', style);
+});
+
+// 2. SCRIPT NODE.JS PARA EXCLUSÃO:
+/*
+const fs = require('fs');
+const path = require('path');
+
+const deleteFiles = (fileList) => {
+    fileList.forEach(file => {
+        const filePath = path.join(__dirname, file);
+        if (fs.existsSync(filePath)) {
+            try {
+                fs.unlinkSync(filePath);
+                console.log('✅ Excluído:', file);
+            } catch (error) {
+                console.log('❌ Erro ao excluir', file, ':', error.message);
+            }
+        } else {
+            console.log('⚠️ Arquivo não encontrado:', file);
+        }
+    });
+};
+
+// Executar exclusão
+console.log('🚀 Iniciando exclusão de arquivos...');
+deleteFiles(filesToDelete);
+deleteFiles(stylesToDelete);
+console.log('✅ Exclusão concluída!');
+*/
+
+// 3. ATUALIZAR INDEX.HTML (remover referências):
+console.log('\\n📝 Remova estas referências do index.html:');
+filesToDelete.forEach(file => {
+    console.log('   <script src="' + file + '"></script>');
+});
+stylesToDelete.forEach(style => {
+    console.log('   <link rel="stylesheet" href="' + style + '">');
+});
+
+// ==============================================
+// VALIDAÇÃO PÓS-EXCLUSÃO:
+// ==============================================
+console.log('\\n🔍 APÓS EXCLUSÃO, VERIFIQUE:');
+console.log('   1. O site ainda carrega corretamente');
+console.log('   2. Uploads de mídia funcionam');
+console.log('   3. Uploads de PDF funcionam');
+console.log('   4. Modal de PDF funciona');
+console.log('   5. Admin panel funciona');
+
+// ==============================================
+// ESTATÍSTICAS:
+// ==============================================
+console.log('\\n📊 ESTATÍSTICAS:');
+console.log('   Arquivos JS para excluir:', filesToDelete.length);
+console.log('   Arquivos CSS para excluir:', stylesToDelete.length);
+console.log('   Total de arquivos:', filesToDelete.length + stylesToDelete.length);
+console.log('\\n✅ Script gerado com sucesso!');
+    `;
+    
+    // Criar e baixar o script
+    const blob = new Blob([deleteScript], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `delete-placeholders-${Date.now()}.js`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    logToPanel('📜 Script de exclusão gerado e baixado', 'success');
+    
+    // Mostrar preview
+    const preview = `
+        ✅ Script gerado com sucesso!
+        
+        📊 RESUMO:
+        - ${safeToDelete.length} arquivos JS seguros para exclusão
+        - ${safeStyles.length} arquivos CSS seguros para exclusão
+        - Total: ${safeToDelete.length + safeStyles.length} arquivos
+        
+        📁 Arquivos identificados:
+        ${safeToDelete.map(f => `  • ${f}`).join('\\n')}
+        ${safeStyles.map(s => `  • ${s}`).join('\\n')}
+        
+        ⚠️ IMPORTANTE: Faça backup antes de excluir!
+    `;
+    
+    alert(preview);
+}
 
 /* ================== NOVO TESTE DE COMPATIBILIDADE DE MÓDULOS - CORRIGIDO ================== */
 window.testModuleCompatibility = function() {
@@ -1591,7 +2102,7 @@ function updateOverview(data) {
     
     let html = `
         <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 10px;">📊 RESUMO DO SISTEMA v3</h3>
+            <h3 style="color: #00ff9c; margin-bottom: 10px;">📊 RESUMO DO SISTEMA v4</h3>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
                 <div style="background: #111; padding: 15px; border-radius: 6px;">
                     <div style="color: #888; font-size: 11px;">SCRIPTS</div>
@@ -1633,8 +2144,15 @@ function updateOverview(data) {
                     font-weight: bold; font-size: 14px; margin: 10px;">
                     🔄 VERIFICAÇÃO AUTOMÁTICA
                 </button>
+                <button id="analyze-placeholders-btn" style="
+                    background: linear-gradient(45deg, #ff5500, #ffaa00); 
+                    color: #000; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                    font-weight: bold; font-size: 14px; margin: 10px;">
+                    🗑️ ANALISAR ARQUIVOS PARA EXCLUSÃO
+                </button>
                 <div style="font-size: 11px; color: #888; margin-top: 5px;">
-                    Simula carregamento condicional do index.html (TESTE 3)
+                    Identifica arquivos placeholder que podem ser excluídos com segurança
                 </div>
             </div>
         </div>
@@ -1708,6 +2226,14 @@ function updateOverview(data) {
             }
         }, 2000);
     });
+    
+    document.getElementById('analyze-placeholders-btn')?.addEventListener('click', () => {
+        if (typeof window.analyzePlaceholders === 'function') {
+            window.analyzePlaceholders();
+        } else {
+            logToPanel('❌ Função analyzePlaceholders não encontrada', 'error');
+        }
+    });
 }
 
 function updateTestsTab(testResults) {
@@ -1721,7 +2247,7 @@ function updateTestsTab(testResults) {
                 <div>Execute os testes para ver os resultados</div>
                 <button id="run-tests-btn" style="
                     margin-top: 20px; background: #00ff9c; color: #000;
-                    border: none; padding: 10px 20px; border-radius: 4px;
+                    border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px;
                     cursor: pointer; font-weight: bold;">
                     🧪 EXECUTAR TESTES COMPLETOS
                 </button>
@@ -1747,9 +2273,16 @@ function updateTestsTab(testResults) {
                         font-weight: bold; margin: 5px;">
                         🔄 VERIFICAÇÃO AUTOMÁTICA
                     </button>
+                    <button id="run-placeholder-analysis-btn" style="
+                        background: linear-gradient(45deg, #ff5500, #ffaa00); 
+                        color: #000; border: none;
+                        padding: 10px 20px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; margin: 5px;">
+                        🗑️ ANÁLISE DE PLACEHOLDERS
+                    </button>
                 </div>
                 <div style="font-size: 11px; color: #888; margin-top: 10px;">
-                    v3: Inclui verificação automática via módulo de suporte (TESTE 3)
+                    v4: Inclui verificação automática via módulo de suporte (TESTE 3)
                 </div>
             </div>
         `;
@@ -1769,6 +2302,12 @@ function updateTestsTab(testResults) {
         document.getElementById('run-auto-check-btn')?.addEventListener('click', () => {
             if (typeof window.autoValidateMigration === 'function') {
                 window.autoValidateMigration();
+            }
+        });
+        
+        document.getElementById('run-placeholder-analysis-btn')?.addEventListener('click', () => {
+            if (typeof window.analyzePlaceholders === 'function') {
+                window.analyzePlaceholders();
             }
         });
         
@@ -1877,9 +2416,16 @@ function updateTestsTab(testResults) {
                 font-weight: bold; margin: 5px;">
                 🔄 VERIFICAÇÃO AUTOMÁTICA
             </button>
+            <button id="run-placeholder-analysis" style="
+                background: linear-gradient(45deg, #ff5500, #ffaa00); 
+                color: #000; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                font-weight: bold; margin: 5px;">
+                🗑️ ANÁLISE PLACEHOLDERS
+            </button>
         </div>
         <div style="font-size: 11px; color: #888; text-align: center; margin-top: 10px;">
-            v3: Inclui verificação automática via módulo de suporte (TESTE 3)
+            v4: Inclui verificação automática via módulo de suporte (TESTE 3)
         </div>
     `;
     
@@ -1896,6 +2442,12 @@ function updateTestsTab(testResults) {
     document.getElementById('run-auto-check')?.addEventListener('click', () => {
         if (typeof window.autoValidateMigration === 'function') {
             window.autoValidateMigration();
+        }
+    });
+    
+    document.getElementById('run-placeholder-analysis')?.addEventListener('click', () => {
+        if (typeof window.analyzePlaceholders === 'function') {
+            window.analyzePlaceholders();
         }
     });
     
@@ -2164,7 +2716,7 @@ function applyMobilePdfFixes(results) {
 /* ================== FUNÇÕES PRINCIPAIS ================== */
 async function runCompleteDiagnosis() {
     try {
-        logToPanel('🚀 Iniciando diagnóstico completo v3...', 'debug');
+        logToPanel('🚀 Iniciando diagnóstico completo v4...', 'debug');
         updateStatus('Diagnóstico em andamento...', 'info');
         
         const systemData = analyzeSystem();
@@ -2245,18 +2797,19 @@ function exportReport() {
         lastMigrationReport: lastMigrationReport,
         migrationStatus: window.verifyMediaMigration ? 'Função disponível' : 'Função não disponível',
         compatibilityStatus: window.testModuleCompatibility ? 'Função disponível v3' : 'Função não disponível',
-        autoValidationStatus: window.autoValidateMigration ? 'Função disponível v3' : 'Função não disponível'
+        autoValidationStatus: window.autoValidateMigration ? 'Função disponível v3' : 'Função não disponível',
+        placeholderAnalysisStatus: window.analyzePlaceholders ? 'Função disponível v4' : 'Função não disponível'
     };
     
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `diagnostico-sistema-v3-${Date.now()}.json`;
+    a.download = `diagnostico-sistema-v4-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     
-    logToPanel('📊 Relatório exportado como JSON (v3)', 'success');
+    logToPanel('📊 Relatório exportado como JSON (v4)', 'success');
 }
 
 function runPdfMobileDiagnosis() {
@@ -2333,7 +2886,7 @@ function createDiagnosticsPanel() {
     diagnosticsPanel.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <div style="font-size: 16px; font-weight: bold; color: #00ff9c;">
-                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA v3
+                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA v4
             </div>
             <div style="display: flex; gap: 8px;">
                 <button id="test-compatibility-main" style="
@@ -2357,6 +2910,13 @@ function createDiagnosticsPanel() {
                     font-size: 10px; font-weight: bold;">
                     🚀 MIGRAÇÃO
                 </button>
+                <button id="analyze-placeholders-main" style="
+                    background: linear-gradient(45deg, #ff5500, #ffaa00); 
+                    color: #000; border: none; 
+                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                    font-size: 10px; font-weight: bold;">
+                    🗑️ PLACEHOLDERS
+                </button>
                 <button id="minimize-btn" style="
                     background: #555; color: white; border: none; 
                     padding: 4px 8px; cursor: pointer; border-radius: 3px;
@@ -2374,7 +2934,7 @@ function createDiagnosticsPanel() {
         <div style="color: #888; font-size: 11px; margin-bottom: 20px; display: flex; justify-content: space-between;">
             <div>
                 Modo: ${DEBUG_MODE ? 'DEBUG' : 'NORMAL'} | 
-                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'} | v3
+                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'} | v4
             </div>
             <div id="device-indicator" style="background: #333; padding: 2px 8px; border-radius: 3px;">
                 📱 Detectando dispositivo...
@@ -2385,7 +2945,7 @@ function createDiagnosticsPanel() {
                 background: #00ff9c; color: #000; border: none;
                 padding: 8px 12px; cursor: pointer; border-radius: 4px;
                 font-weight: bold; flex: 1;">
-                🧪 TESTE COMPLETO v3
+                🧪 TESTE COMPLETO v4
             </button>
             <button id="test-pdf-mobile" style="
                 background: #0088cc; color: white; border: none;
@@ -2454,6 +3014,7 @@ function setupPanelEvents() {
     const verifyMigrationBtn = document.getElementById('verify-migration-main');
     const testCompatibilityBtn = document.getElementById('test-compatibility-main');
     const autoMigrationBtn = document.getElementById('auto-migration-main');
+    const analyzePlaceholdersBtn = document.getElementById('analyze-placeholders-main');
     
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
@@ -2486,6 +3047,14 @@ function setupPanelEvents() {
         autoMigrationBtn.addEventListener('click', () => {
             if (typeof window.autoValidateMigration === 'function') {
                 window.autoValidateMigration();
+            }
+        });
+    }
+    
+    if (analyzePlaceholdersBtn) {
+        analyzePlaceholdersBtn.addEventListener('click', () => {
+            if (typeof window.analyzePlaceholders === 'function') {
+                window.analyzePlaceholders();
             }
         });
     }
@@ -2573,4 +3142,4 @@ if (DEBUG_MODE && DIAGNOSTICS_MODE) {
 
 window.runDiagnostics = runCompleteDiagnosis;
 window.diagnosticsLoaded = true;
-console.log('✅ diagnostics.js v3 carregado com sucesso!');
+console.log('✅ diagnostics.js v4 carregado com sucesso!');
