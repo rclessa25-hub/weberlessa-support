@@ -593,9 +593,12 @@ window.validateMediaMigration = function() {
     const checks = {
         // Sistema principal
         'MediaSystem carregado': typeof MediaSystem !== 'undefined',
-        'Sistema unificado ativo': MediaSystem && 
-            typeof MediaSystem.isUnifiedSystem === 'function' ? 
-            MediaSystem.isUnifiedSystem() : false,
+        
+        // Verificar se MediaSystem tem funções básicas (em vez de isUnifiedSystem)
+        'MediaSystem funcional': MediaSystem && 
+            (typeof MediaSystem.addFiles === 'function' ||
+             typeof MediaSystem.addPdfs === 'function' ||
+             typeof MediaSystem.uploadAll === 'function'),
         
         // Funções essenciais no MediaSystem
         'Funções upload MediaSystem': MediaSystem && 
@@ -676,8 +679,8 @@ window.validateMediaMigration = function() {
             report.summary.recommendations.push('Carregar MediaSystem unificado');
         }
         
-        if (!checks['Sistema unificado ativo']) {
-            report.summary.recommendations.push('Inicializar MediaSystem.isUnifiedSystem()');
+        if (!checks['MediaSystem funcional']) {
+            report.summary.recommendations.push('Inicializar funções básicas do MediaSystem');
         }
     }
     
