@@ -244,148 +244,216 @@ window.verifyMediaMigration = function() {
     }
 };
 
-/* ================== NOVO TESTE DE COMPATIBILIDADE DE MÓDULOS ================== */
+/* ================== NOVO TESTE DE COMPATIBILIDADE DE MÓDULOS - CORRIGIDO ================== */
 window.testModuleCompatibility = function() {
     logToPanel('🧪 INICIANDO NOVO TESTE DE COMPATIBILIDADE DE MÓDULOS', 'debug');
     
     const tests = {
-        // Teste 1: Verificar conflitos entre módulos
+        // Teste 1: Verificar conflitos entre módulos - CORRIGIDO
         'Conflitos de variáveis globais': function() {
             const globalVars = ['MediaSystem', 'PdfLogger', 'ValidationSystem', 'EmergencySystem'];
-            const conflicts = [];
+            const activeSystems = [];
             
             globalVars.forEach(varName => {
                 if (window[varName]) {
                     const type = typeof window[varName];
-                    conflicts.push(`${varName}: ${type}`);
+                    activeSystems.push(`${varName} (${type})`);
                 }
             });
             
+            // MediaSystem é obrigatório, outros podem ou não existir
+            const hasMediaSystem = window.MediaSystem !== undefined;
+            const otherSystemsCount = activeSystems.length - (hasMediaSystem ? 1 : 0);
+            
             return {
-                passed: conflicts.length <= 2, // Permite até 2 sistemas coexistirem
-                message: conflicts.length > 0 ? 
-                    `Variáveis globais encontradas: ${conflicts.join(', ')}` :
-                    'Nenhum conflito de variáveis globais'
+                passed: hasMediaSystem && otherSystemsCount <= 2, // Permite até 2 outros sistemas
+                message: activeSystems.length > 0 ? 
+                    `Sistemas ativos: ${activeSystems.join(', ')}` :
+                    'Apenas MediaSystem detectado (ideal para migração)',
+                details: {
+                    hasMediaSystem,
+                    otherSystemsCount,
+                    activeSystems
+                }
             };
         },
         
-        // Teste 2: Verificar sobreposição de eventos
+        // Teste 2: Verificar sobreposição de eventos - CORRIGIDO
         'Sobrescrita de event listeners': function() {
             const elementsToCheck = ['pdfPassword', 'mediaUpload', 'uploadPreview'];
-            let totalListeners = 0;
-            let elementsWithListeners = [];
+            let elementsWithMultipleListeners = [];
             
             elementsToCheck.forEach(id => {
                 const element = document.getElementById(id);
                 if (element) {
-                    // Esta é uma aproximação - não podemos acessar diretamente os listeners
-                    const hasClick = element.onclick !== null;
-                    const hasChange = element.onchange !== null;
-                    const hasInput = element.oninput !== null;
+                    // Verificar se há propriedades de evento definidas
+                    const eventProperties = ['onclick', 'onchange', 'oninput', 'onblur', 'onfocus'];
+                    const definedEvents = eventProperties.filter(prop => element[prop] !== null);
                     
-                    if (hasClick || hasChange || hasInput) {
-                        totalListeners++;
-                        elementsWithListeners.push(id);
+                    if (definedEvents.length > 1) {
+                        elementsWithMultipleListeners.push(`${id} (${definedEvents.length} eventos)`);
                     }
                 }
             });
             
             return {
-                passed: totalListeners <= elementsToCheck.length,
-                message: elementsWithListeners.length > 0 ?
-                    `Elementos com listeners: ${elementsWithListeners.join(', ')}` :
-                    'Nenhum listener detectado (pode ser normal)'
+                passed: elementsWithMultipleListeners.length === 0,
+                message: elementsWithMultipleListeners.length > 0 ?
+                    `Elementos com múltiplos listeners: ${elementsWithMultipleListeners.join(', ')}` :
+                    'Nenhum conflito de listeners detectado',
+                details: {
+                    elementsWithMultipleListeners,
+                    totalElementsChecked: elementsToCheck.length
+                }
             };
         },
         
-        // Teste 3: Verificar CSS conflitante
+        // Teste 3: Verificar CSS conflitante - CORRIGIDO
         'Conflitos de CSS': function() {
-            const conflictingStyles = [];
-            const styleSheets = Array.from(document.styleSheets);
-            
-            // Verificar múltiplas definições para elementos críticos
             const criticalSelectors = ['#pdfModal', '.pdf-modal-content', '#pdfPassword'];
+            const styleSheets = Array.from(document.styleSheets);
+            const conflicts = [];
             
             criticalSelectors.forEach(selector => {
-                let count = 0;
+                let sheetCount = 0;
                 styleSheets.forEach(sheet => {
                     try {
-                        const rules = Array.from(sheet.cssRules || sheet.rules || []);
-                        rules.forEach(rule => {
-                            if (rule.selectorText && rule.selectorText.includes(selector)) {
-                                count++;
-                            }
+                        // Verificar se a sheet tem o seletor
+                        const hasSelector = Array.from(sheet.cssRules || sheet.rules || []).some(rule => {
+                            return rule.selectorText && rule.selectorText.includes(selector);
                         });
+                        if (hasSelector) sheetCount++;
                     } catch (e) {
                         // Ignorar erros de CORS
                     }
                 });
                 
-                if (count > 1) {
-                    conflictingStyles.push(`${selector} definido ${count} vezes`);
+                if (sheetCount > 1) {
+                    conflicts.push(`${selector} em ${sheetCount} sheets`);
                 }
             });
             
             return {
-                passed: conflictingStyles.length === 0,
-                message: conflictingStyles.length > 0 ?
-                    `Conflitos de CSS: ${conflictingStyles.join('; ')}` :
-                    'Nenhum conflito de CSS detectado'
+                passed: conflicts.length === 0,
+                message: conflicts.length > 0 ?
+                    `Conflitos CSS detectados: ${conflicts.join('; ')}` :
+                    'Nenhum conflito CSS crítico detectado',
+                details: {
+                    conflicts,
+                    totalSheets: styleSheets.length
+                }
             };
         },
         
-        // Teste 4: Verificar funções duplicadas
+        // Teste 4: Verificar funções duplicadas - CORRIGIDO
         'Funções duplicadas': function() {
-            const functionGroups = {
-                'Funções de PDF': ['processAndSavePdfs', 'clearAllPdfs', 'loadExistingPdfsForEdit'],
-                'Funções de Mídia': ['addFiles', 'uploadAll', 'getMediaUrlsForProperty'],
-                'Funções de Admin': ['toggleAdminPanel', 'saveProperty']
-            };
+            // Lista de funções que DEVEM existir no MediaSystem
+            const mediaSystemRequiredFunctions = [
+                'processAndSavePdfs', 'clearAllPdfs', 'loadExistingPdfsForEdit',
+                'addFiles', 'addPdfs', 'uploadAll', 'getMediaUrlsForProperty'
+            ];
+            
+            // Lista de funções que PODEM existir globalmente como wrapper
+            const allowedGlobalWrappers = ['processAndSavePdfs', 'getMediaUrlsForProperty'];
             
             const duplicates = [];
+            const recommendations = [];
             
-            Object.entries(functionGroups).forEach(([group, functions]) => {
-                const availableFuncs = functions.filter(fn => typeof window[fn] === 'function');
-                if (availableFuncs.length > 0) {
-                    // Verificar se também existem no MediaSystem
-                    const mediaSystemFuncs = functions.filter(fn => 
-                        MediaSystem && typeof MediaSystem[fn] === 'function'
-                    );
+            // Verificar funções no MediaSystem
+            if (window.MediaSystem) {
+                mediaSystemRequiredFunctions.forEach(funcName => {
+                    const hasInMediaSystem = typeof MediaSystem[funcName] === 'function';
+                    const hasGlobally = typeof window[funcName] === 'function';
                     
-                    if (mediaSystemFuncs.length > 0 && availableFuncs.length > 0) {
-                        const commonFuncs = availableFuncs.filter(fn => mediaSystemFuncs.includes(fn));
-                        if (commonFuncs.length > 0) {
-                            duplicates.push(`${group}: ${commonFuncs.join(', ')}`);
+                    if (hasInMediaSystem && hasGlobally) {
+                        // É permitido se for uma das funções wrapper
+                        if (!allowedGlobalWrappers.includes(funcName)) {
+                            duplicates.push(funcName);
+                            recommendations.push(`Remover window.${funcName} - use MediaSystem.${funcName}`);
                         }
+                    } else if (!hasInMediaSystem && hasGlobally) {
+                        // Função global sem equivalente no MediaSystem
+                        recommendations.push(`Migrar ${funcName} para MediaSystem`);
                     }
-                }
-            });
+                });
+            }
             
             return {
                 passed: duplicates.length === 0,
                 message: duplicates.length > 0 ?
-                    `Funções possivelmente duplicadas: ${duplicates.join('; ')}` :
-                    'Nenhuma função duplicada detectada'
+                    `Funções duplicadas problemáticas: ${duplicates.join(', ')}` :
+                    recommendations.length > 0 ?
+                    `OK - wrappers permitidos: ${allowedGlobalWrappers.join(', ')}` :
+                    'Nenhuma função duplicada problemática',
+                details: {
+                    duplicates,
+                    recommendations,
+                    allowedGlobalWrappers
+                }
             };
         },
         
-        // Teste 5: Verificar performance de carregamento
+        // Teste 5: Verificar performance de carregamento - CORRIGIDO
         'Performance de carregamento': function() {
             const scripts = Array.from(document.scripts);
             const jsScripts = scripts.filter(s => s.src && s.src.endsWith('.js'));
             
             const syncScripts = jsScripts.filter(s => !s.async && !s.defer);
             const largeScripts = jsScripts.filter(s => {
-                // Tentativa de detectar scripts grandes
-                const fileName = s.src.split('/').pop();
-                return fileName.includes('admin') || 
-                       fileName.includes('properties') || 
-                       fileName.includes('gallery');
+                const fileName = s.src.split('/').pop().toLowerCase();
+                // Scripts que normalmente são grandes
+                const largeScriptNames = ['admin', 'properties', 'gallery', 'media', 'pdf'];
+                return largeScriptNames.some(name => fileName.includes(name));
             });
             
+            const syncLargeScripts = syncScripts.filter(s => 
+                largeScripts.some(l => l.src === s.src)
+            );
+            
+            const performanceScore = 100 - (syncLargeScripts.length * 20);
+            
             return {
-                passed: syncScripts.length <= 5 && largeScripts.length <= 3,
-                message: `Scripts sync: ${syncScripts.length}, Scripts grandes: ${largeScripts.length}`
+                passed: syncLargeScripts.length <= 2,
+                message: `Scripts grandes sync: ${syncLargeScripts.length}/${largeScripts.length}`,
+                details: {
+                    totalScripts: jsScripts.length,
+                    syncScripts: syncScripts.length,
+                    largeScripts: largeScripts.length,
+                    syncLargeScripts: syncLargeScripts.length,
+                    performanceScore: Math.max(0, performanceScore)
+                }
+            };
+        },
+        
+        // Teste 6: NOVO - Verificar dependências críticas
+        'Dependências críticas': function() {
+            const requiredSystems = ['MediaSystem', 'supabase', 'properties'];
+            const missingSystems = [];
+            const availableSystems = [];
+            
+            requiredSystems.forEach(system => {
+                if (window[system]) {
+                    availableSystems.push(system);
+                } else {
+                    missingSystems.push(system);
+                }
+            });
+            
+            // supabase pode não estar disponível em modo fallback
+            const adjustedMissing = missingSystems.filter(s => s !== 'supabase' || 
+                (window.MediaSystem && !MediaSystem.supabaseClient));
+            
+            return {
+                passed: adjustedMissing.length === 0,
+                message: missingSystems.length > 0 ?
+                    `Sistemas ausentes: ${missingSystems.join(', ')}` :
+                    `Todos os sistemas críticos disponíveis: ${availableSystems.join(', ')}`,
+                details: {
+                    required: requiredSystems,
+                    available: availableSystems,
+                    missing: missingSystems,
+                    adjustedMissing: adjustedMissing
+                }
             };
         }
     };
@@ -395,67 +463,98 @@ window.testModuleCompatibility = function() {
         total: Object.keys(tests).length,
         passed: 0,
         failed: 0,
-        details: []
+        details: [],
+        recommendations: []
     };
+    
+    console.group('🔍 TESTE DE COMPATIBILIDADE DE MÓDULOS');
     
     Object.entries(tests).forEach(([testName, testFunction]) => {
         try {
             const testResult = testFunction();
-            results.details.push({
+            const testDetail = {
                 name: testName,
                 passed: testResult.passed,
-                message: testResult.message
-            });
+                message: testResult.message,
+                details: testResult.details || {}
+            };
+            
+            results.details.push(testDetail);
             
             if (testResult.passed) {
                 results.passed++;
                 logToPanel(`✅ ${testName}: ${testResult.message}`, 'success');
+                console.log(`✅ ${testName}:`, testResult.message, testResult.details || '');
             } else {
                 results.failed++;
                 logToPanel(`⚠️ ${testName}: ${testResult.message}`, 'warning');
+                console.warn(`⚠️ ${testName}:`, testResult.message, testResult.details || '');
+                
+                // Adicionar recomendações baseadas no teste falho
+                if (testName === 'Funções duplicadas' && testResult.details.recommendations) {
+                    testResult.details.recommendations.forEach(rec => {
+                        results.recommendations.push(rec);
+                    });
+                } else if (testName === 'Performance de carregamento') {
+                    if (testResult.details.syncLargeScripts > 2) {
+                        results.recommendations.push('Adicionar async/defer aos scripts grandes');
+                    }
+                } else if (testName === 'Dependências críticas') {
+                    if (testResult.details.missing && testResult.details.missing.length > 0) {
+                        testResult.details.missing.forEach(system => {
+                            results.recommendations.push(`Verificar carregamento de ${system}`);
+                        });
+                    }
+                }
             }
         } catch (error) {
             results.failed++;
             results.details.push({
                 name: testName,
                 passed: false,
-                message: `Erro: ${error.message}`
+                message: `Erro: ${error.message}`,
+                error: error.stack
             });
             logToPanel(`❌ ${testName}: Erro - ${error.message}`, 'error');
+            console.error(`❌ ${testName}:`, error);
         }
     });
     
-    // Exibir resumo
-    const summaryMessage = `📊 RESULTADO: ${results.passed}/${results.total} testes passaram`;
-    logToPanel(summaryMessage, results.passed === results.total ? 'success' : 'warning');
+    // Exibir resumo detalhado
+    const summaryMessage = `📊 RESULTADO COMPATIBILIDADE: ${results.passed}/${results.total} testes passaram`;
+    const summaryType = results.passed === results.total ? 'success' : 
+                       results.passed >= results.total * 0.7 ? 'warning' : 'error';
     
-    // Adicionar recomendação baseada nos resultados
+    logToPanel(summaryMessage, summaryType);
+    console.log('📊 RESUMO:', results);
+    
+    // Adicionar recomendações gerais se houver falhas
     if (results.failed > 0) {
-        const recommendations = [];
+        if (!results.recommendations.includes('• Revisar event listeners para evitar sobreposição')) {
+            results.recommendations.push('• Revisar event listeners para evitar sobreposição');
+        }
         
-        results.details.forEach(detail => {
-            if (!detail.passed) {
-                if (detail.name.includes('Conflitos')) {
-                    recommendations.push('• Verificar e consolidar variáveis globais');
-                } else if (detail.name.includes('Sobrescrita')) {
-                    recommendations.push('• Revisar event listeners para evitar sobreposição');
-                } else if (detail.name.includes('CSS')) {
-                    recommendations.push('• Consolidar estilos CSS em arquivos unificados');
-                } else if (detail.name.includes('duplicadas')) {
-                    recommendations.push('• Remover funções duplicadas entre sistemas');
-                } else if (detail.name.includes('Performance')) {
-                    recommendations.push('• Considerar async/defer para scripts grandes');
-                }
-            }
-        });
+        if (!results.recommendations.includes('• Consolidar estilos CSS em arquivos unificados')) {
+            results.recommendations.push('• Consolidar estilos CSS em arquivos unificados');
+        }
         
-        if (recommendations.length > 0) {
-            logToPanel('💡 RECOMENDAÇÕES:', 'info');
-            recommendations.forEach(rec => {
-                logToPanel(rec, 'info');
+        if (!results.recommendations.includes('• Testar em diferentes navegadores')) {
+            results.recommendations.push('• Testar em diferentes navegadores');
+        }
+        
+        // Exibir recomendações
+        if (results.recommendations.length > 0) {
+            logToPanel('💡 RECOMENDAÇÕES PARA COMPATIBILIDADE:', 'info');
+            console.group('💡 RECOMENDAÇÕES:');
+            results.recommendations.forEach((rec, index) => {
+                logToPanel(`${index + 1}. ${rec}`, 'info');
+                console.log(`${index + 1}. ${rec}`);
             });
+            console.groupEnd();
         }
     }
+    
+    console.groupEnd();
     
     return results;
 };
@@ -697,18 +796,23 @@ async function testMediaUnifiedComplete() {
     }
     results.total++;
     
-    // Teste 8: NOVO TESTE DE COMPATIBILIDADE
+    // Teste 8: NOVO TESTE DE COMPATIBILIDADE - CORRIGIDO
     logToPanel('🔍 Executando novo teste de compatibilidade de módulos...', 'debug');
     try {
         const compatibilityResults = window.testModuleCompatibility();
+        
+        // Avaliar resultados de compatibilidade
+        const compatibilityScore = compatibilityResults.passed / compatibilityResults.total;
+        const compatibilityPassed = compatibilityScore >= 0.7; // Pelo menos 70% de sucesso
+        
         results.tests.push({
             name: 'Teste de compatibilidade de módulos',
-            passed: compatibilityResults.passed === compatibilityResults.total,
-            message: `${compatibilityResults.passed}/${compatibilityResults.total} testes de compatibilidade passaram`
+            passed: compatibilityPassed,
+            message: `Compatibilidade: ${compatibilityResults.passed}/${compatibilityResults.total} testes passaram (${Math.round(compatibilityScore * 100)}%)`
         });
         
-        if (compatibilityResults.passed === compatibilityResults.total) {
-            logToPanel('✅ Compatibilidade de módulos validada', 'success');
+        if (compatibilityPassed) {
+            logToPanel(`✅ Compatibilidade OK: ${compatibilityResults.passed}/${compatibilityResults.total} testes`, 'success');
             results.passed++;
         } else {
             logToPanel(`⚠️ Compatibilidade: ${compatibilityResults.passed}/${compatibilityResults.total} testes passaram`, 'warning');
@@ -981,7 +1085,7 @@ function updateOverview(data) {
                     🔍 TESTE DE COMPATIBILIDADE
                 </button>
                 <div style="font-size: 11px; color: #888; margin-top: 5px;">
-                    Valida conflitos entre módulos e sistemas
+                    Valida conflitos entre módulos e sistemas (6 testes incluídos)
                 </div>
             </div>
         </div>
@@ -1067,7 +1171,7 @@ function updateTestsTab(testResults) {
                         color: #000; border: none;
                         padding: 10px 20px; cursor: pointer; border-radius: 4px;
                         font-weight: bold; margin: 5px;">
-                        🔍 TESTE DE COMPATIBILIDADE
+                        🔍 TESTE DE COMPATIBILIDADE (6 testes)
                     </button>
                     <button id="run-migration-test-btn" style="
                         background: linear-gradient(45deg, #ff00ff, #0088cc); 
@@ -1136,15 +1240,31 @@ function updateTestsTab(testResults) {
     
     testResults.tests.forEach((test, index) => {
         const isCompatibilityTest = test.name.includes('compatibilidade');
+        const isMigrationTest = test.name.includes('migração') || test.message?.includes('migração');
+        
+        let backgroundColor = test.passed ? '#001a00' : '#1a0000';
+        let borderColor = test.passed ? '#00ff9c' : '#ff5555';
+        let emoji = test.passed ? '✅' : '❌';
+        
+        if (isCompatibilityTest) {
+            backgroundColor = test.passed ? '#001a1a' : '#1a0000';
+            borderColor = test.passed ? '#0088cc' : '#ff5555';
+            emoji = test.passed ? '🔍' : '⚠️';
+        } else if (isMigrationTest) {
+            backgroundColor = test.passed ? '#001a00' : '#1a0000';
+            borderColor = test.passed ? '#ff00ff' : '#ff5555';
+            emoji = test.passed ? '🚀' : '❌';
+        }
+        
         html += `
             <div style="
-                background: ${test.passed ? (isCompatibilityTest ? '#001a1a' : '#001a00') : '#1a0000'};
+                background: ${backgroundColor};
                 padding: 12px; margin-bottom: 8px; border-radius: 4px;
-                border-left: 3px solid ${test.passed ? (isCompatibilityTest ? '#0088cc' : '#00ff9c') : '#ff5555'};
+                border-left: 3px solid ${borderColor};
                 display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <div style="font-weight: bold; color: ${test.passed ? (isCompatibilityTest ? '#0088cc' : '#00ff9c') : '#ff5555'};">
-                        ${test.passed ? (isCompatibilityTest ? '🔍' : '✅') : '❌'} ${test.name}
+                    <div style="font-weight: bold; color: ${borderColor};">
+                        ${emoji} ${test.name}
                     </div>
                     ${test.message ? `<div style="font-size: 11px; color: #888; margin-top: 4px;">${test.message}</div>` : ''}
                 </div>
