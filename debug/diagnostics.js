@@ -1,5 +1,5 @@
-// debug/diagnostics.js
-console.log('🔍 diagnostics.js – diagnóstico completo corrigido v2');
+// debug/diagnostics.js - VERSÃO COMPLETA ATUALIZADA
+console.log('🔍 diagnostics.js – diagnóstico completo corrigido v3 (com validação automática)');
 
 /* ================== FLAGS ================== */
 const params = new URLSearchParams(location.search);
@@ -10,6 +10,7 @@ const MOBILE_TEST = params.get('mobiletest') === 'true';
 /* ================== VARIÁVEIS GLOBAIS ================== */
 let diagnosticsPanel = null;
 let currentTestResults = null;
+let lastMigrationReport = null;
 
 /* ================== FUNÇÕES AUXILIARES ================== */
 function logToPanel(message, type = 'info') {
@@ -48,7 +49,7 @@ function logToPanel(message, type = 'info') {
         consoleContent.scrollTop = consoleContent.scrollHeight;
     }
     
-    // TAMBÉM loga no console real (F12) - como você solicitou
+    // TAMBÉM loga no console real (F12)
     const consoleFunc = type === 'error' ? console.error : 
                        type === 'warning' ? console.warn : console.log;
     consoleFunc(`[DIAG] ${message}`);
@@ -101,7 +102,6 @@ window.verifyMediaMigration = function() {
                                      typeof window.loadExistingPdfsForEdit === 'function'
     };
     
-    // Log detalhado no painel E no console F12
     console.log('🔍 VERIFICAÇÃO DA MIGRAÇÃO DE MÍDIA - INICIADA');
     Object.entries(checks).forEach(([check, result]) => {
         logToPanel(`${result ? '✅' : '❌'} ${check}`, result ? 'success' : 'error');
@@ -115,7 +115,6 @@ window.verifyMediaMigration = function() {
         console.log(successMessage);
         console.table(checks);
         
-        // Criar relatório detalhado
         const report = {
             timestamp: new Date().toISOString(),
             checks: checks,
@@ -129,7 +128,6 @@ window.verifyMediaMigration = function() {
             ]
         };
         
-        // Exibir alerta visual
         const alertDiv = document.createElement('div');
         alertDiv.style.cssText = `
             position: fixed;
@@ -173,7 +171,6 @@ window.verifyMediaMigration = function() {
         `;
         document.body.appendChild(alertDiv);
         
-        // Configurar eventos dos botões
         document.getElementById('close-validation-alert').addEventListener('click', () => {
             document.body.removeChild(alertDiv);
         });
@@ -196,7 +193,6 @@ window.verifyMediaMigration = function() {
         console.error(errorMessage);
         console.table(checks);
         
-        // Criar relatório de falhas
         const failedChecks = Object.entries(checks).filter(([_, result]) => !result).map(([check]) => check);
         
         const alertDiv = document.createElement('div');
@@ -251,7 +247,6 @@ window.testModuleCompatibility = function() {
     logToPanel('🧪 INICIANDO NOVO TESTE DE COMPATIBILIDADE DE MÓDULOS', 'debug');
     
     const tests = {
-        // Teste 1: Verificar conflitos entre módulos - CORRIGIDO
         'Conflitos de variáveis globais': function() {
             const globalVars = ['MediaSystem', 'PdfLogger', 'ValidationSystem', 'EmergencySystem'];
             const activeSystems = [];
@@ -263,12 +258,11 @@ window.testModuleCompatibility = function() {
                 }
             });
             
-            // MediaSystem é obrigatório, outros podem ou não existir
             const hasMediaSystem = window.MediaSystem !== undefined;
             const otherSystemsCount = activeSystems.length - (hasMediaSystem ? 1 : 0);
             
             return {
-                passed: hasMediaSystem && otherSystemsCount <= 2, // Permite até 2 outros sistemas
+                passed: hasMediaSystem && otherSystemsCount <= 2,
                 message: activeSystems.length > 0 ? 
                     `Sistemas ativos: ${activeSystems.join(', ')}` :
                     'Apenas MediaSystem detectado (ideal para migração)',
@@ -280,7 +274,6 @@ window.testModuleCompatibility = function() {
             };
         },
         
-        // Teste 2: Verificar sobreposição de eventos - CORRIGIDO
         'Sobrescrita de event listeners': function() {
             const elementsToCheck = ['pdfPassword', 'mediaUpload', 'uploadPreview'];
             let elementsWithMultipleListeners = [];
@@ -288,7 +281,6 @@ window.testModuleCompatibility = function() {
             elementsToCheck.forEach(id => {
                 const element = document.getElementById(id);
                 if (element) {
-                    // Verificar se há propriedades de evento definidas
                     const eventProperties = ['onclick', 'onchange', 'oninput', 'onblur', 'onfocus'];
                     const definedEvents = eventProperties.filter(prop => element[prop] !== null);
                     
@@ -310,7 +302,6 @@ window.testModuleCompatibility = function() {
             };
         },
         
-        // Teste 3: Verificar CSS conflitante - CORRIGIDO
         'Conflitos de CSS': function() {
             const criticalSelectors = ['#pdfModal', '.pdf-modal-content', '#pdfPassword'];
             const styleSheets = Array.from(document.styleSheets);
@@ -320,14 +311,11 @@ window.testModuleCompatibility = function() {
                 let sheetCount = 0;
                 styleSheets.forEach(sheet => {
                     try {
-                        // Verificar se a sheet tem o seletor
                         const hasSelector = Array.from(sheet.cssRules || sheet.rules || []).some(rule => {
                             return rule.selectorText && rule.selectorText.includes(selector);
                         });
                         if (hasSelector) sheetCount++;
-                    } catch (e) {
-                        // Ignorar erros de CORS
-                    }
+                    } catch (e) {}
                 });
                 
                 if (sheetCount > 1) {
@@ -347,16 +335,12 @@ window.testModuleCompatibility = function() {
             };
         },
         
-        // Teste 4: Verificar funções duplicadas - CORRIGIDO AGORA
         'Funções duplicadas': function() {
-            // Lista de funções que DEVEM existir no MediaSystem
             const mediaSystemRequiredFunctions = [
                 'processAndSavePdfs', 'clearAllPdfs', 'loadExistingPdfsForEdit',
                 'addFiles', 'addPdfs', 'uploadAll', 'getMediaUrlsForProperty'
             ];
             
-            // Lista de funções que DEVEM existir globalmente como wrappers para compatibilidade
-            // Estas são funções que o código antigo pode estar chamando diretamente
             const requiredGlobalWrappers = [
                 'processAndSavePdfs', 'clearAllPdfs', 'loadExistingPdfsForEdit',
                 'getMediaUrlsForProperty'
@@ -366,9 +350,7 @@ window.testModuleCompatibility = function() {
             const recommendations = [];
             const missingWrappers = [];
             
-            // Verificar funções no MediaSystem
             if (window.MediaSystem) {
-                // 1. Verificar funções necessárias no MediaSystem
                 mediaSystemRequiredFunctions.forEach(funcName => {
                     const hasInMediaSystem = typeof MediaSystem[funcName] === 'function';
                     
@@ -377,19 +359,15 @@ window.testModuleCompatibility = function() {
                     }
                 });
                 
-                // 2. Verificar wrappers globais necessários
                 requiredGlobalWrappers.forEach(funcName => {
                     const hasGlobally = typeof window[funcName] === 'function';
                     const hasInMediaSystem = typeof MediaSystem[funcName] === 'function';
                     
                     if (!hasGlobally && hasInMediaSystem) {
-                        // Função existe no MediaSystem mas não globalmente - precisa criar wrapper
                         missingWrappers.push(funcName);
                         recommendations.push(`Criar wrapper global para ${funcName}`);
                     } else if (hasGlobally && hasInMediaSystem) {
-                        // Ambas existem - verificar se é um wrapper válido
                         try {
-                            // Verificar se a função global delega para o MediaSystem
                             const globalFunc = window[funcName];
                             const isWrapper = globalFunc.toString().includes('MediaSystem') || 
                                             globalFunc.toString().includes(funcName);
@@ -397,13 +375,10 @@ window.testModuleCompatibility = function() {
                             if (!isWrapper) {
                                 recommendations.push(`Verificar se window.${funcName} delega para MediaSystem`);
                             }
-                        } catch (e) {
-                            // Não conseguiu analisar a função
-                        }
+                        } catch (e) {}
                     }
                 });
                 
-                // 3. Verificar funções globais que NÃO deveriam existir
                 const functionsToCheck = ['addFiles', 'addPdfs', 'uploadAll'];
                 functionsToCheck.forEach(funcName => {
                     const hasGlobally = typeof window[funcName] === 'function';
@@ -434,7 +409,6 @@ window.testModuleCompatibility = function() {
             };
         },
         
-        // Teste 5: Verificar performance de carregamento - CORRIGIDO
         'Performance de carregamento': function() {
             const scripts = Array.from(document.scripts);
             const jsScripts = scripts.filter(s => s.src && s.src.endsWith('.js'));
@@ -442,7 +416,6 @@ window.testModuleCompatibility = function() {
             const syncScripts = jsScripts.filter(s => !s.async && !s.defer);
             const largeScripts = jsScripts.filter(s => {
                 const fileName = s.src.split('/').pop().toLowerCase();
-                // Scripts que normalmente são grandes
                 const largeScriptNames = ['admin', 'properties', 'gallery', 'media', 'pdf'];
                 return largeScriptNames.some(name => fileName.includes(name));
             });
@@ -466,7 +439,6 @@ window.testModuleCompatibility = function() {
             };
         },
         
-        // Teste 6: NOVO - Verificar dependências críticas
         'Dependências críticas': function() {
             const requiredSystems = ['MediaSystem', 'supabase', 'properties'];
             const missingSystems = [];
@@ -480,7 +452,6 @@ window.testModuleCompatibility = function() {
                 }
             });
             
-            // supabase pode não estar disponível em modo fallback
             const adjustedMissing = missingSystems.filter(s => s !== 'supabase' || 
                 (window.MediaSystem && !MediaSystem.supabaseClient));
             
@@ -499,7 +470,6 @@ window.testModuleCompatibility = function() {
         }
     };
     
-    // Executar todos os testes
     const results = {
         total: Object.keys(tests).length,
         passed: 0,
@@ -531,7 +501,6 @@ window.testModuleCompatibility = function() {
                 logToPanel(`⚠️ ${testName}: ${testResult.message}`, 'warning');
                 console.warn(`⚠️ ${testName}:`, testResult.message, testResult.details || '');
                 
-                // Adicionar recomendações baseadas no teste falho
                 if (testName === 'Funções duplicadas') {
                     if (testResult.details.duplicates && testResult.details.duplicates.length > 0) {
                         testResult.details.duplicates.forEach(func => {
@@ -568,7 +537,6 @@ window.testModuleCompatibility = function() {
         }
     });
     
-    // Exibir resumo detalhado
     const summaryMessage = `📊 RESULTADO COMPATIBILIDADE: ${results.passed}/${results.total} testes passaram`;
     const summaryType = results.passed === results.total ? 'success' : 
                        results.passed >= results.total * 0.7 ? 'warning' : 'error';
@@ -576,9 +544,7 @@ window.testModuleCompatibility = function() {
     logToPanel(summaryMessage, summaryType);
     console.log('📊 RESUMO:', results);
     
-    // Adicionar recomendações gerais se houver falhas
     if (results.failed > 0) {
-        // Verificar se já existem recomendações de compatibilidade
         const hasCompatibilityRecs = results.recommendations.some(r => 
             r.includes('wrapper') || r.includes('window.') || r.includes('async')
         );
@@ -597,7 +563,6 @@ window.testModuleCompatibility = function() {
             }
         }
         
-        // Exibir recomendações
         if (results.recommendations.length > 0) {
             logToPanel('💡 RECOMENDAÇÕES PARA COMPATIBILIDADE:', 'info');
             console.group('💡 RECOMENDAÇÕES:');
@@ -629,8 +594,8 @@ window.validateMediaMigration = function() {
         // Sistema principal
         'MediaSystem carregado': typeof MediaSystem !== 'undefined',
         'Sistema unificado ativo': MediaSystem && 
-            typeof MediaSystem.isUnifiedSystem === 'function' && 
-            MediaSystem.isUnifiedSystem() === true,
+            typeof MediaSystem.isUnifiedSystem === 'function' ? 
+            MediaSystem.isUnifiedSystem() : false,
         
         // Funções essenciais no MediaSystem
         'Funções upload MediaSystem': MediaSystem && 
@@ -654,7 +619,6 @@ window.validateMediaMigration = function() {
         'Propriedades carregadas': typeof properties !== 'undefined' && Array.isArray(properties)
     };
     
-    // Executar verificação detalhada
     let passed = 0;
     let total = 0;
     const details = [];
@@ -674,20 +638,20 @@ window.validateMediaMigration = function() {
         console.log(message);
     });
     
-    // Análise de compatibilidade
     const compatibilityScore = Math.round((passed / total) * 100);
-    const isReadyForMigration = compatibilityScore >= 85; // 85% ou mais
+    const isReadyForMigration = compatibilityScore >= 85;
     
     console.log(`📊 Pontuação: ${passed}/${total} (${compatibilityScore}%)`);
     console.log(`🚀 Pronto para migração: ${isReadyForMigration ? 'SIM' : 'NÃO'}`);
     console.groupEnd();
     
-    // Relatório completo
     const report = {
         timestamp: new Date().toISOString(),
         url: window.location.href,
         migrationReady: isReadyForMigration,
         compatibilityScore,
+        passed,
+        total,
         checks: details,
         summary: {
             passed,
@@ -700,7 +664,6 @@ window.validateMediaMigration = function() {
         }
     };
     
-    // Gerar recomendações
     if (!isReadyForMigration) {
         const missingWrappers = details.filter(d => !d.passed && d.name.includes('Wrapper'));
         if (missingWrappers.length > 0) {
@@ -718,7 +681,8 @@ window.validateMediaMigration = function() {
         }
     }
     
-    // Exibir alerta baseado no resultado
+    lastMigrationReport = report;
+    
     showMigrationValidationAlert(isReadyForMigration, report);
     
     return report;
@@ -728,7 +692,6 @@ window.validateMediaMigration = function() {
 function showMigrationValidationAlert(isReady, report) {
     const alertId = 'migration-validation-alert';
     
-    // Remover alerta anterior se existir
     const existingAlert = document.getElementById(alertId);
     if (existingAlert) {
         document.body.removeChild(existingAlert);
@@ -868,7 +831,6 @@ function showMigrationValidationAlert(isReady, report) {
     
     document.body.appendChild(alertDiv);
     
-    // Configurar eventos dos botões
     if (isReady) {
         document.getElementById('migrate-now-btn')?.addEventListener('click', () => {
             logToPanel('🚀 Iniciando processo de migração...', 'migration');
@@ -896,7 +858,6 @@ function showMigrationValidationAlert(isReady, report) {
                 </style>
             `;
             
-            // Simular processo de migração
             setTimeout(() => {
                 document.body.removeChild(alertDiv);
                 logToPanel('✅ Migração simulada concluída!', 'success');
@@ -993,20 +954,17 @@ function showMigrationSuccessAlert() {
 }
 
 /* ================== INICIALIZAÇÃO AUTOMÁTICA ================== */
-// Esta função será chamada automaticamente após carregar módulos de suporte
 window.autoValidateMigration = function() {
-    // Aguardar 2 segundos para garantir que tudo esteja carregado
     setTimeout(() => {
         logToPanel('🔍 Verificação automática de migração iniciada...', 'debug');
         
-        // Verificar se estamos em modo de diagnóstico
         if (DIAGNOSTICS_MODE) {
             logToPanel('✅ Modo diagnóstico ativo - validação automática habilitada', 'success');
             
-            // Aguardar mais um pouco para garantir que tudo esteja pronto
             setTimeout(() => {
                 if (typeof window.validateMediaMigration === 'function') {
-                    window.validateMediaMigration();
+                    const report = window.validateMediaMigration();
+                    updateMigrationTab(report);
                 } else {
                     logToPanel('❌ Função validateMediaMigration não encontrada', 'error');
                 }
@@ -1058,7 +1016,6 @@ function analyzeSystem() {
     logToPanel('Iniciando análise do sistema...', 'info');
     updateStatus('Analisando sistema...');
     
-    // 1. Coleta de scripts
     const scripts = Array.from(document.scripts)
         .filter(s => s.src)
         .map(s => ({
@@ -1069,7 +1026,6 @@ function analyzeSystem() {
             type: s.type
         }));
     
-    // 2. Sistemas detectados
     const systems = {
         MediaSystem: 'MediaSystem' in window,
         PdfLogger: 'PdfLogger' in window,
@@ -1082,7 +1038,6 @@ function analyzeSystem() {
         optimizer: 'performanceOptimizer' in window
     };
     
-    // 3. Elementos críticos do DOM
     const criticalElements = {
         'pdfModal': document.getElementById('pdfModal'),
         'pdfPassword': document.getElementById('pdfPassword'),
@@ -1092,6 +1047,151 @@ function analyzeSystem() {
     };
     
     return { scripts, systems, criticalElements };
+}
+
+/* ================== ATUALIZAR ABA DE MIGRAÇÃO ================== */
+function updateMigrationTab(results) {
+    const testsContent = document.getElementById('tests-content');
+    if (!testsContent) return;
+    
+    let html = `
+        <div style="margin-bottom: 20px;">
+            <h3 style="color: #ff00ff; margin-bottom: 15px;">🚀 VERIFICAÇÃO AUTOMÁTICA DE MIGRAÇÃO</h3>
+            
+            <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <div>
+                        <div style="font-size: 11px; color: #888;">STATUS DA MIGRAÇÃO</div>
+                        <div style="font-size: 24px; color: ${results.migrationReady ? '#00ff9c' : '#ff5555'}">
+                            ${results.migrationReady ? '✅ PRONTA' : '❌ NÃO PRONTA'}
+                        </div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 11px; color: #888;">COMPATIBILIDADE</div>
+                        <div style="font-size: 24px; color: ${results.compatibilityScore >= 85 ? '#00ff9c' : '#ffaa00'}">
+                            ${results.compatibilityScore}%
+                        </div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 11px; color: #888;">VERIFICAÇÕES</div>
+                        <div style="font-size: 24px; color: #00ff9c;">
+                            ${results.passed}/${results.total}
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="height: 10px; background: #333; border-radius: 5px; overflow: hidden;">
+                    <div style="height: 100%; width: ${results.compatibilityScore}%; background: ${results.compatibilityScore >= 85 ? '#00ff9c' : '#ffaa00'};"></div>
+                </div>
+            </div>
+            
+            <div>
+                <h4 style="color: #ff00ff; margin-bottom: 10px;">📋 VERIFICAÇÕES REALIZADAS</h4>
+                <div style="max-height: 300px; overflow-y: auto;">
+    `;
+    
+    results.checks.forEach((check, index) => {
+        html += `
+            <div style="
+                background: ${check.passed ? '#001a00' : '#1a0000'};
+                padding: 10px; margin-bottom: 6px; border-radius: 4px;
+                border-left: 3px solid ${check.passed ? '#00ff9c' : '#ff5555'};
+                display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: bold; color: ${check.passed ? '#00ff9c' : '#ff5555'};">
+                        ${check.passed ? '✅' : '❌'} ${check.name}
+                    </div>
+                </div>
+                <span style="font-size: 10px; color: #888;">${index + 1}</span>
+            </div>
+        `;
+    });
+    
+    html += `
+                </div>
+            </div>
+            
+            ${results.summary.criticalMissing.length > 0 ? `
+                <div style="background: #1a0000; padding: 15px; border-radius: 6px; margin-top: 20px;">
+                    <h4 style="color: #ff5555; margin-bottom: 10px;">⚠️ PROBLEMAS CRÍTICOS</h4>
+                    <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #ffaaaa;">
+                        ${results.summary.criticalMissing.map(item => `<li>${item}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+            
+            ${results.summary.recommendations.length > 0 ? `
+                <div style="background: #001a1a; padding: 15px; border-radius: 6px; margin-top: 20px;">
+                    <h4 style="color: #00ff9c; margin-bottom: 10px;">💡 RECOMENDAÇÕES</h4>
+                    <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #aaffcc;">
+                        ${results.summary.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="run-auto-migration-check" style="
+                background: linear-gradient(45deg, #ff00ff, #0088cc); 
+                color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                font-weight: bold; margin: 5px;">
+                🔄 EXECUTAR NOVAMENTE
+            </button>
+            <button id="export-migration-report" style="
+                background: #555; color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                font-weight: bold; margin: 5px;">
+                📊 EXPORTAR RELATÓRIO
+            </button>
+            <button id="view-in-console" style="
+                background: #0088cc; color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                font-weight: bold; margin: 5px;">
+                📝 VER NO CONSOLE F12
+            </button>
+        </div>
+        
+        <div style="font-size: 11px; color: #888; text-align: center; margin-top: 10px;">
+            Verificação automática iniciada após carregar módulos de suporte
+        </div>
+    `;
+    
+    testsContent.innerHTML = html;
+    
+    document.getElementById('run-auto-migration-check')?.addEventListener('click', () => {
+        if (typeof window.autoValidateMigration === 'function') {
+            window.autoValidateMigration();
+        }
+    });
+    
+    document.getElementById('export-migration-report')?.addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `migration-auto-check-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        logToPanel('📊 Relatório de verificação automática exportado', 'migration');
+    });
+    
+    document.getElementById('view-in-console')?.addEventListener('click', () => {
+        console.group('🚀 RELATÓRIO DE VERIFICAÇÃO AUTOMÁTICA');
+        console.log('Status:', results.migrationReady ? '✅ PRONTO PARA MIGRAÇÃO' : '❌ NÃO PRONTO');
+        console.log('Pontuação:', `${results.compatibilityScore}% (${results.passed}/${results.total})`);
+        console.log('Verificações:');
+        results.checks.forEach(check => {
+            console.log(`${check.passed ? '✅' : '❌'} ${check.name}`);
+        });
+        if (results.summary.criticalMissing.length > 0) {
+            console.log('Problemas críticos:', results.summary.criticalMissing);
+        }
+        if (results.summary.recommendations.length > 0) {
+            console.log('Recomendações:', results.summary.recommendations);
+        }
+        console.groupEnd();
+    });
 }
 
 /* ================== TESTES AUTOMÁTICOS ================== */
@@ -1105,7 +1205,6 @@ async function testMediaUnifiedComplete() {
         tests: []
     };
     
-    // Teste 1: MediaSystem disponível
     if (!window.MediaSystem) {
         results.tests.push({ name: 'MediaSystem disponível', passed: false, message: 'MediaSystem não encontrado' });
         logToPanel('❌ MediaSystem não disponível', 'error');
@@ -1117,7 +1216,6 @@ async function testMediaUnifiedComplete() {
     }
     results.total++;
     
-    // Teste 2: Funções críticas do MediaSystem
     if (window.MediaSystem) {
         const criticalFunctions = [
             'processAndSavePdfs',
@@ -1141,7 +1239,6 @@ async function testMediaUnifiedComplete() {
         });
     }
     
-    // Teste 3: Funções essenciais de migração
     logToPanel('🔍 Verificando funções essenciais de migração...', 'migration');
     
     const migrationChecks = [
@@ -1169,7 +1266,6 @@ async function testMediaUnifiedComplete() {
         results.total++;
     });
     
-    // Teste 4: Modal de PDF
     logToPanel('🔍 Testando modal de PDF...', 'debug');
     const pdfModal = document.getElementById('pdfModal');
     const pdfPassword = document.getElementById('pdfPassword');
@@ -1205,7 +1301,6 @@ async function testMediaUnifiedComplete() {
     else results.failed++;
     results.total++;
     
-    // Teste 5: Sistema de preview de upload
     const uploadPreview = document.getElementById('uploadPreview');
     results.tests.push({
         name: 'Sistema de preview ativo',
@@ -1217,7 +1312,6 @@ async function testMediaUnifiedComplete() {
     else results.failed++;
     results.total++;
     
-    // Teste 6: Sistema de propriedades
     if (window.properties && Array.isArray(window.properties)) {
         results.tests.push({ 
             name: 'Propriedades carregadas', 
@@ -1237,7 +1331,6 @@ async function testMediaUnifiedComplete() {
     }
     results.total++;
     
-    // Teste 7: Supabase
     if (window.supabase) {
         results.tests.push({ 
             name: 'Supabase Client', 
@@ -1253,18 +1346,15 @@ async function testMediaUnifiedComplete() {
             message: 'Cliente Supabase não disponível'
         });
         logToPanel('⚠️  Supabase Client não disponível (pode ser normal em fallback)', 'warning');
-        // Não conta como falha porque pode ser fallback
     }
     results.total++;
     
-    // Teste 8: NOVO TESTE DE COMPATIBILIDADE - CORRIGIDO
     logToPanel('🔍 Executando novo teste de compatibilidade de módulos...', 'debug');
     try {
         const compatibilityResults = window.testModuleCompatibility();
         
-        // Avaliar resultados de compatibilidade
         const compatibilityScore = compatibilityResults.passed / compatibilityResults.total;
-        const compatibilityPassed = compatibilityScore >= 0.8; // Pelo menos 80% de sucesso
+        const compatibilityPassed = compatibilityScore >= 0.8;
         
         results.tests.push({
             name: 'Teste de compatibilidade de módulos',
@@ -1307,7 +1397,6 @@ window.diagnosePdfModalMobile = function() {
     
     console.group('🔍 DIAGNÓSTICO DO MODAL PDF EM MOBILE');
     
-    // 1. Detectar dispositivo
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const isTablet = /iPad|Tablet|Kindle|Samsung Tablet/i.test(navigator.userAgent);
     
@@ -1326,14 +1415,12 @@ window.diagnosePdfModalMobile = function() {
     console.log('📏 Viewport:', window.innerWidth, 'x', window.innerHeight);
     console.log('👆 Touch:', results.deviceInfo.touchSupport);
     
-    // 2. Verificar existência do modal
     const pdfModal = document.getElementById('pdfModal');
     results.modalAnalysis.exists = !!pdfModal;
     
     console.log('✅ Modal PDF existe?', results.modalAnalysis.exists);
     
     if (pdfModal) {
-        // 3. Analisar estilo atual
         const computedStyle = window.getComputedStyle(pdfModal);
         results.modalAnalysis.style = {
             display: computedStyle.display,
@@ -1353,7 +1440,6 @@ window.diagnosePdfModalMobile = function() {
             console.log(`- ${key}:`, value);
         });
         
-        // 4. Analisar conteúdo interno
         const modalContent = pdfModal.querySelector('.pdf-modal-content');
         results.modalAnalysis.content = {
             hasContentDiv: !!modalContent,
@@ -1377,7 +1463,6 @@ window.diagnosePdfModalMobile = function() {
             });
         }
         
-        // 5. Verificar elementos específicos do problema
         const passwordInput = document.getElementById('pdfPassword');
         results.modalAnalysis.passwordField = {
             exists: !!passwordInput,
@@ -1400,14 +1485,12 @@ window.diagnosePdfModalMobile = function() {
             });
         }
         
-        // 6. Verificar visibilidade
         results.modalAnalysis.visible = pdfModal.style.display === 'flex' || 
                                       pdfModal.style.display === 'block' ||
                                       getComputedStyle(pdfModal).display !== 'none';
         
         console.log('👁️ Modal visível?', results.modalAnalysis.visible);
         
-        // 7. Verificar se há problemas de layout
         if (results.modalAnalysis.visible) {
             const rect = pdfModal.getBoundingClientRect();
             results.modalAnalysis.boundingBox = {
@@ -1421,7 +1504,6 @@ window.diagnosePdfModalMobile = function() {
             
             console.log('📐 Bounding Box:', rect);
             
-            // Verificar problemas comuns em mobile
             if (rect.width > window.innerWidth) {
                 results.layoutIssues.push('Modal mais largo que a viewport');
             }
@@ -1437,14 +1519,13 @@ window.diagnosePdfModalMobile = function() {
         }
     }
     
-    // 8. Verificar CSS carregado
     const allStyles = Array.from(document.styleSheets);
     results.cssAnalysis = {
         totalSheets: allStyles.length,
         sheets: allStyles.map(ss => ({
             href: ss.href || 'inline',
             disabled: ss.disabled,
-            rulesCount: 0 // Não acessível devido a restrições de CORS
+            rulesCount: 0
         })).slice(0, 10),
         galleryCss: !!allStyles.find(ss => ss.href && ss.href.includes('gallery.css')),
         adminCss: !!allStyles.find(ss => ss.href && ss.href.includes('admin.css')),
@@ -1457,12 +1538,10 @@ window.diagnosePdfModalMobile = function() {
     console.log('- admin.css:', results.cssAnalysis.adminCss);
     console.log('- pdf*.css:', results.cssAnalysis.pdfCss);
     
-    // 9. Gerar recomendações
     if (isMobile || isTablet) {
         if (!results.modalAnalysis.exists) {
             results.recommendations.push('Criar modal PDF específico para mobile');
         } else {
-            // Verificar se o modal é mobile-friendly
             const modalWidth = parseInt(results.modalAnalysis.style.width) || 0;
             const viewportWidth = window.innerWidth;
             
@@ -1500,7 +1579,6 @@ function updateOverview(data) {
     
     const { scripts, systems, criticalElements } = data;
     
-    // Agrupa scripts por tipo
     const modulesByType = {};
     scripts.forEach(script => {
         const classification = classifyModule(script.fileName);
@@ -1510,7 +1588,7 @@ function updateOverview(data) {
     
     let html = `
         <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 10px;">📊 RESUMO DO SISTEMA</h3>
+            <h3 style="color: #00ff9c; margin-bottom: 10px;">📊 RESUMO DO SISTEMA v3</h3>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
                 <div style="background: #111; padding: 15px; border-radius: 6px;">
                     <div style="color: #888; font-size: 11px;">SCRIPTS</div>
@@ -1536,17 +1614,24 @@ function updateOverview(data) {
                     color: white; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 6px;
                     font-weight: bold; font-size: 14px; margin: 10px;">
-                    🚀 VERIFICAR MIGRAÇÃO DE MÍDIA
+                    🚀 VERIFICAÇÃO DE MIGRAÇÃO
                 </button>
                 <button id="test-compatibility-btn" style="
                     background: linear-gradient(45deg, #00ff9c, #0088cc); 
                     color: #000; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 6px;
                     font-weight: bold; font-size: 14px; margin: 10px;">
-                    🔍 TESTE DE COMPATIBILIDADE (v2)
+                    🔍 TESTE DE COMPATIBILIDADE v3
+                </button>
+                <button id="auto-migration-check-btn" style="
+                    background: linear-gradient(45deg, #0088cc, #00ff9c); 
+                    color: #000; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                    font-weight: bold; font-size: 14px; margin: 10px;">
+                    🔄 VERIFICAÇÃO AUTOMÁTICA
                 </button>
                 <div style="font-size: 11px; color: #888; margin-top: 5px;">
-                    Valida conflitos entre módulos e sistemas (6 testes incluídos) - VERSÃO CORRIGIDA
+                    Simula carregamento condicional do index.html (TESTE 3)
                 </div>
             </div>
         </div>
@@ -1600,14 +1685,25 @@ function updateOverview(data) {
     
     overviewContent.innerHTML = html;
     
-    // Configurar botão de verificação de migração
     document.getElementById('verify-migration-btn')?.addEventListener('click', () => {
         window.verifyMediaMigration();
     });
     
-    // Configurar botão de teste de compatibilidade
     document.getElementById('test-compatibility-btn')?.addEventListener('click', () => {
         window.testModuleCompatibility();
+    });
+    
+    document.getElementById('auto-migration-check-btn')?.addEventListener('click', () => {
+        logToPanel('🔄 Iniciando simulação de carregamento condicional...', 'debug');
+        logToPanel('⏳ Aguardando 2 segundos (simulação de carregamento)...', 'info');
+        
+        setTimeout(() => {
+            if (typeof window.autoValidateMigration === 'function') {
+                window.autoValidateMigration();
+            } else {
+                logToPanel('❌ Função autoValidateMigration não encontrada', 'error');
+            }
+        }, 2000);
     });
 }
 
@@ -1624,7 +1720,7 @@ function updateTestsTab(testResults) {
                     margin-top: 20px; background: #00ff9c; color: #000;
                     border: none; padding: 10px 20px; border-radius: 4px;
                     cursor: pointer; font-weight: bold;">
-                    EXECUTAR TESTES COMPLETOS
+                    🧪 EXECUTAR TESTES COMPLETOS
                 </button>
                 <div style="margin-top: 15px;">
                     <button id="run-compatibility-test-btn" style="
@@ -1632,18 +1728,25 @@ function updateTestsTab(testResults) {
                         color: #000; border: none;
                         padding: 10px 20px; cursor: pointer; border-radius: 4px;
                         font-weight: bold; margin: 5px;">
-                        🔍 TESTE DE COMPATIBILIDADE v2 (6 testes)
+                        🔍 TESTE DE COMPATIBILIDADE v3
                     </button>
                     <button id="run-migration-test-btn" style="
                         background: linear-gradient(45deg, #ff00ff, #0088cc); 
                         color: white; border: none;
                         padding: 10px 20px; cursor: pointer; border-radius: 4px;
                         font-weight: bold; margin: 5px;">
-                        🚀 TESTE DE MIGRAÇÃO
+                        🚀 VERIFICAÇÃO DE MIGRAÇÃO
+                    </button>
+                    <button id="run-auto-check-btn" style="
+                        background: linear-gradient(45deg, #0088cc, #00ff9c); 
+                        color: #000; border: none;
+                        padding: 10px 20px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; margin: 5px;">
+                        🔄 VERIFICAÇÃO AUTOMÁTICA
                     </button>
                 </div>
                 <div style="font-size: 11px; color: #888; margin-top: 10px;">
-                    v2: Corrigida detecção de wrappers necessários (clearAllPdfs, loadExistingPdfsForEdit)
+                    v3: Inclui verificação automática via módulo de suporte (TESTE 3)
                 </div>
             </div>
         `;
@@ -1658,6 +1761,12 @@ function updateTestsTab(testResults) {
         
         document.getElementById('run-migration-test-btn')?.addEventListener('click', () => {
             window.verifyMediaMigration();
+        });
+        
+        document.getElementById('run-auto-check-btn')?.addEventListener('click', () => {
+            if (typeof window.autoValidateMigration === 'function') {
+                window.autoValidateMigration();
+            }
         });
         
         return;
@@ -1743,38 +1852,82 @@ function updateTestsTab(testResults) {
             </div>
         </div>
         
-        <div style="text-align: center; margin-top: 20px; display: flex; justify-content: center; gap: 15px;">
+        <div style="text-align: center; margin-top: 20px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
             <button id="run-migration-test" style="
                 background: linear-gradient(45deg, #ff00ff, #0088cc); 
                 color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold;">
-                🚀 TESTAR MIGRAÇÃO
+                font-weight: bold; margin: 5px;">
+                🚀 VERIFICAÇÃO MIGRAÇÃO
             </button>
             <button id="run-compatibility-test" style="
                 background: linear-gradient(45deg, #00ff9c, #0088cc); 
                 color: #000; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold;">
-                🔍 TESTAR COMPATIBILIDADE v2
+                font-weight: bold; margin: 5px;">
+                🔍 TESTE COMPATIBILIDADE
+            </button>
+            <button id="run-auto-check" style="
+                background: linear-gradient(45deg, #0088cc, #00ff9c); 
+                color: #000; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                font-weight: bold; margin: 5px;">
+                🔄 VERIFICAÇÃO AUTOMÁTICA
             </button>
         </div>
         <div style="font-size: 11px; color: #888; text-align: center; margin-top: 10px;">
-            v2: clearAllPdfs e loadExistingPdfsForEdit são wrappers necessários para compatibilidade
+            v3: Inclui verificação automática via módulo de suporte (TESTE 3)
         </div>
     `;
     
     testsContent.innerHTML = html;
     
-    // Configurar botão de teste de migração
     document.getElementById('run-migration-test')?.addEventListener('click', () => {
         window.verifyMediaMigration();
     });
     
-    // Configurar botão de teste de compatibilidade
     document.getElementById('run-compatibility-test')?.addEventListener('click', () => {
         window.testModuleCompatibility();
     });
+    
+    document.getElementById('run-auto-check')?.addEventListener('click', () => {
+        if (typeof window.autoValidateMigration === 'function') {
+            window.autoValidateMigration();
+        }
+    });
+    
+    if (lastMigrationReport) {
+        const migrationSection = document.createElement('div');
+        migrationSection.style.marginTop = '20px';
+        migrationSection.style.padding = '15px';
+        migrationSection.style.background = '#001a1a';
+        migrationSection.style.borderRadius = '6px';
+        migrationSection.innerHTML = `
+            <h4 style="color: #ff00ff; margin-bottom: 10px;">📋 ÚLTIMA VERIFICAÇÃO AUTOMÁTICA</h4>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="color: ${lastMigrationReport.migrationReady ? '#00ff9c' : '#ff5555'}; font-weight: bold;">
+                        ${lastMigrationReport.migrationReady ? '✅ PRONTO PARA MIGRAÇÃO' : '❌ NÃO PRONTO'}
+                    </div>
+                    <div style="font-size: 11px; color: #888;">
+                        Pontuação: ${lastMigrationReport.compatibilityScore}% (${lastMigrationReport.passed}/${lastMigrationReport.total})
+                    </div>
+                </div>
+                <button id="view-last-report" style="
+                    background: #555; color: white; border: none;
+                    padding: 6px 12px; cursor: pointer; border-radius: 4px;
+                    font-size: 11px;">
+                    VER DETALHES
+                </button>
+            </div>
+        `;
+        
+        testsContent.appendChild(migrationSection);
+        
+        document.getElementById('view-last-report')?.addEventListener('click', () => {
+            updateMigrationTab(lastMigrationReport);
+        });
+    }
 }
 
 function updatePdfMobileTab(results) {
@@ -1819,7 +1972,6 @@ function updatePdfMobileTab(results) {
                 <h4 style="color: #00ff9c; margin-bottom: 10px;">🎯 ANÁLISE DO MODAL PDF</h4>
     `;
     
-    // Seção do modal
     if (results.modalAnalysis.exists) {
         html += `
             <div style="margin-bottom: 15px;">
@@ -1843,22 +1995,9 @@ function updatePdfMobileTab(results) {
                         ${results.modalAnalysis.passwordField.exists ? '✅ PRESENTE' : '❌ AUSENTE'}
                     </div>
                 </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <h5 style="color: #888; margin-bottom: 5px;">📐 ESTILO DO MODAL</h5>
-                    <div style="background: #0a0a0a; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px;">
+            </div>
         `;
         
-        Object.entries(results.modalAnalysis.style || {}).forEach(([key, value]) => {
-            html += `<div style="margin-bottom: 2px;">${key}: <span style="color: #00ff9c;">${value}</span></div>`;
-        });
-        
-        html += `
-                    </div>
-                </div>
-        `;
-        
-        // Bounding box se disponível
         if (results.modalAnalysis.boundingBox) {
             html += `
                 <div style="margin-bottom: 15px;">
@@ -1889,7 +2028,6 @@ function updatePdfMobileTab(results) {
             </div>
     `;
     
-    // Seção de problemas e recomendações
     if (results.layoutIssues.length > 0 || results.recommendations.length > 0) {
         html += `
             <div style="background: ${results.layoutIssues.length > 0 ? '#1a0000' : '#001a00'}; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -1932,7 +2070,6 @@ function updatePdfMobileTab(results) {
         html += `</div>`;
     }
     
-    // Botão de ação
     html += `
         <div style="text-align: center;">
             <button id="fix-mobile-pdf" style="
@@ -1949,7 +2086,6 @@ function updatePdfMobileTab(results) {
     
     pdfMobileContent.innerHTML = html;
     
-    // Configurar botão de correções
     document.getElementById('fix-mobile-pdf')?.addEventListener('click', () => {
         applyMobilePdfFixes(results);
     });
@@ -1958,7 +2094,6 @@ function updatePdfMobileTab(results) {
 function applyMobilePdfFixes(results) {
     logToPanel('🛠️ Aplicando correções para mobile PDF...', 'mobile');
     
-    // Criar estilo otimizado para mobile
     const styleId = 'diagnostics-mobile-pdf-fixes';
     let styleTag = document.getElementById(styleId);
     
@@ -1969,8 +2104,6 @@ function applyMobilePdfFixes(results) {
     }
     
     const css = `
-        /* Correções mobile PDF - Gerado por diagnostics.js v2 */
-        
         @media (max-width: 768px) {
             #pdfModal {
                 max-width: 95vw !important;
@@ -1987,13 +2120,12 @@ function applyMobilePdfFixes(results) {
             #pdfPassword {
                 width: 90% !important;
                 max-width: 300px !important;
-                font-size: 16px !important; /* Evita zoom em iOS */
+                font-size: 16px !important;
             }
             
-            /* Tornar mais touch-friendly */
             .pdf-modal-buttons button {
                 padding: 12px 20px !important;
-                min-height: 44px !important; /* Tamanho mínimo para toque */
+                min-height: 44px !important;
                 margin: 5px !important;
             }
         }
@@ -2016,7 +2148,6 @@ function applyMobilePdfFixes(results) {
     logToPanel('✅ Estilos mobile PDF aplicados', 'success');
     logToPanel('💡 Recarregue a página para ver as mudanças', 'info');
     
-    // Forçar recálculo
     const pdfModal = document.getElementById('pdfModal');
     if (pdfModal) {
         pdfModal.style.display = 'none';
@@ -2030,31 +2161,23 @@ function applyMobilePdfFixes(results) {
 /* ================== FUNÇÕES PRINCIPAIS ================== */
 async function runCompleteDiagnosis() {
     try {
-        logToPanel('🚀 Iniciando diagnóstico completo...', 'debug');
+        logToPanel('🚀 Iniciando diagnóstico completo v3...', 'debug');
         updateStatus('Diagnóstico em andamento...', 'info');
         
-        // 1. Análise do sistema
-        logToPanel('🔍 Analisando sistema...', 'debug');
         const systemData = analyzeSystem();
         
-        // 2. Atualiza visualizações
         updateOverview(systemData);
         
-        // 3. Executa testes
-        logToPanel('🧪 Executando testes...', 'debug');
         const testResults = await testMediaUnifiedComplete();
         
-        // 4. Atualiza aba de testes
         updateTestsTab(testResults);
         
-        // 5. Calcula health score
         const healthScore = calculateHealthScore(systemData, testResults);
         const healthScoreElement = document.getElementById('health-score');
         if (healthScoreElement) {
             healthScoreElement.textContent = `${healthScore}%`;
         }
         
-        // 6. Atualiza status
         logToPanel(`✅ Diagnóstico completo! Health Score: ${healthScore}%`, 'success');
         updateStatus('Diagnóstico completo', 'success');
         
@@ -2070,7 +2193,6 @@ async function runCompleteDiagnosis() {
 function calculateHealthScore(systemData, testResults) {
     let score = 100;
     
-    // Penalidades por sistemas ausentes
     Object.entries(systemData.systems).forEach(([system, active]) => {
         if (!active) {
             const criticalSystems = ['MediaSystem', 'properties', 'supabase'];
@@ -2079,7 +2201,6 @@ function calculateHealthScore(systemData, testResults) {
         }
     });
     
-    // Penalidades por elementos ausentes
     Object.entries(systemData.criticalElements).forEach(([element, domElement]) => {
         if (!domElement) {
             const criticalElements = ['pdfModal', 'pdfPassword', 'uploadPreview'];
@@ -2088,7 +2209,6 @@ function calculateHealthScore(systemData, testResults) {
         }
     });
     
-    // Bonus por testes passados
     if (testResults && testResults.total > 0) {
         const percentage = (testResults.passed / testResults.total) * 100;
         score = Math.min(100, score + (percentage / 10));
@@ -2119,19 +2239,21 @@ function exportReport() {
             innerHeight: window.innerHeight
         },
         testResults: currentTestResults,
+        lastMigrationReport: lastMigrationReport,
         migrationStatus: window.verifyMediaMigration ? 'Função disponível' : 'Função não disponível',
-        compatibilityStatus: window.testModuleCompatibility ? 'Função disponível v2' : 'Função não disponível'
+        compatibilityStatus: window.testModuleCompatibility ? 'Função disponível v3' : 'Função não disponível',
+        autoValidationStatus: window.autoValidateMigration ? 'Função disponível v3' : 'Função não disponível'
     };
     
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `diagnostico-sistema-${Date.now()}.json`;
+    a.download = `diagnostico-sistema-v3-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     
-    logToPanel('📊 Relatório exportado como JSON', 'success');
+    logToPanel('📊 Relatório exportado como JSON (v3)', 'success');
 }
 
 function runPdfMobileDiagnosis() {
@@ -2141,10 +2263,8 @@ function runPdfMobileDiagnosis() {
     try {
         const results = window.diagnosePdfModalMobile();
         
-        // Atualizar aba de diagnóstico mobile
         updatePdfMobileTab(results);
         
-        // Logar resultados
         logToPanel(`📱 Dispositivo: ${results.deviceInfo.type}`, 'mobile');
         logToPanel(`📏 Viewport: ${results.deviceInfo.viewport.width}×${results.deviceInfo.viewport.height}`, 'mobile');
         logToPanel(`✅ Modal PDF: ${results.modalAnalysis.exists ? 'PRESENTE' : 'AUSENTE'}`, 
@@ -2174,7 +2294,6 @@ function runPdfMobileDiagnosis() {
         logToPanel('✅ Diagnóstico mobile PDF concluído', 'success');
         updateStatus('Diagnóstico mobile completo', 'success');
         
-        // Mudar para aba mobile
         const mobileTabBtn = document.querySelector('[data-tab="pdf-mobile"]');
         if (mobileTabBtn) {
             mobileTabBtn.click();
@@ -2208,11 +2327,10 @@ function createDiagnosticsPanel() {
         box-shadow: 0 0 30px rgba(0, 255, 156, 0.4);
     `;
     
-    // Cabeçalho com controles
     diagnosticsPanel.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <div style="font-size: 16px; font-weight: bold; color: #00ff9c;">
-                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA v2
+                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA v3
             </div>
             <div style="display: flex; gap: 8px;">
                 <button id="test-compatibility-main" style="
@@ -2220,7 +2338,14 @@ function createDiagnosticsPanel() {
                     color: #000; border: none; 
                     padding: 4px 8px; cursor: pointer; border-radius: 3px;
                     font-size: 10px; font-weight: bold;">
-                    🔍 COMPATIBILIDADE v2
+                    🔍 COMPATIBILIDADE
+                </button>
+                <button id="auto-migration-main" style="
+                    background: linear-gradient(45deg, #0088cc, #00ff9c); 
+                    color: #000; border: none; 
+                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                    font-size: 10px; font-weight: bold;">
+                    🔄 AUTO-VALIDAÇÃO
                 </button>
                 <button id="verify-migration-main" style="
                     background: linear-gradient(45deg, #ff00ff, #0088cc); 
@@ -2246,7 +2371,7 @@ function createDiagnosticsPanel() {
         <div style="color: #888; font-size: 11px; margin-bottom: 20px; display: flex; justify-content: space-between;">
             <div>
                 Modo: ${DEBUG_MODE ? 'DEBUG' : 'NORMAL'} | 
-                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'} | v2
+                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'} | v3
             </div>
             <div id="device-indicator" style="background: #333; padding: 2px 8px; border-radius: 3px;">
                 📱 Detectando dispositivo...
@@ -2257,7 +2382,7 @@ function createDiagnosticsPanel() {
                 background: #00ff9c; color: #000; border: none;
                 padding: 8px 12px; cursor: pointer; border-radius: 4px;
                 font-weight: bold; flex: 1;">
-                🧪 TESTE COMPLETO v2
+                🧪 TESTE COMPLETO v3
             </button>
             <button id="test-pdf-mobile" style="
                 background: #0088cc; color: white; border: none;
@@ -2269,7 +2394,7 @@ function createDiagnosticsPanel() {
                 background: #555; color: white; border: none;
                 padding: 8px 12px; cursor: pointer; border-radius: 4px;
                 font-weight: bold; flex: 1;">
-                📊 EXPORTAR
+                📊 EXPORTAR RELATÓRIO
             </button>
         </div>
         <div id="tabs" style="display: flex; border-bottom: 1px solid #333; margin-bottom: 15px;">
@@ -2315,19 +2440,17 @@ function createDiagnosticsPanel() {
     
     document.body.appendChild(diagnosticsPanel);
     
-    // Configurar eventos
     setupPanelEvents();
     
-    // Atualizar indicador de dispositivo
     updateDeviceIndicator();
 }
 
 function setupPanelEvents() {
-    // Botões de controle
     const closeBtn = document.getElementById('close-btn');
     const minimizeBtn = document.getElementById('minimize-btn');
     const verifyMigrationBtn = document.getElementById('verify-migration-main');
     const testCompatibilityBtn = document.getElementById('test-compatibility-main');
+    const autoMigrationBtn = document.getElementById('auto-migration-main');
     
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
@@ -2356,10 +2479,16 @@ function setupPanelEvents() {
         });
     }
     
-    // Tabs
+    if (autoMigrationBtn) {
+        autoMigrationBtn.addEventListener('click', () => {
+            if (typeof window.autoValidateMigration === 'function') {
+                window.autoValidateMigration();
+            }
+        });
+    }
+    
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            // Remove active de todas
             document.querySelectorAll('.tab-btn').forEach(b => {
                 b.classList.remove('active');
                 b.style.background = 'transparent';
@@ -2367,13 +2496,11 @@ function setupPanelEvents() {
                 b.style.borderBottom = 'none';
             });
             
-            // Ativa atual
             btn.classList.add('active');
             btn.style.background = '#333';
             btn.style.color = '#00ff9c';
             btn.style.borderBottom = '2px solid #00ff9c';
             
-            // Mostra conteúdo correto
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.style.display = 'none';
             });
@@ -2384,7 +2511,6 @@ function setupPanelEvents() {
         });
     });
     
-    // Botão executar todos testes
     const runAllTestsBtn = document.getElementById('run-all-tests');
     if (runAllTestsBtn) {
         runAllTestsBtn.addEventListener('click', async () => {
@@ -2392,7 +2518,6 @@ function setupPanelEvents() {
         });
     }
     
-    // Botão teste mobile PDF
     const testPdfMobileBtn = document.getElementById('test-pdf-mobile');
     if (testPdfMobileBtn) {
         testPdfMobileBtn.addEventListener('click', () => {
@@ -2400,7 +2525,6 @@ function setupPanelEvents() {
         });
     }
     
-    // Botão exportar
     const exportBtn = document.getElementById('export-btn');
     if (exportBtn) {
         exportBtn.addEventListener('click', exportReport);
@@ -2409,18 +2533,21 @@ function setupPanelEvents() {
 
 /* ================== INICIALIZAÇÃO ================== */
 if (DEBUG_MODE && DIAGNOSTICS_MODE) {
-    // Aguarda DOM estar pronto
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 createDiagnosticsPanel();
-                // Inicia análise automática após 2 segundos
                 setTimeout(() => runCompleteDiagnosis(), 2000);
                 
-                // Se flag mobile test ativa, executa diagnóstico mobile
                 if (MOBILE_TEST) {
                     setTimeout(() => runPdfMobileDiagnosis(), 3000);
                 }
+                
+                setTimeout(() => {
+                    if (typeof window.autoValidateMigration === 'function') {
+                        window.autoValidateMigration();
+                    }
+                }, 4000);
             }, 1000);
         });
     } else {
@@ -2431,9 +2558,16 @@ if (DEBUG_MODE && DIAGNOSTICS_MODE) {
             if (MOBILE_TEST) {
                 setTimeout(() => runPdfMobileDiagnosis(), 3000);
             }
+            
+            setTimeout(() => {
+                if (typeof window.autoValidateMigration === 'function') {
+                    window.autoValidateMigration();
+                }
+            }, 4000);
         }, 1000);
     }
 }
 
-// Exportar funções globalmente para acesso direto via console
 window.runDiagnostics = runCompleteDiagnosis;
+window.diagnosticsLoaded = true;
+console.log('✅ diagnostics.js v3 carregado com sucesso!');
