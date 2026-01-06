@@ -6716,7 +6716,7 @@ function exportReport() {
     }
     
     // Exportar funções globais
-    return {
+    window.Diagnostics = {
         analyzeSystem,
         runCompleteDiagnosis,
         testMediaUnifiedComplete,
@@ -6727,21 +6727,20 @@ function exportReport() {
         updateDeviceIndicator,
         version: '5.4'
     };
-})(); // ← APENAS UM FECHAMENTO FINAL
-
-console.log('✅ DIAGNOSTICS.JS v5.4 - CARREGAMENTO COMPLETO');
-console.log('📋 Comandos disponíveis:');
-console.log('- window.runDiagnostics() - Executar diagnóstico completo');
-console.log('- window.testPdfSystem() - Testar sistema PDF');
-console.log('- window.interactivePdfTest() - Teste interativo PDF');
-console.log('- window.diagnosePdfIconProblem() - Diagnosticar problema do ícone PDF');
-console.log('- window.runPdfCompatibilityCheck() - Verificar compatibilidade PDF');
-console.log('- window.analyzeBrokenReferences() - Analisar referências quebradas');
-console.log('- window.analyzePlaceholders() - Analisar placeholders');
-console.log('- window.testModuleCompatibility() - Testar compatibilidade de módulos');
-console.log('- window.verifyMediaMigration() - Verificar migração de mídia');
-console.log('- window.autoValidateMigration() - Validação automática de migração');
-console.log('- window.diag - Objeto com todas as funções de diagnóstico');
-console.log('🎯 Use console.diag.pdf.interactive() para teste interativo do sistema PDF');
-
-// FIM DO ARQUIVO
+    
+    console.log('✅ DIAGNOSTICS.JS v5.4 - CARREGAMENTO COMPLETO');
+    console.log('📋 Comandos disponíveis:');
+    console.log('- window.runDiagnostics() - Executar diagnóstico completo');
+    console.log('- window.testPdfSystem() - Testar sistema PDF');
+    console.log('- window.interactivePdfTest() - Teste interativo PDF');
+    console.log('- window.diagnosePdfIconProblem() - Diagnosticar problema do ícone PDF');
+    console.log('- window.runPdfCompatibilityCheck() - Verificar compatibilidade PDF');
+    console.log('- window.analyzeBrokenReferences() - Analisar referências quebradas');
+    console.log('- window.analyzePlaceholders() - Analisar placeholders');
+    console.log('- window.testModuleCompatibility() - Testar compatibilidade de módulos');
+    console.log('- window.verifyMediaMigration() - Verificar migração de mídia');
+    console.log('- window.autoValidateMigration() - Validação automática de migração');
+    console.log('- window.diag - Objeto com todas as funções de diagnóstico');
+    console.log('🎯 Use console.diag.pdf.interactive() para teste interativo do sistema PDF');
+    
+    // FIM DO ARQUIVO
