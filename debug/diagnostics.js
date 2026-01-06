@@ -6742,5 +6742,3 @@ function exportReport() {
     console.log('- window.autoValidateMigration() - Validação automática de migração');
     console.log('- window.diag - Objeto com todas as funções de diagnóstico');
     console.log('🎯 Use console.diag.pdf.interactive() para teste interativo do sistema PDF');
-    
-    // FIM DO ARQUIVO
