@@ -6727,53 +6727,21 @@ function exportReport() {
         updateDeviceIndicator,
         version: '5.4'
     };
-    
-    })();
-    
-    console.log('✅ DIAGNOSTICS.JS v5.4 - CARREGAMENTO COMPLETO');
-    console.log('📋 Comandos disponíveis:');
-    console.log('- window.runDiagnostics() - Executar diagnóstico completo');
-    console.log('- window.testPdfSystem() - Testar sistema PDF');
-    console.log('- window.interactivePdfTest() - Teste interativo PDF');
-    console.log('- window.diagnosePdfIconProblem() - Diagnosticar problema do ícone PDF');
-    console.log('- window.runPdfCompatibilityCheck() - Verificar compatibilidade PDF');
-    console.log('- window.analyzeBrokenReferences() - Analisar referências quebradas');
-    console.log('- window.analyzePlaceholders() - Analisar placeholders');
-    console.log('- window.testModuleCompatibility() - Testar compatibilidade de módulos');
-    console.log('- window.verifyMediaMigration() - Verificar migração de mídia');
-    console.log('- window.autoValidateMigration() - Validação automática de migração');
-    console.log('- window.diag - Objeto com todas as funções de diagnóstico');
-    console.log('🎯 Use console.diag.pdf.interactive() para teste interativo do sistema PDF');
-    
-        // Exportar como módulo se suportado
-    if (typeof module !== 'undefined' && module.exports) {
-        module.exports = {
-            analyzeSystem: window.analyzeSystem || analyzeSystem,
-            runCompleteDiagnosis: window.runCompleteDiagnosis || runCompleteDiagnosis,
-            testMediaUnifiedComplete: window.testMediaUnifiedComplete || testMediaUnifiedComplete,
-            exportReport: window.exportReport || exportReport,
-            createDiagnosticsPanel: window.createDiagnosticsPanel || createDiagnosticsPanel,
-            logToPanel: window.logToPanel || logToPanel,
-            updateStatus: window.updateStatus || updateStatus,
-            updateDeviceIndicator: window.updateDeviceIndicator || updateDeviceIndicator,
-            version: '5.4'
-        };
-    }
-    
-    console.log('✅ DIAGNOSTICS.JS v5.4 - CARREGAMENTO COMPLETO');
-    console.log('📋 Comandos disponíveis:');
-    console.log('- window.runDiagnostics() - Executar diagnóstico completo');
-    console.log('- window.testPdfSystem() - Testar sistema PDF');
-    console.log('- window.interactivePdfTest() - Teste interativo PDF');
-    console.log('- window.diagnosePdfIconProblem() - Diagnosticar problema do ícone PDF');
-    console.log('- window.runPdfCompatibilityCheck() - Verificar compatibilidade PDF');
-    console.log('- window.analyzeBrokenReferences() - Analisar referências quebradas');
-    console.log('- window.analyzePlaceholders() - Analisar placeholders');
-    console.log('- window.testModuleCompatibility() - Testar compatibilidade de módulos');
-    console.log('- window.verifyMediaMigration() - Verificar migração de mídia');
-    console.log('- window.autoValidateMigration() - Validação automática de migração');
-    console.log('- window.diag - Objeto com todas as funções de diagnóstico');
-    console.log('🎯 Use console.diag.pdf.interactive() para teste interativo do sistema PDF');
-})(); // ← APENAS UM FECHAMENTO DE IIFE
+})(); // ← APENAS UM FECHAMENTO FINAL
 
-// FIM DO ARQUIVO - NÃO ADICIONE NADA DEPOIS DESTA LINHA
+console.log('✅ DIAGNOSTICS.JS v5.4 - CARREGAMENTO COMPLETO');
+console.log('📋 Comandos disponíveis:');
+console.log('- window.runDiagnostics() - Executar diagnóstico completo');
+console.log('- window.testPdfSystem() - Testar sistema PDF');
+console.log('- window.interactivePdfTest() - Teste interativo PDF');
+console.log('- window.diagnosePdfIconProblem() - Diagnosticar problema do ícone PDF');
+console.log('- window.runPdfCompatibilityCheck() - Verificar compatibilidade PDF');
+console.log('- window.analyzeBrokenReferences() - Analisar referências quebradas');
+console.log('- window.analyzePlaceholders() - Analisar placeholders');
+console.log('- window.testModuleCompatibility() - Testar compatibilidade de módulos');
+console.log('- window.verifyMediaMigration() - Verificar migração de mídia');
+console.log('- window.autoValidateMigration() - Validação automática de migração');
+console.log('- window.diag - Objeto com todas as funções de diagnóstico');
+console.log('🎯 Use console.diag.pdf.interactive() para teste interativo do sistema PDF');
+
+// FIM DO ARQUIVO
