@@ -6490,7 +6490,7 @@ function exportReport() {
     document.addEventListener('click', function(e) {
         const target = e.target;
         const isPdfElement = target.matches?.('.pdf-icon, .icon-pdf, [onclick*="pdf"], [onclick*="Pdf"], [onclick*="PDF"]') ||
-                            target.closest?.('.pdf-icon, .icon-pdf, [onclick*="pdf"], [onclick*="Pdf"], [onclick*="PDF"]);
+                             target.closest?.('.pdf-icon, .icon-pdf, [onclick*="pdf"], [onclick*="Pdf"], [onclick*="PDF"]);
         
         if (isPdfElement) {
             console.log('🔍 Clique em elemento PDF detectado v5.4:', {
