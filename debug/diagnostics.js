@@ -1,16 +1,427 @@
-// debug/diagnostics.js - VERSÃO COMPLETA 5.3 COM DIAGNÓSTICO DE ÍCONE PDF
-console.log('🔍 diagnostics.js – diagnóstico completo v5.3 (com diagnóstico de ícone PDF)');
+// diagnostics.js - VERSÃO COMPLETA 5.4 COM DIAGNÓSTICO DE ÍCONE PDF E MELHORIAS DE PAINEL
+console.log('🔍 diagnostics.js – diagnóstico completo v5.4 (com melhorias de painel)');
 
 /* ================== FLAGS ================== */
 const params = new URLSearchParams(location.search);
-const DEBUG_MODE = params.get('debug') === 'true';
+const DEBUG_MODE = params.get('debug') === 'true' || params.get('debug') === 'pdf';
 const DIAGNOSTICS_MODE = params.get('diagnostics') === 'true';
 const MOBILE_TEST = params.get('mobiletest') === 'true';
 const REFERENCE_CHECK = params.get('refcheck') === 'true';
+const PDF_DEBUG = params.get('debug') === 'pdf' || location.search.includes('debug=pdf');
 
-/* ================== DIAGNÓSTICO DO PROBLEMA DO ÍCONE PDF ================== */
+/* ================== FUNÇÃO DE TESTE PDF - ATUALIZADA ================== */
+window.testPdfSystem = function(propertyId = 101) {
+    console.log('🧪 TESTE COMPLETO DO SISTEMA PDF (v5.4)');
+    
+    // Verificar modal
+    const modal = document.getElementById('pdfModal');
+    console.log('1. Modal existe?', !!modal);
+    
+    if (modal) {
+        // Verificar campo de senha
+        const passwordInput = modal.querySelector('#pdfPassword');
+        console.log('2. Campo de senha existe?', !!passwordInput);
+        
+        if (passwordInput) {
+            const style = window.getComputedStyle(passwordInput);
+            console.log('3. Campo visível?', {
+                display: style.display,
+                visibility: style.visibility,
+                opacity: style.opacity,
+                width: style.width,
+                height: style.height
+            });
+            
+            // Forçar visibilidade se necessário
+            if (style.display === 'none') {
+                passwordInput.style.display = 'block';
+                console.log('4. Campo forçado a display: block');
+            }
+        }
+    }
+    
+    // Abrir modal de teste
+    if (window.PdfSystem && window.PdfSystem.showModal) {
+        console.log('5. Abrindo modal de teste...');
+        window.PdfSystem.showModal(propertyId);
+    } else if (window.showPdfModal) {
+        console.log('5. Abrindo modal via showPdfModal...');
+        window.showPdfModal(propertyId);
+    } else {
+        console.error('❌ PdfSystem não disponível');
+        
+        // Tentar abrir modal diretamente
+        const modal = document.getElementById('pdfModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            console.log('✅ Modal aberto diretamente');
+        }
+    }
+    
+    // Logar no painel
+    if (typeof window.logToPanel === 'function') {
+        window.logToPanel('🧪 Teste PDF executado', 'pdf-check');
+    }
+};
+
+/* ================== NOVO: MODO DE TESTE INTERATIVO PDF ================== */
+window.interactivePdfTest = function() {
+    console.group('🎮 TESTE INTERATIVO DO SISTEMA PDF');
+    
+    // Criar interface de teste
+    const testPanelId = 'interactive-pdf-test-panel';
+    let testPanel = document.getElementById(testPanelId);
+    
+    if (!testPanel) {
+        testPanel = document.createElement('div');
+        testPanel.id = testPanelId;
+        testPanel.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #001a33;
+            color: #00aaff;
+            padding: 20px;
+            border: 3px solid #00aaff;
+            border-radius: 10px;
+            z-index: 1000010;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(0, 170, 255, 0.5);
+            font-family: monospace;
+        `;
+        
+        testPanel.innerHTML = `
+            <div style="font-size: 18px; margin-bottom: 15px; text-align: center; color: #00aaff;">
+                🎮 TESTE INTERATIVO PDF
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 8px; color: #88aaff;">Property ID:</label>
+                <input type="number" id="testPdfPropertyId" value="101" 
+                       style="width: 100%; padding: 8px; background: #002244; color: white; border: 1px solid #00aaff; border-radius: 4px;">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                <button id="testPdfShowModal" style="
+                    background: #00aaff; color: #000; border: none; padding: 10px; 
+                    border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    📄 Abrir Modal
+                </button>
+                <button id="testPdfCheckSystem" style="
+                    background: #0088cc; color: white; border: none; padding: 10px; 
+                    border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    🔍 Verificar Sistema
+                </button>
+                <button id="testPdfSimulateClick" style="
+                    background: #ffaa00; color: #000; border: none; padding: 10px; 
+                    border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    🖱️ Simular Clique
+                </button>
+                <button id="testPdfDebugLogs" style="
+                    background: #00ff9c; color: #000; border: none; padding: 10px; 
+                    border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    📝 Debug Logs
+                </button>
+            </div>
+            
+            <div style="background: #002244; padding: 10px; border-radius: 4px; margin-bottom: 15px; max-height: 150px; overflow-y: auto;">
+                <div id="testPdfLogs" style="font-size: 11px; color: #88aaff;">
+                    Logs aparecerão aqui...
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between;">
+                <button id="testPdfClose" style="
+                    background: #555; color: white; border: none; padding: 10px 20px; 
+                    border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    Fechar
+                </button>
+                <button id="testPdfAutoFix" style="
+                    background: #ff5500; color: white; border: none; padding: 10px 20px; 
+                    border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    🛠️ Auto-fix
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(testPanel);
+        
+        // Configurar eventos
+        document.getElementById('testPdfShowModal').addEventListener('click', () => {
+            const propertyId = parseInt(document.getElementById('testPdfPropertyId').value) || 101;
+            logToTestPanel(`Abrindo modal com Property ID: ${propertyId}`);
+            window.testPdfSystem(propertyId);
+        });
+        
+        document.getElementById('testPdfCheckSystem').addEventListener('click', () => {
+            logToTestPanel('Verificando sistema PDF...');
+            runPdfCompatibilityCheck();
+        });
+        
+        document.getElementById('testPdfSimulateClick').addEventListener('click', () => {
+            logToTestPanel('Simulando clique em ícone PDF...');
+            simulatePdfIconClick();
+        });
+        
+        document.getElementById('testPdfDebugLogs').addEventListener('click', () => {
+            logToTestPanel('Exibindo logs de debug...');
+            showPdfDebugLogs();
+        });
+        
+        document.getElementById('testPdfAutoFix').addEventListener('click', () => {
+            logToTestPanel('Aplicando correções automáticas...');
+            autoFixPdfSystem();
+        });
+        
+        document.getElementById('testPdfClose').addEventListener('click', () => {
+            document.body.removeChild(testPanel);
+        });
+        
+        // Função para logar no painel de teste
+        function logToTestPanel(message) {
+            const logsDiv = document.getElementById('testPdfLogs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        // Funções auxiliares
+        function simulatePdfIconClick() {
+            // Procurar ícones PDF
+            const pdfIcons = document.querySelectorAll('.pdf-icon, .icon-pdf, i.fa-file-pdf, i.fas.fa-file-pdf');
+            
+            if (pdfIcons.length > 0) {
+                logToTestPanel(`Encontrados ${pdfIcons.length} ícones PDF`);
+                
+                // Simular clique no primeiro
+                const firstIcon = pdfIcons[0];
+                const clickEvent = new MouseEvent('click', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                });
+                
+                firstIcon.dispatchEvent(clickEvent);
+                logToTestPanel(`Clique simulado no ícone: ${firstIcon.tagName}.${firstIcon.className}`);
+            } else {
+                logToTestPanel('Nenhum ícone PDF encontrado');
+                
+                // Criar ícone de teste
+                const testIcon = document.createElement('button');
+                testIcon.innerHTML = '📄 TESTE';
+                testIcon.style.cssText = `
+                    position: fixed;
+                    top: 100px;
+                    right: 100px;
+                    padding: 10px;
+                    background: #00aaff;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    z-index: 99999;
+                `;
+                testIcon.onclick = () => window.testPdfSystem(999);
+                document.body.appendChild(testIcon);
+                logToTestPanel('Ícone de teste criado');
+            }
+        }
+        
+        function showPdfDebugLogs() {
+            const logs = [
+                `showPdfModal: ${typeof window.showPdfModal}`,
+                `PdfSystem: ${typeof window.PdfSystem}`,
+                `PdfSystem.showModal: ${typeof window.PdfSystem?.showModal}`,
+                `pdfModal element: ${!!document.getElementById('pdfModal')}`,
+                `pdfPassword element: ${!!document.getElementById('pdfPassword')}`,
+                `MediaSystem: ${typeof window.MediaSystem}`,
+                `processAndSavePdfs: ${typeof window.processAndSavePdfs}`
+            ];
+            
+            logs.forEach(log => logToTestPanel(log));
+        }
+        
+        function autoFixPdfSystem() {
+            logToTestPanel('Aplicando correções...');
+            
+            // 1. Garantir que showPdfModal existe
+            if (typeof window.showPdfModal !== 'function') {
+                window.showPdfModal = function(propertyId) {
+                    console.log(`showPdfModal(${propertyId}) chamado`);
+                    
+                    if (window.PdfSystem?.showModal) {
+                        return window.PdfSystem.showModal();
+                    }
+                    
+                    const modal = document.getElementById('pdfModal');
+                    if (modal) {
+                        modal.style.display = 'flex';
+                        return true;
+                    }
+                    
+                    console.error('Modal não encontrado');
+                    return false;
+                };
+                logToTestPanel('✅ showPdfModal criada');
+            }
+            
+            // 2. Criar modal se não existir
+            if (!document.getElementById('pdfModal')) {
+                const modal = document.createElement('div');
+                modal.id = 'pdfModal';
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.9);
+                    z-index: 10000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    display: none;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="background:#1a1a1a;padding:30px;border-radius:10px;max-width:500px;width:90%;">
+                        <h2 style="color:#fff;margin-bottom:20px;">PDF - Teste</h2>
+                        <input type="password" id="pdfPassword" placeholder="Digite a senha do PDF" 
+                               style="padding:12px;width:100%;margin-bottom:20px;font-size:16px;">
+                        <div style="display:flex;gap:10px;">
+                            <button onclick="document.getElementById('pdfModal').style.display='none'" 
+                                    style="padding:12px 20px;background:#555;color:white;border:none;cursor:pointer;flex:1;">
+                                Cancelar
+                            </button>
+                            <button onclick="alert('PDF processado (teste)')" 
+                                    style="padding:12px 20px;background:#00ff9c;color:#000;border:none;cursor:pointer;flex:1;font-weight:bold;">
+                                Processar PDF
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                logToTestPanel('✅ Modal PDF criado');
+            }
+            
+            logToTestPanel('✅ Correções aplicadas com sucesso!');
+        }
+    }
+    
+    console.groupEnd();
+    return testPanel;
+};
+
+// Executar teste automático em caso de problemas
+if (PDF_DEBUG) {
+    setTimeout(() => {
+        console.log('🔧 Modo debug PDF ativado');
+        window.testPdfSystem();
+        
+        // Abrir painel interativo
+        setTimeout(() => {
+            window.interactivePdfTest();
+        }, 1000);
+    }, 2000);
+}
+
+/* ================== MELHORIAS PARA O PAINEL F12 ================== */
+window.enhanceDevTools = function() {
+    console.group('🎨 MELHORIAS PARA O PAINEL F12');
+    
+    // Sobrescrever console.log para adicionar formatação
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    const originalInfo = console.info;
+    
+    console.log = function(...args) {
+        // Adicionar timestamp e estilo
+        const timestamp = new Date().toLocaleTimeString();
+        const enhancedArgs = [`%c[${timestamp}]`, 'color: #888; font-weight: normal;', ...args];
+        originalLog.apply(console, enhancedArgs);
+        
+        // Se for uma mensagem do sistema PDF, destacar
+        if (args.some(arg => typeof arg === 'string' && arg.includes('PDF'))) {
+            originalLog.apply(console, [
+                `%c📄`, 
+                'color: #00aaff; font-size: 14px; margin-left: 5px;'
+            ]);
+        }
+    };
+    
+    console.error = function(...args) {
+        const timestamp = new Date().toLocaleTimeString();
+        const enhancedArgs = [`%c[${timestamp}]`, 'color: #ff5555; font-weight: bold;', ...args];
+        originalError.apply(console, enhancedArgs);
+    };
+    
+    console.warn = function(...args) {
+        const timestamp = new Date().toLocaleTimeString();
+        const enhancedArgs = [`%c[${timestamp}]`, 'color: #ffaa00; font-weight: bold;', ...args];
+        originalWarn.apply(console, enhancedArgs);
+    };
+    
+    console.info = function(...args) {
+        const timestamp = new Date().toLocaleTimeString();
+        const enhancedArgs = [`%c[${timestamp}]`, 'color: #00aaff; font-weight: bold;', ...args];
+        originalInfo.apply(console, enhancedArgs);
+    };
+    
+    // Adicionar comandos úteis ao console
+    console.diag = {
+        pdf: {
+            test: (id = 101) => window.testPdfSystem(id),
+            interactive: () => window.interactivePdfTest(),
+            diagnose: () => window.diagnosePdfIconProblem(),
+            check: () => window.runPdfCompatibilityCheck()
+        },
+        migration: {
+            verify: () => window.verifyMediaMigration(),
+            compatibility: () => window.testModuleCompatibility(),
+            auto: () => window.autoValidateMigration()
+        },
+        system: {
+            overview: () => console.table(analyzeSystem()),
+            placeholders: () => window.analyzePlaceholders(),
+            references: () => window.analyzeBrokenReferences()
+        },
+        panel: {
+            show: () => createDiagnosticsPanel(),
+            hide: () => {
+                const panel = document.getElementById('diagnostics-panel-complete');
+                if (panel) panel.style.display = 'none';
+            },
+            toggle: () => {
+                const panel = document.getElementById('diagnostics-panel-complete');
+                if (panel) {
+                    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                } else {
+                    createDiagnosticsPanel();
+                }
+            }
+        }
+    };
+    
+    console.log('🎯 Comandos disponíveis: console.diag.pdf.test(), console.diag.panel.toggle(), etc.');
+    
+    // Adicionar mensagem de ajuda
+    console.log('%c🔧 FERRAMENTAS DE DIAGNÓSTICO DISPONÍVEIS', 
+                'color: #00ff9c; font-size: 14px; font-weight: bold;');
+    console.log('%cUse console.diag para acessar todas as funcionalidades', 
+                'color: #88ffaa;');
+    
+    console.groupEnd();
+};
+
+/* ================== DIAGNÓSTICO DO PROBLEMA DO ÍCONE PDF - ATUALIZADO ================== */
 window.diagnosePdfIconProblem = function() {
-    console.group('🔍 DIAGNÓSTICO DO ÍCONE PDF (FOTO PRINCIPAL)');
+    console.group('🔍 DIAGNÓSTICO DO ÍCONE PDF (v5.4)');
     console.log('Problema: Ícone PDF não abre modal de senha');
     
     // ================== TESTE 1: VERIFICAR FUNÇÕES ==================
@@ -58,10 +469,6 @@ window.diagnosePdfIconProblem = function() {
         console.log('- onclick:', icon.onclick ? 'SIM' : 'NÃO');
         console.log('- onclick atributo:', icon.getAttribute('onclick') || 'nenhum');
         console.log('- HTML:', icon.outerHTML.substring(0, 200) + '...');
-        
-        // Verificar se tem event listener
-        const listeners = getEventListeners(icon);
-        console.log('- Event listeners:', Object.keys(listeners).length > 0 ? Object.keys(listeners) : 'nenhum');
         
         // Testar clique manualmente
         console.log('- Teste de clique:');
@@ -171,19 +578,19 @@ window.diagnosePdfIconProblem = function() {
     // ================== TESTE 6: CRIAR ÍCONE DE TESTE ==================
     console.log('\n✅ TESTE 6: CRIAR ÍCONE PDF DE TESTE');
     
-    const testIconId = 'pdf-diagnostic-test-icon';
+    const testIconId = 'pdf-diagnostic-test-icon-v5-4';
     let testIcon = document.getElementById(testIconId);
     
     if (!testIcon) {
         testIcon = document.createElement('button');
         testIcon.id = testIconId;
-        testIcon.innerHTML = '📄 TESTE PDF';
+        testIcon.innerHTML = '📄 TESTE PDF (v5.4)';
         testIcon.style.cssText = `
             position: fixed;
             bottom: 100px;
             right: 20px;
             padding: 10px 20px;
-            background: #00aaff;
+            background: linear-gradient(45deg, #00aaff, #0088cc);
             color: white;
             border: none;
             border-radius: 5px;
@@ -191,10 +598,22 @@ window.diagnosePdfIconProblem = function() {
             z-index: 999999;
             font-family: Arial, sans-serif;
             font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0, 170, 255, 0.3);
+            transition: all 0.3s;
         `;
         
+        testIcon.onmouseenter = function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 6px 16px rgba(0, 170, 255, 0.5)';
+        };
+        
+        testIcon.onmouseleave = function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 4px 12px rgba(0, 170, 255, 0.3)';
+        };
+        
         testIcon.onclick = function() {
-            console.log('🎯 CLIQUE NO ÍCONE DE TESTE CAPTURADO!');
+            console.log('🎯 CLIQUE NO ÍCONE DE TESTE CAPTURADO! (v5.4)');
             
             if (typeof window.showPdfModal === 'function') {
                 console.log('Chamando showPdfModal(999)...');
@@ -248,7 +667,7 @@ window.diagnosePdfIconProblem = function() {
     if (typeof window.showPdfModal !== 'function') {
         console.log('🔄 Criando showPdfModal...');
         window.showPdfModal = function(propertyId) {
-            console.log(`🔍 showPdfModal(${propertyId}) chamado`);
+            console.log(`🔍 showPdfModal(${propertyId}) chamado (v5.4)`);
             
             // Prioridade 1: Usar PdfSystem se disponível
             if (window.PdfSystem && typeof window.PdfSystem.showModal === 'function') {
@@ -332,11 +751,11 @@ window.diagnosePdfIconProblem = function() {
     pdfIconSelectors.forEach(selector => {
         const icons = document.querySelectorAll(selector);
         icons.forEach(icon => {
-            if (!icon.hasAttribute('data-diagnostic-fixed')) {
+            if (!icon.hasAttribute('data-diagnostic-fixed-v5-4')) {
                 const originalOnClick = icon.onclick;
                 
                 icon.onclick = function(e) {
-                    console.log('🔍 Ícone PDF clicado (via diagnóstico)');
+                    console.log('🔍 Ícone PDF clicado (via diagnóstico v5.4)');
                     
                     // Tentar extrair propertyId do elemento
                     let propertyId = 101; // Default
@@ -365,7 +784,7 @@ window.diagnosePdfIconProblem = function() {
                     return false;
                 };
                 
-                icon.setAttribute('data-diagnostic-fixed', 'true');
+                icon.setAttribute('data-diagnostic-fixed-v5-4', 'true');
                 iconsFixed++;
             }
         });
@@ -385,9 +804,9 @@ window.diagnosePdfIconProblem = function() {
                          target.getAttribute?.('onclick')?.includes('pdf') ||
                          target.className?.toLowerCase().includes('pdf');
         
-        if (isPdfIcon && !target.hasAttribute('data-diagnostic-handled')) {
-            console.log('🌍 Clique em ícone PDF capturado globalmente');
-            target.setAttribute('data-diagnostic-handled', 'true');
+        if (isPdfIcon && !target.hasAttribute('data-diagnostic-handled-v5-4')) {
+            console.log('🌍 Clique em ícone PDF capturado globalmente (v5.4)');
+            target.setAttribute('data-diagnostic-handled-v5-4', 'true');
             
             // Prevenir múltiplos handlers
             e.stopImmediatePropagation();
@@ -411,7 +830,7 @@ window.diagnosePdfIconProblem = function() {
     solutions.push('Listener global adicionado');
     
     // ================== RESUMO ==================
-    console.log('\n📊 RESUMO DO DIAGNÓSTICO');
+    console.log('\n📊 RESUMO DO DIAGNÓSTICO (v5.4)');
     console.log('✅ Funções verificadas:', Object.keys(functions).length);
     console.log('✅ Ícones PDF encontrados:', pdfIcons.length);
     console.log('✅ Ícones reparados:', iconsFixed);
@@ -421,57 +840,88 @@ window.diagnosePdfIconProblem = function() {
         console.log('\n🛠️ SOLUÇÕES APLICADAS:');
         solutions.forEach((sol, idx) => console.log(`${idx + 1}. ${sol}`));
         
-        // Mostrar alerta visual
+        // Mostrar alerta visual melhorado
         const alertDiv = document.createElement('div');
         alertDiv.style.cssText = `
             position: fixed;
             top: 20px;
             right: 20px;
-            background: #001a00;
-            color: #00ff9c;
-            padding: 15px;
-            border: 2px solid #00ff9c;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #001a33, #000a1a);
+            color: #00aaff;
+            padding: 20px;
+            border: 3px solid #00aaff;
+            border-radius: 10px;
             z-index: 1000000;
             max-width: 400px;
-            box-shadow: 0 0 20px rgba(0, 255, 156, 0.5);
-            font-family: monospace;
+            box-shadow: 0 0 30px rgba(0, 170, 255, 0.5);
+            font-family: 'Courier New', monospace;
+            backdrop-filter: blur(10px);
         `;
         
         alertDiv.innerHTML = `
-            <div style="font-weight:bold;margin-bottom:10px;">🔍 DIAGNÓSTICO PDF COMPLETO</div>
-            <div style="font-size:12px;margin-bottom:5px;">✅ ${solutions.length} soluções aplicadas</div>
-            <div style="font-size:11px;color:#88ffaa;">
-                ${solutions.map(s => `• ${s}`).join('<br>')}
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                <div style="font-size: 24px;">🔍</div>
+                <div style="font-weight: bold; font-size: 16px; color: #00aaff;">DIAGNÓSTICO PDF v5.4</div>
             </div>
-            <div style="margin-top:10px;font-size:10px;color:#00aaff;">
+            <div style="background: rgba(0, 170, 255, 0.1); padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                <div style="font-size: 12px; margin-bottom: 5px; color: #88aaff;">✅ ${solutions.length} soluções aplicadas</div>
+                <div style="font-size: 11px; color: #aaddff;">
+                    ${solutions.map(s => `• ${s}`).join('<br>')}
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                <div style="text-align: center; background: rgba(0, 170, 255, 0.1); padding: 8px; border-radius: 4px;">
+                    <div style="font-size: 10px; color: #88aaff;">Ícones</div>
+                    <div style="font-size: 18px; color: #00aaff;">${pdfIcons.length}</div>
+                </div>
+                <div style="text-align: center; background: rgba(0, 170, 255, 0.1); padding: 8px; border-radius: 4px;">
+                    <div style="font-size: 10px; color: #88aaff;">Reparados</div>
+                    <div style="font-size: 18px; color: #00ff9c;">${iconsFixed}</div>
+                </div>
+            </div>
+            <div style="font-size: 10px; color: #88aaff; margin-bottom: 15px;">
                 Ícone de teste criado no canto inferior direito
             </div>
-            <button onclick="this.parentElement.remove()" style="
-                margin-top:10px; padding:5px 10px; background:#00ff9c; 
-                color:#000; border:none; cursor:pointer; font-size:10px;">
-                FECHAR
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="this.parentElement.remove()" style="
+                    flex: 1; padding: 10px; background: #00aaff; 
+                    color: #000; border: none; cursor: pointer; 
+                    border-radius: 5px; font-weight: bold; font-size: 12px;">
+                    FECHAR
+                </button>
+                <button onclick="window.interactivePdfTest?.() || console.log('Interactive test não disponível')" style="
+                    flex: 1; padding: 10px; background: #0088cc; 
+                    color: white; border: none; cursor: pointer; 
+                    border-radius: 5px; font-weight: bold; font-size: 12px;">
+                    🎮 TESTE
+                </button>
+            </div>
         `;
         
         document.body.appendChild(alertDiv);
         
-        // Auto-remover após 10 segundos
+        // Auto-remover após 15 segundos
         setTimeout(() => {
             if (alertDiv.parentElement) {
                 alertDiv.remove();
             }
-        }, 10000);
+        }, 15000);
     }
     
     console.groupEnd();
+    
+    // Logar no painel se disponível
+    if (typeof window.logToPanel === 'function') {
+        window.logToPanel(`🔍 Diagnóstico PDF executado: ${solutions.length} soluções aplicadas`, 'pdf-check');
+    }
     
     return {
         functions,
         pdfIcons: pdfIcons.length,
         iconsFixed,
         solutions,
-        testIconCreated: !!testIcon
+        testIconCreated: !!testIcon,
+        version: '5.4'
     };
 };
 
@@ -507,10 +957,10 @@ function getEventListeners(element) {
 
 /* ================== VERIFICAÇÃO IMEDIATA PDF COMPATÍVEL ================== */
 (function immediatePdfValidation() {
-    if (!DEBUG_MODE && !DIAGNOSTICS_MODE) return;
+    if (!DEBUG_MODE && !DIAGNOSTICS_MODE && !PDF_DEBUG) return;
     
     // NOVO TESTE COMPATÍVEL COM pdf-unified.js
-    console.log('🔍 VERIFICAÇÃO PDF UNIFICADO (ATUALIZADO)');
+    console.log('🔍 VERIFICAÇÃO PDF UNIFICADO (ATUALIZADO v5.4)');
     
     const tests = {
         'PdfSystem carregado': () => typeof window.PdfSystem !== 'undefined',
@@ -535,7 +985,7 @@ function getEventListeners(element) {
     let passed = 0;
     const total = Object.keys(tests).length;
     
-    console.group('🔍 VERIFICAÇÃO PDF UNIFICADO (COMPATÍVEL)');
+    console.group('🔍 VERIFICAÇÃO PDF UNIFICADO (COMPATÍVEL v5.4)');
     
     Object.entries(tests).forEach(([name, test]) => {
         try {
@@ -581,7 +1031,7 @@ function getEventListeners(element) {
             modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:10000;align-items:center;justify-content:center;';
             modal.innerHTML = `
                 <div class="pdf-modal-content" style="background:#1a1a1a;padding:30px;border-radius:10px;max-width:90%;max-height:90%;overflow:auto;">
-                    <h2 style="color:#fff;margin-bottom:20px;">PDF System</h2>
+                    <h2 style="color:#fff;margin-bottom:20px;">PDF System v5.4</h2>
                     <input type="password" id="pdfPassword" placeholder="Senha para PDF" style="padding:10px;width:100%;margin-bottom:20px;">
                     <div id="pdfUploadPreview"></div>
                     <div style="display:flex;gap:10px;margin-top:20px;">
@@ -594,14 +1044,15 @@ function getEventListeners(element) {
         }
         
         if (typeof window.PdfSystem === 'undefined') {
-            console.log('🔄 Criando PdfSystem compatível...');
+            console.log('🔄 Criando PdfSystem compatível v5.4...');
             window.PdfSystem = {
                 state: {},
-                showModal: function() {
+                showModal: function(propertyId) {
+                    console.log(`PdfSystem.showModal(${propertyId}) chamado v5.4`);
                     const modal = document.getElementById('pdfModal');
                     if (modal) {
                         modal.style.display = 'flex';
-                        console.log('Modal PDF mostrado (compatibilidade)');
+                        console.log('Modal PDF mostrado (compatibilidade v5.4)');
                     }
                 },
                 hideModal: function() {
@@ -609,21 +1060,21 @@ function getEventListeners(element) {
                     if (modal) modal.style.display = 'none';
                 },
                 processAndSavePdfs: function() {
-                    console.log('PdfSystem.processAndSavePdfs chamado (modo compatibilidade)');
+                    console.log('PdfSystem.processAndSavePdfs chamado (modo compatibilidade v5.4)');
                     return window.processAndSavePdfs?.() || Promise.resolve();
                 },
                 resetState: function() {
                     this.state = {};
-                    console.log('Estado do PdfSystem resetado');
+                    console.log('Estado do PdfSystem resetado v5.4');
                 },
                 clearAllPdfs: function() {
-                    console.log('PdfSystem.clearAllPdfs chamado (compatibilidade)');
+                    console.log('PdfSystem.clearAllPdfs chamado (compatibilidade v5.4)');
                     this.state = {};
                     const preview = document.getElementById('pdfUploadPreview');
                     if (preview) preview.innerHTML = '';
                 },
                 addPdfs: function(files) {
-                    console.log(`PdfSystem.addPdfs chamado com ${files?.length || 0} arquivos (compatibilidade)`);
+                    console.log(`PdfSystem.addPdfs chamado com ${files?.length || 0} arquivos (compatibilidade v5.4)`);
                     if (!this.state.pdfs) this.state.pdfs = [];
                     if (files) this.state.pdfs.push(...files);
                     return Promise.resolve();
@@ -634,17 +1085,17 @@ function getEventListeners(element) {
         if (typeof window.processAndSavePdfs !== 'function') {
             console.log('🔄 Criando função processAndSavePdfs placeholder...');
             window.processAndSavePdfs = function() {
-                console.warn('processAndSavePdfs chamado (modo compatibilidade)');
-                return Promise.resolve({ success: true, message: 'Modo compatibilidade' });
+                console.warn('processAndSavePdfs chamado (modo compatibilidade v5.4)');
+                return Promise.resolve({ success: true, message: 'Modo compatibilidade v5.4' });
             };
         }
     } else {
-        console.log('✅ Sistema PDF verificado com sucesso!');
+        console.log('✅ Sistema PDF verificado com sucesso! (v5.4)');
     }
     
     // Adicionar ao painel de diagnóstico se disponível
     if (typeof window.logToPanel === 'function') {
-        window.logToPanel(`📊 Verificação PDF: ${passed}/${total} (${score}%)`, score >= 80 ? 'success' : 'warning');
+        window.logToPanel(`📊 Verificação PDF v5.4: ${passed}/${total} (${score}%)`, score >= 80 ? 'success' : 'warning');
     }
     
     return { passed, total, score };
@@ -652,7 +1103,7 @@ function getEventListeners(element) {
 
 /* ================== FUNÇÃO DE VERIFICAÇÃO PDF REUTILIZÁVEL ================== */
 window.runPdfCompatibilityCheck = function() {
-    console.log('🔍 EXECUTANDO VERIFICAÇÃO PDF COMPATIBILIDADE');
+    console.log('🔍 EXECUTANDO VERIFICAÇÃO PDF COMPATIBILIDADE v5.4');
     
     const tests = {
         'PdfSystem carregado': () => typeof window.PdfSystem !== 'undefined',
@@ -677,7 +1128,7 @@ window.runPdfCompatibilityCheck = function() {
     let passed = 0;
     const total = Object.keys(tests).length;
     
-    console.group('🔍 VERIFICAÇÃO PDF DE COMPATIBILIDADE');
+    console.group('🔍 VERIFICAÇÃO PDF DE COMPATIBILIDADE v5.4');
     
     Object.entries(tests).forEach(([name, test]) => {
         try {
@@ -694,7 +1145,7 @@ window.runPdfCompatibilityCheck = function() {
             
             // DEBUG detalhado para estado
             if (name === 'Estado ou métodos de estado') {
-                console.log('🔍 DETALHES DO PdfSystem:', {
+                console.log('🔍 DETALHES DO PdfSystem v5.4:', {
                     temPdfSystem: !!window.PdfSystem,
                     temState: window.PdfSystem?.state !== undefined,
                     tipoState: typeof window.PdfSystem?.state,
@@ -717,7 +1168,7 @@ window.runPdfCompatibilityCheck = function() {
     });
     
     const score = Math.round((passed / total) * 100);
-    const scoreMessage = `📊 Score Compatibilidade PDF: ${passed}/${total} (${score}%)`;
+    const scoreMessage = `📊 Score Compatibilidade PDF v5.4: ${passed}/${total} (${score}%)`;
     
     console.log(scoreMessage);
     console.groupEnd();
@@ -733,12 +1184,12 @@ window.runPdfCompatibilityCheck = function() {
             compatibilityScore: score,
             passed,
             total,
-            message: 'Sistema PDF pode precisar de ajustes de compatibilidade'
+            message: 'Sistema PDF pode precisar de ajustes de compatibilidade v5.4'
         };
         window.showMigrationValidationAlert(false, report);
     }
     
-    return { passed, total, score, tests };
+    return { passed, total, score, tests, version: '5.4' };
 };
 
 /* ================== ADICIONAR BOTÃO DE DIAGNÓSTICO PDF NO PAINEL ================== */
@@ -747,15 +1198,26 @@ function addPdfDiagnosticButton() {
     const headerButtons = document.querySelector('#diagnostics-panel-complete > div:first-child > div:last-child');
     if (headerButtons) {
         const pdfDiagnosticBtn = document.createElement('button');
-        pdfDiagnosticBtn.id = 'pdf-diagnostic-btn';
-        pdfDiagnosticBtn.innerHTML = '🔍 ÍCONE PDF';
+        pdfDiagnosticBtn.id = 'pdf-diagnostic-btn-v5-4';
+        pdfDiagnosticBtn.innerHTML = '🔍 ÍCONE PDF v5.4';
         pdfDiagnosticBtn.style.cssText = `
             background: linear-gradient(45deg, #ff5500, #ffaa00); 
             color: #000; border: none; 
             padding: 4px 8px; cursor: pointer; border-radius: 3px;
             font-size: 10px; font-weight: bold; margin-left: 5px;
+            transition: all 0.2s;
         `;
-        pdfDiagnosticBtn.title = 'Diagnosticar problema do ícone PDF';
+        pdfDiagnosticBtn.title = 'Diagnosticar problema do ícone PDF v5.4';
+        
+        pdfDiagnosticBtn.onmouseenter = function() {
+            this.style.transform = 'scale(1.05)';
+            this.style.boxShadow = '0 2px 8px rgba(255, 85, 0, 0.3)';
+        };
+        
+        pdfDiagnosticBtn.onmouseleave = function() {
+            this.style.transform = 'scale(1)';
+            this.style.boxShadow = 'none';
+        };
         
         pdfDiagnosticBtn.addEventListener('click', () => {
             if (typeof window.diagnosePdfIconProblem === 'function') {
@@ -770,14 +1232,25 @@ function addPdfDiagnosticButton() {
     const mainButtons = document.querySelector('#diagnostics-panel-complete > div:nth-child(3)');
     if (mainButtons) {
         const mainPdfDiagnosticBtn = document.createElement('button');
-        mainPdfDiagnosticBtn.id = 'main-pdf-diagnostic-btn';
-        mainPdfDiagnosticBtn.innerHTML = '🔍 DIAGNÓSTICO ÍCONE PDF';
+        mainPdfDiagnosticBtn.id = 'main-pdf-diagnostic-btn-v5-4';
+        mainPdfDiagnosticBtn.innerHTML = '🔍 DIAGNÓSTICO ÍCONE PDF v5.4';
         mainPdfDiagnosticBtn.style.cssText = `
             background: linear-gradient(45deg, #ff5500, #ffaa00); 
             color: #000; border: none;
             padding: 8px 12px; cursor: pointer; border-radius: 4px;
             font-weight: bold; flex: 1; margin: 5px;
+            transition: all 0.2s;
         `;
+        
+        mainPdfDiagnosticBtn.onmouseenter = function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 12px rgba(255, 85, 0, 0.3)';
+        };
+        
+        mainPdfDiagnosticBtn.onmouseleave = function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        };
         
         mainPdfDiagnosticBtn.addEventListener('click', () => {
             if (typeof window.diagnosePdfIconProblem === 'function') {
@@ -786,6 +1259,38 @@ function addPdfDiagnosticButton() {
         });
         
         mainButtons.appendChild(mainPdfDiagnosticBtn);
+    }
+    
+    // Adicionar botão de teste interativo
+    const interactiveTestBtn = document.createElement('button');
+    interactiveTestBtn.id = 'interactive-pdf-test-btn';
+    interactiveTestBtn.innerHTML = '🎮 TESTE INTERATIVO PDF';
+    interactiveTestBtn.style.cssText = `
+        background: linear-gradient(45deg, #00aaff, #0088cc); 
+        color: white; border: none;
+        padding: 8px 12px; cursor: pointer; border-radius: 4px;
+        font-weight: bold; flex: 1; margin: 5px;
+        transition: all 0.2s;
+    `;
+    
+    interactiveTestBtn.onmouseenter = function() {
+        this.style.transform = 'translateY(-2px)';
+        this.style.boxShadow = '0 4px 12px rgba(0, 170, 255, 0.3)';
+    };
+    
+    interactiveTestBtn.onmouseleave = function() {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = 'none';
+    };
+    
+    interactiveTestBtn.addEventListener('click', () => {
+        if (typeof window.interactivePdfTest === 'function') {
+            window.interactivePdfTest();
+        }
+    });
+    
+    if (mainButtons) {
+        mainButtons.appendChild(interactiveTestBtn);
     }
 }
 
@@ -834,6 +1339,7 @@ function logToPanel(message, type = 'info') {
                     type === 'reference' ? '#1a0a00' :
                     type === 'pdf-check' ? '#001a33' : 
                     'transparent'};
+        transition: all 0.2s;
     `;
     logLine.innerHTML = `<span style="color: ${colors[type]}">${icons[type]} ${message}</span>`;
     
@@ -841,12 +1347,18 @@ function logToPanel(message, type = 'info') {
     if (consoleContent) {
         consoleContent.appendChild(logLine);
         consoleContent.scrollTop = consoleContent.scrollHeight;
+        
+        // Animar entrada
+        setTimeout(() => {
+            logLine.style.opacity = '1';
+            logLine.style.transform = 'translateX(0)';
+        }, 10);
     }
     
     // TAMBÉM loga no console real (F12)
     const consoleFunc = type === 'error' ? console.error : 
                        type === 'warning' ? console.warn : console.log;
-    consoleFunc(`[DIAG] ${message}`);
+    consoleFunc(`[DIAG v5.4] ${message}`);
 }
 
 function updateStatus(message, type = 'info') {
@@ -884,7 +1396,7 @@ function updateDeviceIndicator() {
 
 /* ================== VERIFICAÇÃO DE REFERÊNCIAS CRUZADAS E RISCO 404 ================== */
 window.analyzeBrokenReferences = function() {
-    logToPanel('🔗 ANALISANDO REFERÊNCIAS CRUZADAS E RISCO 404', 'reference');
+    logToPanel('🔗 ANALISANDO REFERÊNCIAS CRUZADAS E RISCO 404 v5.4', 'reference');
     
     const analysis = {
         timestamp: new Date().toISOString(),
@@ -902,7 +1414,7 @@ window.analyzeBrokenReferences = function() {
         }
     };
     
-    console.group('🔗 ANÁLISE DE REFERÊNCIAS CRUZADAS - PREVENÇÃO DE 404s');
+    console.group('🔗 ANÁLISE DE REFERÊNCIAS CRUZADAS - PREVENÇÃO DE 404s v5.4');
     
     // 1. ANALISAR TODAS AS REFERÊNCIAS NO HTML ATUAL
     logToPanel('📄 Analisando referências HTML...', 'reference');
@@ -1176,7 +1688,7 @@ window.analyzeBrokenReferences = function() {
     analysis.stats.totalReferences = allReferences.length;
     analysis.stats.riskyReferences = analysis.riskyFiles.length;
     
-    console.log('📊 RESUMO DA ANÁLISE DE REFERÊNCIAS:');
+    console.log('📊 RESUMO DA ANÁLISE DE REFERÊNCIAS v5.4:');
     console.log('- Referências HTML:', analysis.htmlReferences.length);
     console.log('- Referências JS:', analysis.jsReferences.length);
     console.log('- Referências CSS:', analysis.cssReferences.length);
@@ -1204,7 +1716,7 @@ window.analyzeBrokenReferences = function() {
 
 /* ================== PAINEL DE ANÁLISE DE REFERÊNCIAS QUEBRADAS ================== */
 function showBrokenReferencesAnalysis(analysis) {
-    const alertId = 'broken-references-analysis-alert';
+    const alertId = 'broken-references-analysis-alert-v5-4';
     
     const existingAlert = document.getElementById(alertId);
     if (existingAlert) {
@@ -1218,7 +1730,7 @@ function showBrokenReferencesAnalysis(analysis) {
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background: #1a0a00;
+        background: linear-gradient(135deg, #1a0a00, #000a0a);
         color: #ffaa00;
         padding: 25px;
         border: 3px solid #ff5500;
@@ -1230,15 +1742,16 @@ function showBrokenReferencesAnalysis(analysis) {
         width: 95%;
         box-shadow: 0 0 50px rgba(255, 85, 0, 0.5);
         font-family: 'Consolas', 'Monaco', monospace;
+        backdrop-filter: blur(10px);
     `;
     
     let html = `
         <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #ffaa00;">
             <span>🔗</span>
-            <span>ANÁLISE DE REFERÊNCIAS E RISCO 404</span>
+            <span>ANÁLISE DE REFERÊNCIAS E RISCO 404 v5.4</span>
         </div>
         
-        <div style="background: #331a00; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+        <div style="background: rgba(255, 85, 0, 0.1); padding: 20px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(255, 85, 0, 0.3);">
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">
                 <div>
                     <div style="font-size: 11px; color: #ffcc88;">REF. HTML</div>
@@ -1259,7 +1772,7 @@ function showBrokenReferencesAnalysis(analysis) {
             </div>
             
             <div style="font-size: 12px; color: #ffcc88; text-align: center;">
-                Análise de referências cruzadas para prevenir erros 404
+                Análise de referências cruzadas para prevenir erros 404 - v5.4
             </div>
         </div>
     `;
@@ -1269,9 +1782,9 @@ function showBrokenReferencesAnalysis(analysis) {
         html += `
             <div style="margin-bottom: 20px;">
                 <h4 style="color: #ff5555; margin-bottom: 10px; border-bottom: 1px solid #663300; padding-bottom: 5px;">
-                    ⚠️ ARQUIVOS COM RISCO DE 404
+                    ⚠️ ARQUIVOS COM RISCO DE 404 v5.4
                 </h4>
-                <div style="max-height: 250px; overflow-y: auto; background: #220000; padding: 10px; border-radius: 4px;">
+                <div style="max-height: 250px; overflow-y: auto; background: rgba(255, 0, 0, 0.1); padding: 10px; border-radius: 4px; border: 1px solid rgba(255, 0, 0, 0.2);">
         `;
         
         analysis.riskyFiles.forEach(file => {
@@ -1308,9 +1821,9 @@ function showBrokenReferencesAnalysis(analysis) {
         html += `
             <div style="margin-bottom: 20px;">
                 <h4 style="color: #ffaa00; margin-bottom: 10px; border-bottom: 1px solid #663300; padding-bottom: 5px;">
-                    💡 RECOMENDAÇÕES PARA PREVENIR 404s
+                    💡 RECOMENDAÇÕES PARA PREVENIR 404s v5.4
                 </h4>
-                <div style="max-height: 200px; overflow-y: auto; background: #332200; padding: 10px; border-radius: 4px;">
+                <div style="max-height: 200px; overflow-y: auto; background: rgba(255, 170, 0, 0.1); padding: 10px; border-radius: 4px; border: 1px solid rgba(255, 170, 0, 0.2);">
         `;
         
         analysis.recommendations.forEach((rec, index) => {
@@ -1338,24 +1851,27 @@ function showBrokenReferencesAnalysis(analysis) {
     html += `
         <div style="margin-bottom: 20px;">
             <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                <button id="show-html-refs" class="ref-tab-btn active" style="
-                    background: #332200; color: #ffaa00; border: 1px solid #ffaa00;
-                    padding: 8px 16px; cursor: pointer; border-radius: 4px; flex: 1;">
+                <button id="show-html-refs-v5-4" class="ref-tab-btn-v5-4 active" style="
+                    background: rgba(255, 170, 0, 0.2); color: #ffaa00; border: 1px solid #ffaa00;
+                    padding: 8px 16px; cursor: pointer; border-radius: 4px; flex: 1;
+                    transition: all 0.2s;">
                     📄 HTML (${analysis.htmlReferences.length})
                 </button>
-                <button id="show-js-refs" class="ref-tab-btn" style="
-                    background: #332200; color: #ffaa00; border: 1px solid #ffaa00;
-                    padding: 8px 16px; cursor: pointer; border-radius: 4px; flex: 1;">
+                <button id="show-js-refs-v5-4" class="ref-tab-btn-v5-4" style="
+                    background: rgba(255, 170, 0, 0.2); color: #ffaa00; border: 1px solid #ffaa00;
+                    padding: 8px 16px; cursor: pointer; border-radius: 4px; flex: 1;
+                    transition: all 0.2s;">
                     📜 JS (${analysis.jsReferences.length})
                 </button>
-                <button id="show-css-refs" class="ref-tab-btn" style="
-                    background: #332200; color: #ffaa00; border: 1px solid #ffaa00;
-                    padding: 8px 16px; cursor: pointer; border-radius: 4px; flex: 1;">
+                <button id="show-css-refs-v5-4" class="ref-tab-btn-v5-4" style="
+                    background: rgba(255, 170, 0, 0.2); color: #ffaa00; border: 1px solid #ffaa00;
+                    padding: 8px 16px; cursor: pointer; border-radius: 4px; flex: 1;
+                    transition: all 0.2s;">
                     🎨 CSS (${analysis.cssReferences.length})
                 </button>
             </div>
             
-            <div id="html-refs-content" class="ref-content" style="display: block; max-height: 200px; overflow-y: auto;">
+            <div id="html-refs-content-v5-4" class="ref-content-v5-4" style="display: block; max-height: 200px; overflow-y: auto;">
     `;
     
     // Conteúdo HTML references
@@ -1381,7 +1897,7 @@ function showBrokenReferencesAnalysis(analysis) {
     html += `
             </div>
             
-            <div id="js-refs-content" class="ref-content" style="display: none; max-height: 200px; overflow-y: auto;">
+            <div id="js-refs-content-v5-4" class="ref-content-v5-4" style="display: none; max-height: 200px; overflow-y: auto;">
     `;
     
     // Conteúdo JS references
@@ -1406,7 +1922,7 @@ function showBrokenReferencesAnalysis(analysis) {
     html += `
             </div>
             
-            <div id="css-refs-content" class="ref-content" style="display: none; max-height: 200px; overflow-y: auto;">
+            <div id="css-refs-content-v5-4" class="ref-content-v5-4" style="display: none; max-height: 200px; overflow-y: auto;">
     `;
     
     // Conteúdo CSS references
@@ -1432,34 +1948,41 @@ function showBrokenReferencesAnalysis(analysis) {
         </div>
         
         <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
-            <button id="test-all-references" style="
-                background: #ff5500; color: white; border: none;
+            <button id="test-all-references-v5-4" style="
+                background: linear-gradient(45deg, #ff5500, #ffaa00); 
+                color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
+                font-weight: bold; font-size: 14px; min-width: 140px;
+                transition: all 0.2s;">
                 🔗 TESTAR TODAS AS REFERÊNCIAS
             </button>
-            <button id="generate-redirect-map" style="
-                background: #ffaa00; color: #000; border: none;
+            <button id="generate-redirect-map-v5-4" style="
+                background: linear-gradient(45deg, #ffaa00, #ff8800); 
+                color: #000; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
+                font-weight: bold; font-size: 14px; min-width: 140px;
+                transition: all 0.2s;">
                 🗺️ GERAR MAPA DE REDIRECIONAMENTO
             </button>
-            <button id="analyze-references-deep" style="
-                background: #0088cc; color: white; border: none;
+            <button id="analyze-references-deep-v5-4" style="
+                background: linear-gradient(45deg, #0088cc, #00aaff); 
+                color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
+                font-weight: bold; font-size: 14px; min-width: 140px;
+                transition: all 0.2s;">
                 🔍 ANÁLISE PROFUNDA
             </button>
-            <button id="close-references-btn" style="
+            <button id="close-references-btn-v5-4" style="
                 background: #555; color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
+                font-weight: bold; font-size: 14px; min-width: 140px;
+                transition: all 0.2s;">
                 FECHAR
             </button>
         </div>
         
         <div style="font-size: 11px; color: #ffcc88; text-align: center; margin-top: 15px;">
-            ⚠️ Previne erros 404 analisando referências cruzadas antes da migração
+            ⚠️ Previne erros 404 analisando referências cruzadas antes da migração - v5.4
         </div>
     `;
     
@@ -1467,40 +1990,50 @@ function showBrokenReferencesAnalysis(analysis) {
     document.body.appendChild(alertDiv);
     
     // Configurar eventos das tabs
-    document.querySelectorAll('.ref-tab-btn').forEach(btn => {
+    document.querySelectorAll('.ref-tab-btn-v5-4').forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 12px rgba(255, 170, 0, 0.3)';
+        });
+        
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+        
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.ref-tab-btn').forEach(b => {
-                b.style.background = '#332200';
+            document.querySelectorAll('.ref-tab-btn-v5-4').forEach(b => {
+                b.style.background = 'rgba(255, 170, 0, 0.2)';
                 b.style.color = '#ffaa00';
             });
             
             this.style.background = '#ff5500';
             this.style.color = 'white';
             
-            document.querySelectorAll('.ref-content').forEach(content => {
+            document.querySelectorAll('.ref-content-v5-4').forEach(content => {
                 content.style.display = 'none';
             });
             
-            const tabId = this.id.replace('show-', '').replace('-refs', '');
-            const contentId = `${tabId}-refs-content`;
+            const tabId = this.id.replace('show-', '').replace('-refs-v5-4', '');
+            const contentId = `${tabId}-refs-content-v5-4`;
             document.getElementById(contentId).style.display = 'block';
         });
     });
     
     // Configurar outros eventos
-    document.getElementById('test-all-references')?.addEventListener('click', () => {
+    document.getElementById('test-all-references-v5-4')?.addEventListener('click', () => {
         testAllReferences(analysis);
     });
     
-    document.getElementById('generate-redirect-map')?.addEventListener('click', () => {
+    document.getElementById('generate-redirect-map-v5-4')?.addEventListener('click', () => {
         generateRedirectMap(analysis);
     });
     
-    document.getElementById('analyze-references-deep')?.addEventListener('click', () => {
+    document.getElementById('analyze-references-deep-v5-4')?.addEventListener('click', () => {
         runDeepReferenceAnalysis();
     });
     
-    document.getElementById('close-references-btn')?.addEventListener('click', () => {
+    document.getElementById('close-references-btn-v5-4')?.addEventListener('click', () => {
         document.body.removeChild(alertDiv);
     });
 }
@@ -1558,7 +2091,7 @@ function testAllReferences(analysis) {
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background: ${testResults.broken > 0 ? '#1a0000' : '#001a00'};
+        background: ${testResults.broken > 0 ? 'linear-gradient(135deg, #1a0000, #000a0a)' : 'linear-gradient(135deg, #001a00, #000a1a)'};
         color: ${testResults.broken > 0 ? '#ff5555' : '#00ff9c'};
         padding: 25px;
         border: 3px solid ${testResults.broken > 0 ? '#ff5555' : '#00ff9c'};
@@ -1567,14 +2100,15 @@ function testAllReferences(analysis) {
         max-width: 500px;
         text-align: center;
         box-shadow: 0 0 50px ${testResults.broken > 0 ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 255, 156, 0.5)'};
+        backdrop-filter: blur(10px);
     `;
     
     resultAlert.innerHTML = `
         <div style="font-size: 20px; margin-bottom: 15px;">
-            ${testResults.broken > 0 ? '⚠️ REFERÊNCIAS QUEBRADAS DETECTADAS' : '✅ TODAS AS REFERÊNCIAS OK'}
+            ${testResults.broken > 0 ? '⚠️ REFERÊNCIAS QUEBRADAS DETECTADAS v5.4' : '✅ TODAS AS REFERÊNCIAS OK v5.4'}
         </div>
         
-        <div style="background: ${testResults.broken > 0 ? '#330000' : '#003300'}; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+        <div style="background: ${testResults.broken > 0 ? 'rgba(255, 0, 0, 0.1)' : 'rgba(0, 255, 156, 0.1)'}; padding: 20px; border-radius: 6px; margin-bottom: 20px; border: 1px solid ${testResults.broken > 0 ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 156, 0.3)'};">
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
                 <div>
                     <div style="font-size: 11px; color: #888;">TESTADAS</div>
@@ -1595,13 +2129,13 @@ function testAllReferences(analysis) {
             <div style="text-align: left; margin-bottom: 20px; max-height: 200px; overflow-y: auto;">
                 <div style="color: #ff8888; margin-bottom: 10px;">URLs problemáticas:</div>
                 ${testResults.brokenUrls.map(broken => `
-                    <div style="background: #220000; padding: 8px; margin-bottom: 5px; border-radius: 4px; border-left: 3px solid #ff5555;">
+                    <div style="background: rgba(255, 0, 0, 0.1); padding: 8px; margin-bottom: 5px; border-radius: 4px; border-left: 3px solid #ff5555;">
                         <div style="font-size: 11px; color: #ff5555;">${broken.url.substring(0, 60)}${broken.url.length > 60 ? '...' : ''}</div>
                         <div style="font-size: 10px; color: #ffaaaa;">${broken.reason}</div>
                     </div>
                 `).join('')}
                 
-                <div style="color: #ff8888; margin-top: 15px; margin-bottom: 10px;">Recomendações:</div>
+                <div style="color: #ff8888; margin-top: 15px; margin-bottom: 10px;">Recomendações v5.4:</div>
                 <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #ffaaaa;">
                     <li>Criar redirecionamentos para URLs antigas</li>
                     <li>Manter compatibilidade reversível</li>
@@ -1612,35 +2146,35 @@ function testAllReferences(analysis) {
             </div>
         ` : `
             <div style="color: #88ffaa; margin-bottom: 20px;">
-                Todas as referências estão acessíveis. Migração segura!
+                Todas as referências estão acessíveis. Migração segura v5.4!
             </div>
         `}
         
-        <button id="close-test-results" style="
+        <button id="close-test-results-v5-4" style="
             background: ${testResults.broken > 0 ? '#ff5555' : '#00ff9c'}; 
             color: ${testResults.broken > 0 ? 'white' : '#000'}; border: none;
             padding: 12px 24px; cursor: pointer; border-radius: 5px;
-            font-weight: bold; width: 100%;">
-            ENTENDIDO
+            font-weight: bold; width: 100%; transition: all 0.2s;">
+            ENTENDIDO v5.4
         </button>
     `;
     
     document.body.appendChild(resultAlert);
     
-    document.getElementById('close-test-results')?.addEventListener('click', () => {
+    document.getElementById('close-test-results-v5-4')?.addEventListener('click', () => {
         document.body.removeChild(resultAlert);
     });
 }
 
-/* ================== GERAR MAPA DE REDIRECIONAMENTO ================== */
+/* ================== GERAR MAPA DE REDIRECIONAMENTO v5.4 ================== */
 function generateRedirectMap(analysis) {
     const timestamp = new Date().toISOString();
     const domain = window.location.hostname;
     
     const redirectMap = `
 # ==============================================
-# MAPA DE REDIRECIONAMENTO - Compatibilidade Reversível
-# Gerado por diagnostics.js - Data: ${timestamp}
+# MAPA DE REDIRECIONAMENTO - Compatibilidade Reversível v5.4
+# Gerado por diagnostics.js v5.4 - Data: ${timestamp}
 # Domínio: ${domain}
 # ==============================================
 
@@ -1661,7 +2195,7 @@ function generateRedirectMap(analysis) {
     RewriteRule ^pdf-ui\\.js$ /MediaSystem [L,R=301]
     RewriteRule ^pdf-integration\\.js$ /MediaSystem [L,R=301]
 
-    # Módulos de diagnóstico obsoletos -> diagnostics.js
+    # Módulos de diagnóstico obsoletos -> diagnostics.js v5.4
     RewriteRule ^duplication-checker\\.js$ /diagnostics.js [L,R=301]
     RewriteRule ^emergency-recovery\\.js$ /diagnostics.js [L,R=301]
     RewriteRule ^validation-essentials\\.js$ /diagnostics.js [L,R=301]
@@ -1676,13 +2210,13 @@ function generateRedirectMap(analysis) {
 </IfModule>
 
 # ==============================================
-# PLACEHOLDERS DE COMPATIBILIDADE (JavaScript)
+# PLACEHOLDERS DE COMPATIBILIDADE (JavaScript) v5.4
 # ==============================================
 
 <script>
-// Placeholder para media-core.js (compatibilidade reversível)
+// Placeholder para media-core.js (compatibilidade reversível v5.4)
 if (!window.MediaSystem) {
-    console.warn('⚠️ media-core.js foi migrado para MediaSystem');
+    console.warn('⚠️ media-core.js foi migrado para MediaSystem (v5.4)');
     console.warn('📚 Consulte a documentação de migração');
     
     // Redirecionamento suave para funções equivalentes
@@ -1702,42 +2236,44 @@ if (!window.MediaSystem) {
     };
 }
 
-// Monitora erros 404 em tempo real
+// Monitora erros 404 em tempo real v5.4
 window.addEventListener('error', function(e) {
     if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
-        console.error('⚠️ ERRO 404 DETECTADO:', e.target.src || e.target.href);
+        console.error('⚠️ ERRO 404 DETECTADO v5.4:', e.target.src || e.target.href);
         
         // Reportar para analytics
         if (window.gtag) {
             gtag('event', '404_error', {
                 'file_url': e.target.src || e.target.href,
                 'page_location': window.location.href,
-                'timestamp': new Date().toISOString()
+                'timestamp': new Date().toISOString(),
+                'version': '5.4'
             });
         }
         
         // Tentar redirecionamento automático para placeholders
         const brokenUrl = e.target.src || e.target.href;
         if (brokenUrl.includes('media-') || brokenUrl.includes('pdf-')) {
-            console.warn('🔄 Tentando redirecionamento automático...');
+            console.warn('🔄 Tentando redirecionamento automático v5.4...');
             // Implementar lógica de fallback aqui
         }
     }
 });
 
-// Interceptar fetch para detectar 404s em chamadas AJAX
+// Interceptar fetch para detectar 404s em chamadas AJAX v5.4
 const originalFetch = window.fetch;
 window.fetch = function(...args) {
     return originalFetch.apply(this, args).catch(error => {
         if (error.message.includes('404')) {
-            console.error('🔍 Fetch 404 detectado:', args[0]);
+            console.error('🔍 Fetch 404 detectado v5.4:', args[0]);
             
             // Log para debugging
             if (window.diagnosticsLog) {
                 window.diagnosticsLog.push({
                     type: 'fetch_404',
                     url: args[0],
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    version: '5.4'
                 });
             }
         }
@@ -1747,7 +2283,7 @@ window.fetch = function(...args) {
 </script>
 
 # ==============================================
-# ESTRATÉGIA DE MIGRAÇÃO SEGURA
+# ESTRATÉGIA DE MIGRAÇÃO SEGURA v5.4
 # ==============================================
 
 # 1. FASE 1: Adicionar redirecionamentos (Hoje)
@@ -1757,11 +2293,11 @@ window.fetch = function(...args) {
 # 5. FASE 5: Monitorar logs de 404 por 60 dias
 
 # ==============================================
-# MONITORAMENTO DE ERROS 404 (ANALYTICS)
+# MONITORAMENTO DE ERROS 404 (ANALYTICS) v5.4
 # ==============================================
 
 <script>
-// Função para reportar 404s
+// Função para reportar 404s v5.4
 function report404Error(url, elementType) {
     const data = {
         event: 'page_error',
@@ -1770,31 +2306,32 @@ function report404Error(url, elementType) {
         element_type: elementType,
         page_url: window.location.href,
         user_agent: navigator.userAgent,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        version: '5.4'
     };
     
     // Enviar para seu sistema de analytics
-    console.log('📊 404 Reportado:', data);
+    console.log('📊 404 Reportado v5.4:', data);
     
     // Armazenar localmente para debug
     if (!window.errorReports) window.errorReports = [];
     window.errorReports.push(data);
 }
 
-// Monitorar cliques em links quebrados
+// Monitorar cliques em links quebrados v5.4
 document.addEventListener('click', function(e) {
     if (e.target.tagName === 'A') {
         const link = e.target;
         // Verificar se o link pode estar quebrado
         if (link.href.includes('old-') || link.href.includes('legacy-')) {
-            console.warn('⚠️ Link suspeito detectado:', link.href);
+            console.warn('⚠️ Link suspeito detectado v5.4:', link.href);
         }
     }
 });
 </script>
 
 # ==============================================
-# BACKUP DE COMPATIBILIDADE
+# BACKUP DE COMPATIBILIDADE v5.4
 # ==============================================
 
 # Manter estes arquivos como backup durante a migração:
@@ -1803,29 +2340,30 @@ document.addEventListener('click', function(e) {
 # - old-modules-backup/ (diretório com arquivos antigos)
 
 # ==============================================
-# LOG DE MIGRAÇÃO
+# LOG DE MIGRAÇÃO v5.4
 # ==============================================
 
 # Data da análise: ${timestamp}
 # Referências analisadas: ${analysis.stats.totalReferences}
 # Potenciais 404s: ${analysis.stats.potential404s}
 # Recomendações: ${analysis.recommendations.length}
+# Versão do diagnóstico: 5.4
     `;
     
     const blob = new Blob([redirectMap], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `redirect-map-${domain}-${Date.now()}.conf`;
+    a.download = `redirect-map-${domain}-v5.4-${Date.now()}.conf`;
     a.click();
     URL.revokeObjectURL(url);
     
-    logToPanel('🗺️ Mapa de redirecionamento gerado', 'success');
+    logToPanel('🗺️ Mapa de redirecionamento gerado v5.4', 'success');
 }
 
-/* ================== ANÁLISE PROFUNDA DE REFERÊNCIAS ================== */
+/* ================== ANÁLISE PROFUNDA DE REFERÊNCIAS v5.4 ================== */
 function runDeepReferenceAnalysis() {
-    logToPanel('🔍 Iniciando análise profunda de referências...', 'reference');
+    logToPanel('🔍 Iniciando análise profunda de referências v5.4...', 'reference');
     
     const analysis = {
         timestamp: new Date().toISOString(),
@@ -1836,7 +2374,8 @@ function runDeepReferenceAnalysis() {
         storageReferences: [],
         consoleReferences: [],
         securityIssues: [],
-        recommendations: []
+        recommendations: [],
+        version: '5.4'
     };
     
     // 1. Analisar todos os links na página (incluindo dinâmicos)
@@ -1864,7 +2403,8 @@ function runDeepReferenceAnalysis() {
                         analysis.ajaxCalls.push({
                             url: entry.name,
                             duration: entry.duration,
-                            size: entry.transferSize || 'unknown'
+                            size: entry.transferSize || 'unknown',
+                            timestamp: new Date().toISOString()
                         });
                     }
                 });
@@ -1887,7 +2427,8 @@ function runDeepReferenceAnalysis() {
                 if (handler) {
                     events.push({
                         type: eventType,
-                        handler: handler.toString().substring(0, 100)
+                        handler: handler.toString().substring(0, 100),
+                        timestamp: new Date().toISOString()
                     });
                 }
             });
@@ -1895,7 +2436,8 @@ function runDeepReferenceAnalysis() {
             if (events.length > 0) {
                 analysis.eventListeners.push({
                     element: id,
-                    events
+                    events,
+                    version: '5.4'
                 });
             }
         }
@@ -1909,7 +2451,8 @@ function runDeepReferenceAnalysis() {
                 analysis.storageReferences.push({
                     type: 'localStorage',
                     key,
-                    value: localStorage.getItem(key).substring(0, 100)
+                    value: localStorage.getItem(key).substring(0, 100),
+                    timestamp: new Date().toISOString()
                 });
             }
         }
@@ -1920,7 +2463,8 @@ function runDeepReferenceAnalysis() {
                 analysis.storageReferences.push({
                     type: 'sessionStorage',
                     key,
-                    value: sessionStorage.getItem(key).substring(0, 100)
+                    value: sessionStorage.getItem(key).substring(0, 100),
+                    timestamp: new Date().toISOString()
                 });
             }
         }
@@ -1932,7 +2476,8 @@ function runDeepReferenceAnalysis() {
     if (window.console && console._commandLineAPI) {
         // Tentar capturar referências do console (aproximação)
         analysis.consoleReferences.push({
-            note: 'Console ativo - verificar manualmente referências no console F12'
+            note: 'Console ativo - verificar manualmente referências no console F12 v5.4',
+            timestamp: new Date().toISOString()
         });
     }
     
@@ -1943,7 +2488,9 @@ function runDeepReferenceAnalysis() {
             analysis.securityIssues.push({
                 type: 'insecure-script',
                 url: script.src,
-                issue: 'Script carregado via HTTP inseguro'
+                issue: 'Script carregado via HTTP inseguro',
+                severity: 'ALTA',
+                timestamp: new Date().toISOString()
             });
             analysis.recommendations.push('🔒 Substituir HTTP por HTTPS para: ' + script.src);
         }
@@ -1951,15 +2498,15 @@ function runDeepReferenceAnalysis() {
     
     // Gerar recomendações baseadas na análise
     if (analysis.pageLinks.some(link => link.isBrokenPattern)) {
-        analysis.recommendations.push('🔗 Substituir links com padrões "old-", "legacy-" ou "deprecated-"');
+        analysis.recommendations.push('🔗 Substituir links com padrões "old-", "legacy-" ou "deprecated-" (v5.4)');
     }
     
     if (analysis.securityIssues.length > 0) {
-        analysis.recommendations.push('🔒 Corrigir scripts carregados via HTTP (usar HTTPS)');
+        analysis.recommendations.push('🔒 Corrigir scripts carregados via HTTP (usar HTTPS) v5.4');
     }
     
     if (analysis.ajaxCalls.length > 20) {
-        analysis.recommendations.push('⚡ Otimizar chamadas AJAX - muitas requisições podem afetar performance');
+        analysis.recommendations.push('⚡ Otimizar chamadas AJAX - muitas requisições podem afetar performance v5.4');
     }
     
     // Mostrar resultados
@@ -1968,9 +2515,9 @@ function runDeepReferenceAnalysis() {
     return analysis;
 }
 
-/* ================== PAINEL DE ANÁLISE PROFUNDA ================== */
+/* ================== PAINEL DE ANÁLISE PROFUNDA v5.4 ================== */
 function showDeepReferenceAnalysis(analysis) {
-    const alertId = 'deep-reference-analysis-alert';
+    const alertId = 'deep-reference-analysis-alert-v5-4';
     
     const existingAlert = document.getElementById(alertId);
     if (existingAlert) {
@@ -1984,7 +2531,7 @@ function showDeepReferenceAnalysis(analysis) {
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background: #000a1a;
+        background: linear-gradient(135deg, #000a1a, #001a33);
         color: #0088cc;
         padding: 25px;
         border: 3px solid #0088cc;
@@ -1996,15 +2543,16 @@ function showDeepReferenceAnalysis(analysis) {
         width: 95%;
         box-shadow: 0 0 50px rgba(0, 136, 204, 0.5);
         font-family: 'Consolas', 'Monaco', monospace;
+        backdrop-filter: blur(10px);
     `;
     
     let html = `
         <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #0088cc;">
             <span>🔍</span>
-            <span>ANÁLISE PROFUNDA DE REFERÊNCIAS</span>
+            <span>ANÁLISE PROFUNDA DE REFERÊNCIAS v5.4</span>
         </div>
         
-        <div style="background: #001a33; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+        <div style="background: rgba(0, 136, 204, 0.1); padding: 20px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(0, 136, 204, 0.3);">
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">
                 <div>
                     <div style="font-size: 11px; color: #88aaff;">LINKS</div>
@@ -2025,7 +2573,7 @@ function showDeepReferenceAnalysis(analysis) {
             </div>
             
             <div style="font-size: 12px; color: #88aaff; text-align: center;">
-                Análise profunda de referências cruzadas e padrões de uso
+                Análise profunda de referências cruzadas e padrões de uso v5.4
             </div>
         </div>
     `;
@@ -2035,9 +2583,9 @@ function showDeepReferenceAnalysis(analysis) {
         html += `
             <div style="margin-bottom: 20px;">
                 <h4 style="color: #0088cc; margin-bottom: 10px; border-bottom: 1px solid #003366; padding-bottom: 5px;">
-                    💡 RECOMENDAÇÕES DA ANÁLISE
+                    💡 RECOMENDAÇÕES DA ANÁLISE v5.4
                 </h4>
-                <div style="max-height: 200px; overflow-y: auto; background: #001122; padding: 10px; border-radius: 4px;">
+                <div style="max-height: 200px; overflow-y: auto; background: rgba(0, 136, 204, 0.1); padding: 10px; border-radius: 4px; border: 1px solid rgba(0, 136, 204, 0.2);">
         `;
         
         analysis.recommendations.forEach((rec, index) => {
@@ -2065,9 +2613,9 @@ function showDeepReferenceAnalysis(analysis) {
         html += `
             <div style="margin-bottom: 20px;">
                 <h4 style="color: #ffaa00; margin-bottom: 10px; border-bottom: 1px solid #663300; padding-bottom: 5px;">
-                    ⚠️ LINKS COM PADRÕES PROBLEMÁTICOS
+                    ⚠️ LINKS COM PADRÕES PROBLEMÁTICOS v5.4
                 </h4>
-                <div style="max-height: 150px; overflow-y: auto; background: #332200; padding: 10px; border-radius: 4px;">
+                <div style="max-height: 150px; overflow-y: auto; background: rgba(255, 170, 0, 0.1); padding: 10px; border-radius: 4px; border: 1px solid rgba(255, 170, 0, 0.2);">
         `;
         
         brokenLinks.slice(0, 10).forEach(link => {
@@ -2094,9 +2642,9 @@ function showDeepReferenceAnalysis(analysis) {
         html += `
             <div style="margin-bottom: 20px;">
                 <h4 style="color: #ff5555; margin-bottom: 10px; border-bottom: 1px solid #660000; padding-bottom: 5px;">
-                    🔒 PROBLEMAS DE SEGURANÇA
+                    🔒 PROBLEMAS DE SEGURANÇA v5.4
                 </h4>
-                <div style="max-height: 150px; overflow-y: auto; background: #220000; padding: 10px; border-radius: 4px;">
+                <div style="max-height: 150px; overflow-y: auto; background: rgba(255, 0, 0, 0.1); padding: 10px; border-radius: 4px; border: 1px solid rgba(255, 0, 0, 0.2);">
         `;
         
         analysis.securityIssues.slice(0, 5).forEach(issue => {
@@ -2119,24 +2667,27 @@ function showDeepReferenceAnalysis(analysis) {
     html += `
         <div style="margin-bottom: 20px;">
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <button id="show-links-analysis" class="deep-tab-btn active" style="
-                    background: #001a33; color: #0088cc; border: 1px solid #0088cc;
-                    padding: 8px 12px; cursor: pointer; border-radius: 4px; flex: 1;">
+                <button id="show-links-analysis-v5-4" class="deep-tab-btn-v5-4 active" style="
+                    background: rgba(0, 136, 204, 0.2); color: #0088cc; border: 1px solid #0088cc;
+                    padding: 8px 12px; cursor: pointer; border-radius: 4px; flex: 1;
+                    transition: all 0.2s;">
                     🔗 Links (${analysis.pageLinks.length})
                 </button>
-                <button id="show-ajax-analysis" class="deep-tab-btn" style="
-                    background: #001a33; color: #0088cc; border: 1px solid #0088cc;
-                    padding: 8px 12px; cursor: pointer; border-radius: 4px; flex: 1;">
+                <button id="show-ajax-analysis-v5-4" class="deep-tab-btn-v5-4" style="
+                    background: rgba(0, 136, 204, 0.2); color: #0088cc; border: 1px solid #0088cc;
+                    padding: 8px 12px; cursor: pointer; border-radius: 4px; flex: 1;
+                    transition: all 0.2s;">
                     🔄 AJAX (${analysis.ajaxCalls.length})
                 </button>
-                <button id="show-events-analysis" class="deep-tab-btn" style="
-                    background: #001a33; color: #0088cc; border: 1px solid #0088cc;
-                    padding: 8px 12px; cursor: pointer; border-radius: 4px; flex: 1;">
+                <button id="show-events-analysis-v5-4" class="deep-tab-btn-v5-4" style="
+                    background: rgba(0, 136, 204, 0.2); color: #0088cc; border: 1px solid #0088cc;
+                    padding: 8px 12px; cursor: pointer; border-radius: 4px; flex: 1;
+                    transition: all 0.2s;">
                     🎯 Eventos (${analysis.eventListeners.length})
                 </button>
             </div>
             
-            <div id="links-analysis-content" class="deep-content" style="display: block; max-height: 200px; overflow-y: auto;">
+            <div id="links-analysis-content-v5-4" class="deep-content-v5-4" style="display: block; max-height: 200px; overflow-y: auto;">
     `;
     
     // Conteúdo Links
@@ -2158,7 +2709,7 @@ function showDeepReferenceAnalysis(analysis) {
     html += `
             </div>
             
-            <div id="ajax-analysis-content" class="deep-content" style="display: none; max-height: 200px; overflow-y: auto;">
+            <div id="ajax-analysis-content-v5-4" class="deep-content-v5-4" style="display: none; max-height: 200px; overflow-y: auto;">
     `;
     
     // Conteúdo AJAX
@@ -2179,7 +2730,7 @@ function showDeepReferenceAnalysis(analysis) {
     html += `
             </div>
             
-            <div id="events-analysis-content" class="deep-content" style="display: none; max-height: 200px; overflow-y: auto;">
+            <div id="events-analysis-content-v5-4" class="deep-content-v5-4" style="display: none; max-height: 200px; overflow-y: auto;">
     `;
     
     // Conteúdo Event Listeners
@@ -2204,28 +2755,33 @@ function showDeepReferenceAnalysis(analysis) {
         </div>
         
         <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
-            <button id="export-deep-analysis" style="
-                background: #0088cc; color: white; border: none;
+            <button id="export-deep-analysis-v5-4" style="
+                background: linear-gradient(45deg, #0088cc, #00aaff); 
+                color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
-                📊 EXPORTAR ANÁLISE
+                font-weight: bold; font-size: 14px; min-width: 140px;
+                transition: all 0.2s;">
+                📊 EXPORTAR ANÁLISE v5.4
             </button>
-            <button id="run-reference-check" style="
-                background: #00aaff; color: #000; border: none;
+            <button id="run-reference-check-v5-4" style="
+                background: linear-gradient(45deg, #00aaff, #0088cc); 
+                color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
+                font-weight: bold; font-size: 14px; min-width: 140px;
+                transition: all 0.2s;">
                 🔄 VERIFICAÇÃO DE REFERÊNCIAS
             </button>
-            <button id="close-deep-analysis" style="
+            <button id="close-deep-analysis-v5-4" style="
                 background: #555; color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
+                font-weight: bold; font-size: 14px; min-width: 140px;
+                transition: all 0.2s;">
                 FECHAR
             </button>
         </div>
         
         <div style="font-size: 11px; color: #88aaff; text-align: center; margin-top: 15px;">
-            Análise profunda de referências cruzadas e padrões de uso no sistema
+            Análise profunda de referências cruzadas e padrões de uso no sistema v5.4
         </div>
     `;
     
@@ -2233,68 +2789,79 @@ function showDeepReferenceAnalysis(analysis) {
     document.body.appendChild(alertDiv);
     
     // Configurar eventos das tabs
-    document.querySelectorAll('.deep-tab-btn').forEach(btn => {
+    document.querySelectorAll('.deep-tab-btn-v5-4').forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 12px rgba(0, 136, 204, 0.3)';
+        });
+        
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+        
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.deep-tab-btn').forEach(b => {
-                b.style.background = '#001a33';
+            document.querySelectorAll('.deep-tab-btn-v5-4').forEach(b => {
+                b.style.background = 'rgba(0, 136, 204, 0.2)';
                 b.style.color = '#0088cc';
             });
             
             this.style.background = '#0055aa';
             this.style.color = 'white';
             
-            document.querySelectorAll('.deep-content').forEach(content => {
+            document.querySelectorAll('.deep-content-v5-4').forEach(content => {
                 content.style.display = 'none';
             });
             
-            const tabId = this.id.replace('show-', '').replace('-analysis', '');
-            const contentId = `${tabId}-analysis-content`;
+            const tabId = this.id.replace('show-', '').replace('-analysis-v5-4', '');
+            const contentId = `${tabId}-analysis-content-v5-4`;
             document.getElementById(contentId).style.display = 'block';
         });
     });
     
     // Configurar outros eventos
-    document.getElementById('export-deep-analysis')?.addEventListener('click', () => {
+    document.getElementById('export-deep-analysis-v5-4')?.addEventListener('click', () => {
         const blob = new Blob([JSON.stringify(analysis, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `deep-reference-analysis-${Date.now()}.json`;
+        a.download = `deep-reference-analysis-v5.4-${Date.now()}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        logToPanel('📊 Análise profunda exportada', 'reference');
+        logToPanel('📊 Análise profunda exportada v5.4', 'reference');
     });
     
-    document.getElementById('run-reference-check')?.addEventListener('click', () => {
+    document.getElementById('run-reference-check-v5-4')?.addEventListener('click', () => {
         document.body.removeChild(alertDiv);
         window.analyzeBrokenReferences();
     });
     
-    document.getElementById('close-deep-analysis')?.addEventListener('click', () => {
+    document.getElementById('close-deep-analysis-v5-4')?.addEventListener('click', () => {
         document.body.removeChild(alertDiv);
     });
 }
 
-/* ================== VERIFICAÇÃO DE MIGRAÇÃO DE MÍDIA ================== */
+/* ================== VERIFICAÇÃO DE MIGRAÇÃO DE MÍDIA v5.4 ================== */
 window.verifyMediaMigration = function() {
-    logToPanel('🔍 VERIFICAÇÃO FINAL DA MIGRAÇÃO DE MÍDIA', 'migration');
+    logToPanel('🔍 VERIFICAÇÃO FINAL DA MIGRAÇÃO DE MÍDIA v5.4', 'migration');
     
     const checks = {
-        'MediaSystem disponível': typeof MediaSystem !== 'undefined',
-        'Funções essenciais presentes': MediaSystem && 
+        'MediaSystem disponível v5.4': typeof MediaSystem !== 'undefined',
+        'Funções essenciais presentes v5.4': MediaSystem && 
             typeof MediaSystem.addFiles === 'function' &&
             typeof MediaSystem.addPdfs === 'function' &&
             typeof MediaSystem.uploadAll === 'function',
-        'Integração admin funcionando': typeof window.processAndSavePdfs === 'function',
-        'Compatibilidade properties.js': typeof window.getMediaUrlsForProperty === 'function',
-        'Sistema de preview ativo': document.getElementById('uploadPreview') !== null,
-        'Wrappers de compatibilidade': typeof window.clearAllPdfs === 'function' && 
+        'Integração admin funcionando v5.4': typeof window.processAndSavePdfs === 'function',
+        'Compatibilidade properties.js v5.4': typeof window.getMediaUrlsForProperty === 'function',
+        'Sistema de preview ativo v5.4': document.getElementById('uploadPreview') !== null,
+        'Wrappers de compatibilidade v5.4': typeof window.clearAllPdfs === 'function' && 
                                      typeof window.loadExistingPdfsForEdit === 'function',
-        'PdfSystem verificado': typeof window.PdfSystem !== 'undefined',
-        'PdfModal disponível': document.getElementById('pdfModal') !== null
+        'PdfSystem verificado v5.4': typeof window.PdfSystem !== 'undefined',
+        'PdfModal disponível v5.4': document.getElementById('pdfModal') !== null,
+        'Teste interativo PDF disponível v5.4': typeof window.interactivePdfTest === 'function'
     };
     
-    console.log('🔍 VERIFICAÇÃO DA MIGRAÇÃO DE MÍDIA - INICIADA');
+    console.log('🔍 VERIFICAÇÃO DA MIGRAÇÃO DE MÍDIA - INICIADA v5.4');
     Object.entries(checks).forEach(([check, result]) => {
         logToPanel(`${result ? '✅' : '❌'} ${check}`, result ? 'success' : 'error');
     });
@@ -2302,7 +2869,7 @@ window.verifyMediaMigration = function() {
     const allValid = Object.values(checks).every(v => v === true);
     
     if (allValid) {
-        const successMessage = '✅ TODAS AS VERIFICAÇÕES PASSARAM - PRONTO PARA MIGRAÇÃO FINAL';
+        const successMessage = '✅ TODAS AS VERIFICAÇÕES PASSARAM - PRONTO PARA MIGRAÇÃO FINAL v5.4';
         logToPanel(successMessage, 'success');
         console.log(successMessage);
         console.table(checks);
@@ -2311,6 +2878,7 @@ window.verifyMediaMigration = function() {
             timestamp: new Date().toISOString(),
             checks: checks,
             status: 'VALIDADO',
+            version: '5.4',
             recommendations: [
                 'Remover módulos antigos (media-*.js, pdf-*.js)',
                 'Manter apenas MediaSystem unificado',
@@ -2326,7 +2894,7 @@ window.verifyMediaMigration = function() {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: #001a00;
+            background: linear-gradient(135deg, #001a00, #000a1a);
             color: #00ff9c;
             padding: 30px;
             border: 3px solid #00ff9c;
@@ -2335,52 +2903,61 @@ window.verifyMediaMigration = function() {
             max-width: 500px;
             text-align: center;
             box-shadow: 0 0 50px rgba(0, 255, 156, 0.5);
+            backdrop-filter: blur(10px);
         `;
         alertDiv.innerHTML = `
-            <div style="font-size: 24px; margin-bottom: 15px;">✅ SISTEMA VALIDADO!</div>
+            <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span>✅</span>
+                <span>SISTEMA VALIDADO! v5.4</span>
+            </div>
             <div style="margin-bottom: 20px;">Pronto para remover módulos antigos.</div>
-            <div style="background: #003300; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: left;">
-                <strong>Ações recomendadas:</strong>
-                <ol style="margin: 10px 0 0 20px; font-size: 12px;">
+            <div style="background: rgba(0, 255, 156, 0.1); padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: left; border: 1px solid rgba(0, 255, 156, 0.3);">
+                <strong>Ações recomendadas v5.4:</strong>
+                <ol style="margin: 10px 0 0 20px; font-size: 12px; color: #aaffcc;">
                     <li>Remover módulos antigos de mídia e PDF</li>
                     <li>Manter apenas MediaSystem unificado</li>
                     <li>Testar todas as funcionalidades</li>
                     <li>Backup antes de qualquer remoção</li>
                 </ol>
             </div>
-            <button id="close-validation-alert" style="
-                background: #00ff9c; color: #000; border: none;
-                padding: 10px 20px; cursor: pointer; border-radius: 5px;
-                font-weight: bold;">
-                ENTENDIDO
-            </button>
-            <button id="export-migration-report" style="
-                background: #555; color: white; border: none;
-                padding: 10px 20px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; margin-left: 10px;">
-                📊 EXPORTAR RELATÓRIO
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <button id="close-validation-alert-v5-4" style="
+                    background: #00ff9c; color: #000; border: none;
+                    padding: 10px 20px; cursor: pointer; border-radius: 5px;
+                    font-weight: bold; flex: 1; transition: all 0.2s;">
+                    ENTENDIDO
+                </button>
+                <button id="export-migration-report-v5-4" style="
+                    background: #555; color: white; border: none;
+                    padding: 10px 20px; cursor: pointer; border-radius: 5px;
+                    font-weight: bold; flex: 1; transition: all 0.2s;">
+                    📊 EXPORTAR RELATÓRIO
+                </button>
+            </div>
+            <div style="font-size: 11px; color: #88ffaa; margin-top: 15px;">
+                Sistema validado com diagnóstico v5.4
+            </div>
         `;
         document.body.appendChild(alertDiv);
         
-        document.getElementById('close-validation-alert').addEventListener('click', () => {
+        document.getElementById('close-validation-alert-v5-4').addEventListener('click', () => {
             document.body.removeChild(alertDiv);
         });
         
-        document.getElementById('export-migration-report').addEventListener('click', () => {
+        document.getElementById('export-migration-report-v5-4').addEventListener('click', () => {
             const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `migration-validation-${Date.now()}.json`;
+            a.download = `migration-validation-v5.4-${Date.now()}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            logToPanel('📊 Relatório de migração exportado', 'migration');
+            logToPanel('📊 Relatório de migração exportado v5.4', 'migration');
         });
         
         return { valid: true, checks, report };
     } else {
-        const errorMessage = '❌ VERIFICAÇÕES FALHARAM - NÃO PROSSEGUIR';
+        const errorMessage = '❌ VERIFICAÇÕES FALHARAM - NÃO PROSSEGUIR v5.4';
         logToPanel(errorMessage, 'error');
         console.error(errorMessage);
         console.table(checks);
@@ -2393,7 +2970,7 @@ window.verifyMediaMigration = function() {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: #1a0000;
+            background: linear-gradient(135deg, #1a0000, #000a0a);
             color: #ff5555;
             padding: 30px;
             border: 3px solid #ff5555;
@@ -2402,26 +2979,33 @@ window.verifyMediaMigration = function() {
             max-width: 500px;
             text-align: center;
             box-shadow: 0 0 50px rgba(255, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
         `;
         alertDiv.innerHTML = `
-            <div style="font-size: 24px; margin-bottom: 15px;">⚠️ VERIFICAÇÕES FALHARAM</div>
+            <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span>⚠️</span>
+                <span>VERIFICAÇÕES FALHARAM v5.4</span>
+            </div>
             <div style="margin-bottom: 20px;">Não remover módulos antigos.</div>
-            <div style="background: #330000; padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: left;">
-                <strong>Problemas encontrados:</strong>
-                <ul style="margin: 10px 0 0 20px; font-size: 12px;">
+            <div style="background: rgba(255, 0, 0, 0.1); padding: 15px; border-radius: 5px; margin-bottom: 20px; text-align: left; border: 1px solid rgba(255, 0, 0, 0.3);">
+                <strong>Problemas encontrados v5.4:</strong>
+                <ul style="margin: 10px 0 0 20px; font-size: 12px; color: #ffaaaa;">
                     ${failedChecks.map(check => `<li>${check}</li>`).join('')}
                 </ul>
             </div>
-            <button id="close-failure-alert" style="
+            <button id="close-failure-alert-v5-4" style="
                 background: #ff5555; color: white; border: none;
                 padding: 10px 20px; cursor: pointer; border-radius: 5px;
-                font-weight: bold;">
+                font-weight: bold; width: 100%; transition: all 0.2s;">
                 ENTENDIDO
             </button>
+            <div style="font-size: 11px; color: #ff8888; margin-top: 15px;">
+                Use console.diag para diagnóstico detalhado v5.4
+            </div>
         `;
         document.body.appendChild(alertDiv);
         
-        document.getElementById('close-failure-alert').addEventListener('click', () => {
+        document.getElementById('close-failure-alert-v5-4').addEventListener('click', () => {
             document.body.removeChild(alertDiv);
         });
         
@@ -2429,14 +3013,14 @@ window.verifyMediaMigration = function() {
             valid: false, 
             checks, 
             failedChecks,
-            message: 'Sistema não está pronto para migração'
+            message: 'Sistema não está pronto para migração v5.4'
         };
     }
 };
 
-/* ================== VERIFICAÇÃO DE PLACEHOLDERS PARA EXCLUSÃO ================== */
+/* ================== VERIFICAÇÃO DE PLACEHOLDERS PARA EXCLUSÃO v5.4 ================== */
 window.analyzePlaceholders = function() {
-    logToPanel('🔍 ANALISANDO ARQUIVOS PLACEHOLDER PARA EXCLUSÃO', 'placeholder');
+    logToPanel('🔍 ANALISANDO ARQUIVOS PLACEHOLDER PARA EXCLUSÃO v5.4', 'placeholder');
     
     const placeholderPatterns = {
         // Módulos antigos que podem ser substituídos pelo MediaSystem
@@ -2501,10 +3085,12 @@ window.analyzePlaceholders = function() {
     const analysis = {
         scripts: {},
         styles: {},
-        recommendations: []
+        recommendations: [],
+        version: '5.4',
+        timestamp: new Date().toISOString()
     };
     
-    console.group('🔍 ANÁLISE DE PLACEHOLDERS');
+    console.group('🔍 ANÁLISE DE PLACEHOLDERS v5.4');
     
     // Analisar scripts
     allScripts.forEach(script => {
@@ -2528,12 +3114,12 @@ window.analyzePlaceholders = function() {
                          typeof MediaSystem.addPdfs === 'function');
                     
                     if (hasMediaSystemEquivalent) {
-                        reason = `Substituído por MediaSystem`;
+                        reason = `Substituído por MediaSystem v5.4`;
                         safeToDelete = true;
-                        analysis.recommendations.push(`✅ ${script} - Pode ser excluído (substituído por MediaSystem)`);
+                        analysis.recommendations.push(`✅ ${script} - Pode ser excluído (substituído por MediaSystem v5.4)`);
                     } else {
-                        reason = `Verificar dependências antes de excluir`;
-                        analysis.recommendations.push(`⚠️ ${script} - Verificar dependências antes de excluir`);
+                        reason = `Verificar dependências antes de excluir v5.4`;
+                        analysis.recommendations.push(`⚠️ ${script} - Verificar dependências antes de excluir v5.4`);
                     }
                     break;
                 }
@@ -2544,7 +3130,8 @@ window.analyzePlaceholders = function() {
             status,
             reason,
             safeToDelete,
-            category
+            category,
+            timestamp: new Date().toISOString()
         };
         
         console.log(`${safeToDelete ? '✅' : '⚠️'} ${script}: ${status} - ${reason}`);
@@ -2562,7 +3149,7 @@ window.analyzePlaceholders = function() {
                 status = 'CANDIDATO A EXCLUSÃO';
                 reason = 'CSS antigo ou duplicado';
                 safeToDelete = true;
-                analysis.recommendations.push(`✅ ${style} - Pode ser excluído`);
+                analysis.recommendations.push(`✅ ${style} - Pode ser excluído v5.4`);
                 break;
             }
         }
@@ -2571,7 +3158,8 @@ window.analyzePlaceholders = function() {
             status,
             reason,
             safeToDelete,
-            category
+            category,
+            timestamp: new Date().toISOString()
         };
     });
     
@@ -2580,14 +3168,14 @@ window.analyzePlaceholders = function() {
     criticalModules.forEach(module => {
         if (analysis.scripts[module]) {
             analysis.scripts[module].safeToDelete = false;
-            analysis.scripts[module].reason = 'Módulo crítico do sistema';
+            analysis.scripts[module].reason = 'Módulo crítico do sistema v5.4';
             analysis.scripts[module].status = 'CRÍTICO - NÃO EXCLUIR';
             
             // Remover da lista de recomendações se estiver lá
             analysis.recommendations = analysis.recommendations.filter(
                 rec => !rec.includes(module)
             );
-            analysis.recommendations.push(`❌ ${module} - NÃO EXCLUIR (módulo crítico)`);
+            analysis.recommendations.push(`❌ ${module} - NÃO EXCLUIR (módulo crítico v5.4)`);
         }
     });
     
@@ -2599,18 +3187,20 @@ window.analyzePlaceholders = function() {
         analysis.mediaSystemStatus = {
             functionsCount: mediaSystemFunctions.length,
             canReplaceModules: mediaSystemFunctions.length >= 5, // Pelo menos 5 funções principais
-            functions: mediaSystemFunctions.slice(0, 10) // Mostrar primeiras 10
+            functions: mediaSystemFunctions.slice(0, 10), // Mostrar primeiras 10
+            version: '5.4'
         };
         
         if (analysis.mediaSystemStatus.canReplaceModules) {
-            analysis.recommendations.unshift('✅ MediaSystem pode substituir todos os módulos antigos');
+            analysis.recommendations.unshift('✅ MediaSystem pode substituir todos os módulos antigos v5.4');
         }
     }
     
-    console.log('📊 RESUMO DA ANÁLISE:');
+    console.log('📊 RESUMO DA ANÁLISE v5.4:');
     console.log('- Scripts analisados:', Object.keys(analysis.scripts).length);
     console.log('- Estilos analisados:', Object.keys(analysis.styles).length);
     console.log('- Recomendações:', analysis.recommendations.length);
+    console.log('- Versão:', analysis.version);
     console.groupEnd();
     
     // Gerar relatório visual
@@ -2619,9 +3209,9 @@ window.analyzePlaceholders = function() {
     return analysis;
 };
 
-/* ================== PAINEL DE ANÁLISE DE PLACEHOLDERS ================== */
+/* ================== PAINEL DE ANÁLISE DE PLACEHOLDERS v5.4 ================== */
 function showPlaceholderAnalysis(analysis) {
-    const alertId = 'placeholder-analysis-alert';
+    const alertId = 'placeholder-analysis-alert-v5-4';
     
     const existingAlert = document.getElementById(alertId);
     if (existingAlert) {
@@ -2635,7 +3225,7 @@ function showPlaceholderAnalysis(analysis) {
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background: #000a1a;
+        background: linear-gradient(135deg, #000a1a, #001a33);
         color: #00aaff;
         padding: 25px;
         border: 3px solid #00aaff;
@@ -2647,6 +3237,7 @@ function showPlaceholderAnalysis(analysis) {
         width: 95%;
         box-shadow: 0 0 50px rgba(0, 170, 255, 0.5);
         font-family: 'Consolas', 'Monaco', monospace;
+        backdrop-filter: blur(10px);
     `;
     
     // Contar estatísticas
@@ -2658,10 +3249,10 @@ function showPlaceholderAnalysis(analysis) {
     let html = `
         <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #00aaff;">
             <span>🗑️</span>
-            <span>ANÁLISE DE ARQUIVOS PARA EXCLUSÃO</span>
+            <span>ANÁLISE DE ARQUIVOS PARA EXCLUSÃO v5.4</span>
         </div>
         
-        <div style="background: #001a33; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
+        <div style="background: rgba(0, 170, 255, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; border: 1px solid rgba(0, 170, 255, 0.3);">
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 15px;">
                 <div>
                     <div style="font-size: 11px; color: #88aaff;">SCRIPTS</div>
@@ -2683,16 +3274,16 @@ function showPlaceholderAnalysis(analysis) {
             
             <div style="font-size: 12px; color: #88aaff;">
                 ${analysis.mediaSystemStatus?.canReplaceModules ? 
-                    '✅ MediaSystem pode substituir módulos antigos' : 
-                    '⚠️ Verificar se MediaSystem tem todas as funções necessárias'}
+                    '✅ MediaSystem pode substituir módulos antigos v5.4' : 
+                    '⚠️ Verificar se MediaSystem tem todas as funções necessárias v5.4'}
             </div>
         </div>
         
         <div style="margin-bottom: 20px;">
             <h4 style="color: #00aaff; margin-bottom: 10px; border-bottom: 1px solid #003366; padding-bottom: 5px;">
-                📋 RECOMENDAÇÕES DE EXCLUSÃO
+                📋 RECOMENDAÇÕES DE EXCLUSÃO v5.4
             </h4>
-            <div style="max-height: 200px; overflow-y: auto; background: #001122; padding: 10px; border-radius: 4px;">
+            <div style="max-height: 200px; overflow-y: auto; background: rgba(0, 170, 255, 0.1); padding: 10px; border-radius: 4px; border: 1px solid rgba(0, 170, 255, 0.2);">
     `;
     
     if (analysis.recommendations.length > 0) {
@@ -2711,7 +3302,7 @@ function showPlaceholderAnalysis(analysis) {
     } else {
         html += `
             <div style="text-align: center; padding: 20px; color: #888;">
-                Nenhuma recomendação de exclusão disponível
+                Nenhuma recomendação de exclusão disponível v5.4
             </div>
         `;
     }
@@ -2722,20 +3313,20 @@ function showPlaceholderAnalysis(analysis) {
         
         <div style="margin-bottom: 20px;">
             <h4 style="color: #00aaff; margin-bottom: 10px; border-bottom: 1px solid #003366; padding-bottom: 5px;">
-                📊 DETALHES DOS ARQUIVOS
+                📊 DETALHES DOS ARQUIVOS v5.4
             </h4>
             <div style="display: grid; grid-template-columns: 1fr; gap: 10px; max-height: 300px; overflow-y: auto;">
     `;
     
     // Mostrar scripts
     Object.entries(analysis.scripts).forEach(([script, info]) => {
-        const bgColor = info.safeToDelete ? '#001a00' : 
-                       info.status.includes('CRÍTICO') ? '#1a0000' : '#001a1a';
+        const bgColor = info.safeToDelete ? 'rgba(0, 255, 156, 0.1)' : 
+                       info.status.includes('CRÍTICO') ? 'rgba(255, 0, 0, 0.1)' : 'rgba(0, 170, 255, 0.1)';
         const borderColor = info.safeToDelete ? '#00ff9c' : 
                            info.status.includes('CRÍTICO') ? '#ff5555' : '#00aaff';
         
         html += `
-            <div style="background: ${bgColor}; padding: 10px; border-radius: 4px; border-left: 3px solid ${borderColor};">
+            <div style="background: ${bgColor}; padding: 10px; border-radius: 4px; border-left: 3px solid ${borderColor}; border: 1px solid ${borderColor.replace(')', ', 0.3)')};">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <div style="font-weight: bold; color: ${borderColor};">
@@ -2758,29 +3349,33 @@ function showPlaceholderAnalysis(analysis) {
         </div>
         
         <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap;">
-            <button id="generate-delete-script" style="
-                background: ${safeToDelete > 0 ? '#00ff9c' : '#555'}; 
+            <button id="generate-delete-script-v5-4" style="
+                background: ${safeToDelete > 0 ? 'linear-gradient(45deg, #00ff9c, #00aaff)' : '#555'}; 
                 color: ${safeToDelete > 0 ? '#000' : 'white'}; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
-                📜 GERAR SCRIPT DE EXCLUSÃO
+                font-weight: bold; font-size: 14px; min-width: 140px;
+                transition: all 0.2s;">
+                📜 GERAR SCRIPT DE EXCLUSÃO v5.4
             </button>
-            <button id="export-analysis-report" style="
-                background: #0088cc; color: white; border: none;
+            <button id="export-analysis-report-v5-4" style="
+                background: linear-gradient(45deg, #0088cc, #00aaff); 
+                color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
-                📊 EXPORTAR RELATÓRIO
+                font-weight: bold; font-size: 14px; min-width: 140px;
+                transition: all 0.2s;">
+                📊 EXPORTAR RELATÓRIO v5.4
             </button>
-            <button id="close-analysis-btn" style="
+            <button id="close-analysis-btn-v5-4" style="
                 background: #555; color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
+                font-weight: bold; font-size: 14px; min-width: 140px;
+                transition: all 0.2s;">
                 FECHAR
             </button>
         </div>
         
         <div style="font-size: 11px; color: #88aaff; text-align: center; margin-top: 15px;">
-            ⚠️ Sempre faça backup antes de excluir arquivos
+            ⚠️ Sempre faça backup antes de excluir arquivos - v5.4
         </div>
     `;
     
@@ -2788,27 +3383,27 @@ function showPlaceholderAnalysis(analysis) {
     document.body.appendChild(alertDiv);
     
     // Configurar eventos
-    document.getElementById('generate-delete-script')?.addEventListener('click', () => {
+    document.getElementById('generate-delete-script-v5-4')?.addEventListener('click', () => {
         generateDeleteScript(analysis);
     });
     
-    document.getElementById('export-analysis-report')?.addEventListener('click', () => {
+    document.getElementById('export-analysis-report-v5-4')?.addEventListener('click', () => {
         const blob = new Blob([JSON.stringify(analysis, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `placeholder-analysis-${Date.now()}.json`;
+        a.download = `placeholder-analysis-v5.4-${Date.now()}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        logToPanel('📊 Relatório de análise exportado', 'migration');
+        logToPanel('📊 Relatório de análise exportado v5.4', 'migration');
     });
     
-    document.getElementById('close-analysis-btn')?.addEventListener('click', () => {
+    document.getElementById('close-analysis-btn-v5-4')?.addEventListener('click', () => {
         document.body.removeChild(alertDiv);
     });
 }
 
-/* ================== GERAR SCRIPT DE EXCLUSÃO ================== */
+/* ================== GERAR SCRIPT DE EXCLUSÃO v5.4 ================== */
 function generateDeleteScript(analysis) {
     const safeToDelete = Object.entries(analysis.scripts)
         .filter(([_, info]) => info.safeToDelete)
@@ -2819,35 +3414,36 @@ function generateDeleteScript(analysis) {
         .map(([style]) => style);
     
     if (safeToDelete.length === 0 && safeStyles.length === 0) {
-        alert('⚠️ Nenhum arquivo seguro para exclusão identificado.');
+        alert('⚠️ Nenhum arquivo seguro para exclusão identificado v5.4.');
         return;
     }
     
     // Criar script de exclusão
     const deleteScript = `
 // ==============================================
-// SCRIPT DE EXCLUSÃO SEGURA - Gerado por diagnostics.js
+// SCRIPT DE EXCLUSÃO SEGURA - Gerado por diagnostics.js v5.4
 // Data: ${new Date().toISOString()}
+// Versão: 5.4
 // ==============================================
 // ⚠️ IMPORTANTE: Faça backup antes de executar!
 // ==============================================
 
-// Arquivos JavaScript identificados como seguros para exclusão:
+// Arquivos JavaScript identificados como seguros para exclusão v5.4:
 const filesToDelete = [
     ${safeToDelete.map(file => `'${file}'`).join(',\n    ')}
 ];
 
-// Arquivos CSS identificados como seguros para exclusão:
+// Arquivos CSS identificados como seguros para exclusão v5.4:
 const stylesToDelete = [
     ${safeStyles.map(style => `'${style}'`).join(',\n    ')}
 ];
 
 // ==============================================
-// MÉTODOS DE EXCLUSÃO RECOMENDADOS:
+// MÉTODOS DE EXCLUSÃO RECOMENDADOS v5.4:
 // ==============================================
 
 // 1. EXCLUSÃO MANUAL (recomendado):
-console.log('📁 Para exclusão manual:');
+console.log('📁 Para exclusão manual v5.4:');
 filesToDelete.forEach(file => {
     console.log('   rm -f', file);
 });
@@ -2855,36 +3451,40 @@ stylesToDelete.forEach(style => {
     console.log('   rm -f', style);
 });
 
-// 2. SCRIPT NODE.JS PARA EXCLUSÃO:
+// 2. SCRIPT NODE.JS PARA EXCLUSÃO v5.4:
 /*
 const fs = require('fs');
 const path = require('path');
 
 const deleteFiles = (fileList) => {
+    console.log('🚀 Iniciando exclusão de arquivos v5.4...');
     fileList.forEach(file => {
         const filePath = path.join(__dirname, file);
         if (fs.existsSync(filePath)) {
             try {
                 fs.unlinkSync(filePath);
-                console.log('✅ Excluído:', file);
+                console.log('✅ Excluído v5.4:', file);
             } catch (error) {
-                console.log('❌ Erro ao excluir', file, ':', error.message);
+                console.log('❌ Erro ao excluir v5.4', file, ':', error.message);
             }
         } else {
-            console.log('⚠️ Arquivo não encontrado:', file);
+            console.log('⚠️ Arquivo não encontrado v5.4:', file);
         }
     });
 };
 
 // Executar exclusão
-console.log('🚀 Iniciando exclusão de arquivos...');
 deleteFiles(filesToDelete);
 deleteFiles(stylesToDelete);
-console.log('✅ Exclusão concluída!');
+console.log('✅ Exclusão concluída v5.4!');
+console.log('📊 Estatísticas:');
+console.log('   - Scripts excluídos:', filesToDelete.length);
+console.log('   - Estilos excluídos:', stylesToDelete.length);
+console.log('   - Total:', filesToDelete.length + stylesToDelete.length);
 */
 
-// 3. ATUALIZAR INDEX.HTML (remover referências):
-console.log('\\n📝 Remova estas referências do index.html:');
+// 3. ATUALIZAR INDEX.HTML (remover referências) v5.4:
+console.log('\\n📝 Remova estas referências do index.html v5.4:');
 filesToDelete.forEach(file => {
     console.log('   <script src="' + file + '"></script>');
 });
@@ -2893,23 +3493,24 @@ stylesToDelete.forEach(style => {
 });
 
 // ==============================================
-// VALIDAÇÃO PÓS-EXCLUSÃO:
+// VALIDAÇÃO PÓS-EXCLUSÃO v5.4:
 // ==============================================
-console.log('\\n🔍 APÓS EXCLUSÃO, VERIFIQUE:');
+console.log('\\n🔍 APÓS EXCLUSÃO, VERIFIQUE v5.4:');
 console.log('   1. O site ainda carrega corretamente');
 console.log('   2. Uploads de mídia funcionam');
 console.log('   3. Uploads de PDF funcionam');
 console.log('   4. Modal de PDF funciona');
 console.log('   5. Admin panel funciona');
+console.log('   6. Teste interativo PDF funciona (console.diag.pdf.interactive())');
 
 // ==============================================
-// ESTATÍSTICAS:
+// ESTATÍSTICAS v5.4:
 // ==============================================
-console.log('\\n📊 ESTATÍSTICAS:');
+console.log('\\n📊 ESTATÍSTICAS v5.4:');
 console.log('   Arquivos JS para excluir:', filesToDelete.length);
 console.log('   Arquivos CSS para excluir:', stylesToDelete.length);
 console.log('   Total de arquivos:', filesToDelete.length + stylesToDelete.length);
-console.log('\\n✅ Script gerado com sucesso!');
+console.log('\\n✅ Script gerado com sucesso v5.4!');
     `;
     
     // Criar e baixar o script
@@ -2917,38 +3518,38 @@ console.log('\\n✅ Script gerado com sucesso!');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `delete-placeholders-${Date.now()}.js`;
+    a.download = `delete-placeholders-v5.4-${Date.now()}.js`;
     a.click();
     URL.revokeObjectURL(url);
     
-    logToPanel('📜 Script de exclusão gerado e baixado', 'success');
+    logToPanel('📜 Script de exclusão gerado e baixado v5.4', 'success');
     
     // Mostrar preview
     const preview = `
-        ✅ Script gerado com sucesso!
+        ✅ Script gerado com sucesso v5.4!
         
-        📊 RESUMO:
+        📊 RESUMO v5.4:
         - ${safeToDelete.length} arquivos JS seguros para exclusão
         - ${safeStyles.length} arquivos CSS seguros para exclusão
         - Total: ${safeToDelete.length + safeStyles.length} arquivos
         
-        📁 Arquivos identificados:
+        📁 Arquivos identificados v5.4:
         ${safeToDelete.map(f => `  • ${f}`).join('\\n')}
         ${safeStyles.map(s => `  • ${s}`).join('\\n')}
         
-        ⚠️ IMPORTANTE: Faça backup antes de excluir!
+        ⚠️ IMPORTANTE v5.4: Faça backup antes de excluir!
     `;
     
     alert(preview);
 }
 
-/* ================== NOVO TESTE DE COMPATIBILIDADE DE MÓDULOS ================== */
+/* ================== NOVO TESTE DE COMPATIBILIDADE DE MÓDULOS v5.4 ================== */
 window.testModuleCompatibility = function() {
-    logToPanel('🧪 INICIANDO NOVO TESTE DE COMPATIBILIDADE DE MÓDULOS', 'debug');
+    logToPanel('🧪 INICIANDO NOVO TESTE DE COMPATIBILIDADE DE MÓDULOS v5.4', 'debug');
     
     const tests = {
-        'Conflitos de variáveis globais': function() {
-            const globalVars = ['MediaSystem', 'PdfLogger', 'ValidationSystem', 'EmergencySystem'];
+        'Conflitos de variáveis globais v5.4': function() {
+            const globalVars = ['MediaSystem', 'PdfLogger', 'ValidationSystem', 'EmergencySystem', 'PdfSystem'];
             const activeSystems = [];
             
             globalVars.forEach(varName => {
@@ -2964,18 +3565,19 @@ window.testModuleCompatibility = function() {
             return {
                 passed: hasMediaSystem && otherSystemsCount <= 2,
                 message: activeSystems.length > 0 ? 
-                    `Sistemas ativos: ${activeSystems.join(', ')}` :
-                    'Apenas MediaSystem detectado (ideal para migração)',
+                    `Sistemas ativos v5.4: ${activeSystems.join(', ')}` :
+                    'Apenas MediaSystem detectado (ideal para migração v5.4)',
                 details: {
                     hasMediaSystem,
                     otherSystemsCount,
-                    activeSystems
+                    activeSystems,
+                    version: '5.4'
                 }
             };
         },
         
-        'Sobrescrita de event listeners': function() {
-            const elementsToCheck = ['pdfPassword', 'mediaUpload', 'uploadPreview'];
+        'Sobrescrita de event listeners v5.4': function() {
+            const elementsToCheck = ['pdfPassword', 'mediaUpload', 'uploadPreview', 'pdfModal'];
             let elementsWithMultipleListeners = [];
             
             elementsToCheck.forEach(id => {
@@ -2993,17 +3595,18 @@ window.testModuleCompatibility = function() {
             return {
                 passed: elementsWithMultipleListeners.length === 0,
                 message: elementsWithMultipleListeners.length > 0 ?
-                    `Elementos com múltiplos listeners: ${elementsWithMultipleListeners.join(', ')}` :
-                    'Nenhum conflito de listeners detectado',
+                    `Elementos com múltiplos listeners v5.4: ${elementsWithMultipleListeners.join(', ')}` :
+                    'Nenhum conflito de listeners detectado v5.4',
                 details: {
                     elementsWithMultipleListeners,
-                    totalElementsChecked: elementsToCheck.length
+                    totalElementsChecked: elementsToCheck.length,
+                    version: '5.4'
                 }
             };
         },
         
-        'Conflitos de CSS': function() {
-            const criticalSelectors = ['#pdfModal', '.pdf-modal-content', '#pdfPassword'];
+        'Conflitos de CSS v5.4': function() {
+            const criticalSelectors = ['#pdfModal', '.pdf-modal-content', '#pdfPassword', '.pdf-icon'];
             const styleSheets = Array.from(document.styleSheets);
             const conflicts = [];
             
@@ -3026,16 +3629,17 @@ window.testModuleCompatibility = function() {
             return {
                 passed: conflicts.length === 0,
                 message: conflicts.length > 0 ?
-                    `Conflitos CSS detectados: ${conflicts.join('; ')}` :
-                    'Nenhum conflito CSS crítico detectado',
+                    `Conflitos CSS detectados v5.4: ${conflicts.join('; ')}` :
+                    'Nenhum conflito CSS crítico detectado v5.4',
                 details: {
                     conflicts,
-                    totalSheets: styleSheets.length
+                    totalSheets: styleSheets.length,
+                    version: '5.4'
                 }
             };
         },
         
-        'Funções duplicadas': function() {
+        'Funções duplicadas v5.4': function() {
             const mediaSystemRequiredFunctions = [
                 'processAndSavePdfs', 'clearAllPdfs', 'loadExistingPdfsForEdit',
                 'addFiles', 'addPdfs', 'uploadAll', 'getMediaUrlsForProperty'
@@ -3055,7 +3659,7 @@ window.testModuleCompatibility = function() {
                     const hasInMediaSystem = typeof MediaSystem[funcName] === 'function';
                     
                     if (!hasInMediaSystem) {
-                        recommendations.push(`Adicionar ${funcName} ao MediaSystem`);
+                        recommendations.push(`Adicionar ${funcName} ao MediaSystem v5.4`);
                     }
                 });
                 
@@ -3065,7 +3669,7 @@ window.testModuleCompatibility = function() {
                     
                     if (!hasGlobally && hasInMediaSystem) {
                         missingWrappers.push(funcName);
-                        recommendations.push(`Criar wrapper global para ${funcName}`);
+                        recommendations.push(`Criar wrapper global para ${funcName} v5.4`);
                     } else if (hasGlobally && hasInMediaSystem) {
                         try {
                             const globalFunc = window[funcName];
@@ -3073,7 +3677,7 @@ window.testModuleCompatibility = function() {
                                             globalFunc.toString().includes(funcName);
                             
                             if (!isWrapper) {
-                                recommendations.push(`Verificar se window.${funcName} delega para MediaSystem`);
+                                recommendations.push(`Verificar se window.${funcName} delega para MediaSystem v5.4`);
                             }
                         } catch (e) {}
                     }
@@ -3086,7 +3690,7 @@ window.testModuleCompatibility = function() {
                     
                     if (hasGlobally && hasInMediaSystem && !requiredGlobalWrappers.includes(funcName)) {
                         duplicates.push(funcName);
-                        recommendations.push(`Considerar remover window.${funcName} - use MediaSystem.${funcName}`);
+                        recommendations.push(`Considerar remover window.${funcName} - use MediaSystem.${funcName} v5.4`);
                     }
                 });
             }
@@ -3094,29 +3698,30 @@ window.testModuleCompatibility = function() {
             return {
                 passed: duplicates.length === 0 && missingWrappers.length === 0,
                 message: duplicates.length > 0 ? 
-                    `Funções desnecessárias globalmente: ${duplicates.join(', ')}` :
+                    `Funções desnecessárias globalmente v5.4: ${duplicates.join(', ')}` :
                     missingWrappers.length > 0 ?
-                    `Wrappers globais ausentes: ${missingWrappers.join(', ')}` :
+                    `Wrappers globais ausentes v5.4: ${missingWrappers.join(', ')}` :
                     recommendations.length > 0 ?
-                    `Recomendações: ${recommendations.slice(0, 2).join('; ')}${recommendations.length > 2 ? '...' : ''}` :
-                    'Todas as funções necessárias disponíveis',
+                    `Recomendações v5.4: ${recommendations.slice(0, 2).join('; ')}${recommendations.length > 2 ? '...' : ''}` :
+                    'Todas as funções necessárias disponíveis v5.4',
                 details: {
                     duplicates,
                     missingWrappers,
                     requiredGlobalWrappers,
-                    recommendations
+                    recommendations,
+                    version: '5.4'
                 }
             };
         },
         
-        'Performance de carregamento': function() {
+        'Performance de carregamento v5.4': function() {
             const scripts = Array.from(document.scripts);
             const jsScripts = scripts.filter(s => s.src && s.src.endsWith('.js'));
             
             const syncScripts = jsScripts.filter(s => !s.async && !s.defer);
             const largeScripts = jsScripts.filter(s => {
                 const fileName = s.src.split('/').pop().toLowerCase();
-                const largeScriptNames = ['admin', 'properties', 'gallery', 'media', 'pdf'];
+                const largeScriptNames = ['admin', 'properties', 'gallery', 'media', 'pdf', 'diagnostics'];
                 return largeScriptNames.some(name => fileName.includes(name));
             });
             
@@ -3128,18 +3733,19 @@ window.testModuleCompatibility = function() {
             
             return {
                 passed: syncLargeScripts.length <= 2,
-                message: `Scripts grandes sync: ${syncLargeScripts.length}/${largeScripts.length}`,
+                message: `Scripts grandes sync v5.4: ${syncLargeScripts.length}/${largeScripts.length}`,
                 details: {
                     totalScripts: jsScripts.length,
                     syncScripts: syncScripts.length,
                     largeScripts: largeScripts.length,
                     syncLargeScripts: syncLargeScripts.length,
-                    performanceScore: Math.max(0, performanceScore)
+                    performanceScore: Math.max(0, performanceScore),
+                    version: '5.4'
                 }
             };
         },
         
-        'Dependências críticas': function() {
+        'Dependências críticas v5.4': function() {
             const requiredSystems = ['MediaSystem', 'supabase', 'properties'];
             const missingSystems = [];
             const availableSystems = [];
@@ -3158,13 +3764,40 @@ window.testModuleCompatibility = function() {
             return {
                 passed: adjustedMissing.length === 0,
                 message: missingSystems.length > 0 ?
-                    `Sistemas ausentes: ${missingSystems.join(', ')}` :
-                    `Todos os sistemas críticos disponíveis: ${availableSystems.join(', ')}`,
+                    `Sistemas ausentes v5.4: ${missingSystems.join(', ')}` :
+                    `Todos os sistemas críticos disponíveis v5.4: ${availableSystems.join(', ')}`,
                 details: {
                     required: requiredSystems,
                     available: availableSystems,
                     missing: missingSystems,
-                    adjustedMissing: adjustedMissing
+                    adjustedMissing: adjustedMissing,
+                    version: '5.4'
+                }
+            };
+        },
+        
+        'Funções de diagnóstico v5.4': function() {
+            const diagnosticFunctions = [
+                'testPdfSystem',
+                'interactivePdfTest',
+                'diagnosePdfIconProblem',
+                'runPdfCompatibilityCheck',
+                'analyzeBrokenReferences',
+                'analyzePlaceholders'
+            ];
+            
+            const availableFunctions = diagnosticFunctions.filter(func => typeof window[func] === 'function');
+            const missingFunctions = diagnosticFunctions.filter(func => typeof window[func] !== 'function');
+            
+            return {
+                passed: availableFunctions.length >= diagnosticFunctions.length * 0.7,
+                message: `Funções de diagnóstico disponíveis v5.4: ${availableFunctions.length}/${diagnosticFunctions.length}`,
+                details: {
+                    availableFunctions,
+                    missingFunctions,
+                    totalFunctions: diagnosticFunctions.length,
+                    coverage: Math.round((availableFunctions.length / diagnosticFunctions.length) * 100),
+                    version: '5.4'
                 }
             };
         }
@@ -3175,10 +3808,12 @@ window.testModuleCompatibility = function() {
         passed: 0,
         failed: 0,
         details: [],
-        recommendations: []
+        recommendations: [],
+        version: '5.4',
+        timestamp: new Date().toISOString()
     };
     
-    console.group('🔍 TESTE DE COMPATIBILIDADE DE MÓDULOS');
+    console.group('🔍 TESTE DE COMPATIBILIDADE DE MÓDULOS v5.4');
     
     Object.entries(tests).forEach(([testName, testFunction]) => {
         try {
@@ -3187,7 +3822,8 @@ window.testModuleCompatibility = function() {
                 name: testName,
                 passed: testResult.passed,
                 message: testResult.message,
-                details: testResult.details || {}
+                details: testResult.details || {},
+                timestamp: new Date().toISOString()
             };
             
             results.details.push(testDetail);
@@ -3201,26 +3837,30 @@ window.testModuleCompatibility = function() {
                 logToPanel(`⚠️ ${testName}: ${testResult.message}`, 'warning');
                 console.warn(`⚠️ ${testName}:`, testResult.message, testResult.details || '');
                 
-                if (testName === 'Funções duplicadas') {
+                if (testName === 'Funções duplicadas v5.4') {
                     if (testResult.details.duplicates && testResult.details.duplicates.length > 0) {
                         testResult.details.duplicates.forEach(func => {
-                            results.recommendations.push(`🔗 Considerar remover window.${func} (use MediaSystem.${func})`);
+                            results.recommendations.push(`🔗 Considerar remover window.${func} (use MediaSystem.${func}) v5.4`);
                         });
                     }
                     if (testResult.details.missingWrappers && testResult.details.missingWrappers.length > 0) {
                         testResult.details.missingWrappers.forEach(func => {
-                            results.recommendations.push(`🔗 Criar wrapper global para ${func}`);
+                            results.recommendations.push(`🔗 Criar wrapper global para ${func} v5.4`);
                         });
                     }
-                } else if (testName === 'Performance de carregamento') {
+                } else if (testName === 'Performance de carregamento v5.4') {
                     if (testResult.details.syncLargeScripts > 2) {
-                        results.recommendations.push('⚡ Adicionar async/defer aos scripts grandes');
+                        results.recommendations.push('⚡ Adicionar async/defer aos scripts grandes v5.4');
                     }
-                } else if (testName === 'Dependências críticas') {
+                } else if (testName === 'Dependências críticas v5.4') {
                     if (testResult.details.missing && testResult.details.missing.length > 0) {
                         testResult.details.missing.forEach(system => {
-                            results.recommendations.push(`📦 Verificar carregamento de ${system}`);
+                            results.recommendations.push(`📦 Verificar carregamento de ${system} v5.4`);
                         });
+                    }
+                } else if (testName === 'Funções de diagnóstico v5.4') {
+                    if (testResult.details.missingFunctions && testResult.details.missingFunctions.length > 0) {
+                        results.recommendations.push(`🔧 Implementar funções de diagnóstico ausentes: ${testResult.details.missingFunctions.join(', ')}`);
                     }
                 }
             }
@@ -3230,42 +3870,47 @@ window.testModuleCompatibility = function() {
                 name: testName,
                 passed: false,
                 message: `Erro: ${error.message}`,
-                error: error.stack
+                error: error.stack,
+                timestamp: new Date().toISOString()
             });
-            logToPanel(`❌ ${testName}: Erro - ${error.message}`, 'error');
+            logToPanel(`❌ ${testName}: Erro - ${error.message} v5.4`, 'error');
             console.error(`❌ ${testName}:`, error);
         }
     });
     
-    const summaryMessage = `📊 RESULTADO COMPATIBILIDADE: ${results.passed}/${results.total} testes passaram`;
+    const summaryMessage = `📊 RESULTADO COMPATIBILIDADE v5.4: ${results.passed}/${results.total} testes passaram`;
     const summaryType = results.passed === results.total ? 'success' : 
                        results.passed >= results.total * 0.7 ? 'warning' : 'error';
     
     logToPanel(summaryMessage, summaryType);
-    console.log('📊 RESUMO:', results);
+    console.log('📊 RESUMO v5.4:', results);
     
     if (results.failed > 0) {
         const hasCompatibilityRecs = results.recommendations.some(r => 
-            r.includes('wrapper') || r.includes('window.') || r.includes('async')
+            r.includes('wrapper') || r.includes('window.') || r.includes('async') || r.includes('diagnóstico')
         );
         
         if (!hasCompatibilityRecs) {
-            if (!results.recommendations.includes('🎯 Revisar event listeners para evitar sobreposição')) {
-                results.recommendations.push('🎯 Revisar event listeners para evitar sobreposição');
+            if (!results.recommendations.includes('🎯 Revisar event listeners para evitar sobreposição v5.4')) {
+                results.recommendations.push('🎯 Revisar event listeners para evitar sobreposição v5.4');
             }
             
-            if (!results.recommendations.includes('🎨 Consolidar estilos CSS em arquivos unificados')) {
-                results.recommendations.push('🎨 Consolidar estilos CSS em arquivos unificados');
+            if (!results.recommendations.includes('🎨 Consolidar estilos CSS em arquivos unificados v5.4')) {
+                results.recommendations.push('🎨 Consolidar estilos CSS em arquivos unificados v5.4');
             }
             
-            if (!results.recommendations.includes('🌐 Testar em diferentes navegadores')) {
-                results.recommendations.push('🌐 Testar em diferentes navegadores');
+            if (!results.recommendations.includes('🌐 Testar em diferentes navegadores v5.4')) {
+                results.recommendations.push('🌐 Testar em diferentes navegadores v5.4');
+            }
+            
+            if (!results.recommendations.includes('📄 Testar funcionalidades PDF com console.diag.pdf.interactive()')) {
+                results.recommendations.push('📄 Testar funcionalidades PDF com console.diag.pdf.interactive()');
             }
         }
         
         if (results.recommendations.length > 0) {
-            logToPanel('💡 RECOMENDAÇÕES PARA COMPATIBILIDADE:', 'info');
-            console.group('💡 RECOMENDAÇÕES:');
+            logToPanel('💡 RECOMENDAÇÕES PARA COMPATIBILIDADE v5.4:', 'info');
+            console.group('💡 RECOMENDAÇÕES v5.4:');
             results.recommendations.forEach((rec, index) => {
                 const icon = rec.includes('wrapper') ? '🔗' : 
                             rec.includes('window.') ? '🧹' : 
@@ -3273,7 +3918,9 @@ window.testModuleCompatibility = function() {
                             rec.includes('carregamento') ? '📦' :
                             rec.includes('event listeners') ? '🎯' :
                             rec.includes('CSS') ? '🎨' :
-                            rec.includes('navegadores') ? '🌐' : '•';
+                            rec.includes('navegadores') ? '🌐' :
+                            rec.includes('PDF') ? '📄' :
+                            rec.includes('diagnóstico') ? '🔧' : '•';
                 logToPanel(`${icon} ${rec}`, 'info');
                 console.log(`${index + 1}. ${rec}`);
             });
@@ -3286,51 +3933,56 @@ window.testModuleCompatibility = function() {
     return results;
 };
 
-/* ================== VERIFICAÇÃO AUTOMÁTICA DE MIGRAÇÃO ================== */
+/* ================== VERIFICAÇÃO AUTOMÁTICA DE MIGRAÇÃO v5.4 ================== */
 window.validateMediaMigration = function() {
-    logToPanel('🚀 INICIANDO VERIFICAÇÃO AUTOMÁTICA DE MIGRAÇÃO', 'migration');
+    logToPanel('🚀 INICIANDO VERIFICAÇÃO AUTOMÁTICA DE MIGRAÇÃO v5.4', 'migration');
     
     const checks = {
         // Sistema principal
-        'MediaSystem carregado': typeof MediaSystem !== 'undefined',
+        'MediaSystem carregado v5.4': typeof MediaSystem !== 'undefined',
         
         // Verificar se MediaSystem tem funções básicas (em vez de isUnifiedSystem)
-        'MediaSystem funcional': MediaSystem && 
+        'MediaSystem funcional v5.4': MediaSystem && 
             (typeof MediaSystem.addFiles === 'function' ||
              typeof MediaSystem.addPdfs === 'function' ||
              typeof MediaSystem.uploadAll === 'function'),
         
         // Funções essenciais no MediaSystem
-        'Funções upload MediaSystem': MediaSystem && 
+        'Funções upload MediaSystem v5.4': MediaSystem && 
             typeof MediaSystem.addFiles === 'function' &&
             typeof MediaSystem.addPdfs === 'function' &&
             typeof MediaSystem.uploadAll === 'function',
         
         // Wrappers de compatibilidade (CRÍTICO)
-        'Wrapper processAndSavePdfs': typeof window.processAndSavePdfs === 'function',
-        'Wrapper getMediaUrlsForProperty': typeof window.getMediaUrlsForProperty === 'function',
-        'Wrapper clearAllPdfs': typeof window.clearAllPdfs === 'function',
-        'Wrapper loadExistingPdfsForEdit': typeof window.loadExistingPdfsForEdit === 'function',
+        'Wrapper processAndSavePdfs v5.4': typeof window.processAndSavePdfs === 'function',
+        'Wrapper getMediaUrlsForProperty v5.4': typeof window.getMediaUrlsForProperty === 'function',
+        'Wrapper clearAllPdfs v5.4': typeof window.clearAllPdfs === 'function',
+        'Wrapper loadExistingPdfsForEdit v5.4': typeof window.loadExistingPdfsForEdit === 'function',
         
         // Elementos de interface
-        'Upload preview ativo': document.getElementById('uploadPreview') !== null,
-        'Modal PDF disponível': document.getElementById('pdfModal') !== null,
+        'Upload preview ativo v5.4': document.getElementById('uploadPreview') !== null,
+        'Modal PDF disponível v5.4': document.getElementById('pdfModal') !== null,
         
         // Sistemas de suporte
-        'Supabase disponível': typeof supabase !== 'undefined' || 
+        'Supabase disponível v5.4': typeof supabase !== 'undefined' || 
             (MediaSystem && MediaSystem.supabaseClient),
-        'Propriedades carregadas': typeof properties !== 'undefined' && Array.isArray(properties),
+        'Propriedades carregadas v5.4': typeof properties !== 'undefined' && Array.isArray(properties),
         
         // Verificação PDF específica
-        'PdfSystem carregado': typeof window.PdfSystem !== 'undefined',
-        'Campo senha PDF existe': document.getElementById('pdfPassword') !== null
+        'PdfSystem carregado v5.4': typeof window.PdfSystem !== 'undefined',
+        'Campo senha PDF existe v5.4': document.getElementById('pdfPassword') !== null,
+        
+        // Novas verificações v5.4
+        'Teste interativo PDF disponível v5.4': typeof window.interactivePdfTest === 'function',
+        'Diagnóstico PDF disponível v5.4': typeof window.diagnosePdfIconProblem === 'function',
+        'Verificação compatibilidade PDF v5.4': typeof window.runPdfCompatibilityCheck === 'function'
     };
     
     let passed = 0;
     let total = 0;
     const details = [];
     
-    console.group('🚀 VERIFICAÇÃO DE MIGRAÇÃO DE MÍDIA');
+    console.group('🚀 VERIFICAÇÃO DE MIGRAÇÃO DE MÍDIA v5.4');
     
     Object.entries(checks).forEach(([checkName, checkResult]) => {
         total++;
@@ -3339,7 +3991,11 @@ window.validateMediaMigration = function() {
         const status = checkResult ? '✅' : '❌';
         const message = `${status} ${checkName}`;
         
-        details.push({ name: checkName, passed: checkResult });
+        details.push({ 
+            name: checkName, 
+            passed: checkResult,
+            timestamp: new Date().toISOString()
+        });
         
         logToPanel(message, checkResult ? 'success' : 'error');
         console.log(message);
@@ -3348,8 +4004,8 @@ window.validateMediaMigration = function() {
     const compatibilityScore = Math.round((passed / total) * 100);
     const isReadyForMigration = compatibilityScore >= 85;
     
-    console.log(`📊 Pontuação: ${passed}/${total} (${compatibilityScore}%)`);
-    console.log(`🚀 Pronto para migração: ${isReadyForMigration ? 'SIM' : 'NÃO'}`);
+    console.log(`📊 Pontuação v5.4: ${passed}/${total} (${compatibilityScore}%)`);
+    console.log(`🚀 Pronto para migração v5.4: ${isReadyForMigration ? 'SIM' : 'NÃO'}`);
     console.groupEnd();
     
     const report = {
@@ -3360,6 +4016,7 @@ window.validateMediaMigration = function() {
         passed,
         total,
         checks: details,
+        version: '5.4',
         summary: {
             passed,
             total,
@@ -3376,20 +4033,24 @@ window.validateMediaMigration = function() {
         const missingWrappers = details.filter(d => !d.passed && d.name.includes('Wrapper'));
         if (missingWrappers.length > 0) {
             report.summary.recommendations.push(
-                `Criar wrappers para: ${missingWrappers.map(w => w.name.replace('Wrapper ', '')).join(', ')}`
+                `Criar wrappers para v5.4: ${missingWrappers.map(w => w.name.replace('Wrapper ', '').replace(' v5.4', '')).join(', ')}`
             );
         }
         
-        if (!checks['MediaSystem carregado']) {
-            report.summary.recommendations.push('Carregar MediaSystem unificado');
+        if (!checks['MediaSystem carregado v5.4']) {
+            report.summary.recommendations.push('Carregar MediaSystem unificado v5.4');
         }
         
-        if (!checks['MediaSystem funcional']) {
-            report.summary.recommendations.push('Inicializar funções básicas do MediaSystem');
+        if (!checks['MediaSystem funcional v5.4']) {
+            report.summary.recommendations.push('Inicializar funções básicas do MediaSystem v5.4');
         }
         
-        if (!checks['PdfSystem carregado']) {
-            report.summary.recommendations.push('Verificar carregamento do PdfSystem');
+        if (!checks['PdfSystem carregado v5.4']) {
+            report.summary.recommendations.push('Verificar carregamento do PdfSystem v5.4');
+        }
+        
+        if (!checks['Teste interativo PDF disponível v5.4']) {
+            report.summary.recommendations.push('Implementar teste interativo PDF v5.4');
         }
     }
     
@@ -3400,9 +4061,9 @@ window.validateMediaMigration = function() {
     return report;
 };
 
-/* ================== ALERTA DE VALIDAÇÃO DE MIGRAÇÃO ================== */
+/* ================== ALERTA DE VALIDAÇÃO DE MIGRAÇÃO v5.4 ================== */
 function showMigrationValidationAlert(isReady, report) {
-    const alertId = 'migration-validation-alert';
+    const alertId = 'migration-validation-alert-v5-4';
     
     const existingAlert = document.getElementById(alertId);
     if (existingAlert) {
@@ -3416,7 +4077,7 @@ function showMigrationValidationAlert(isReady, report) {
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background: ${isReady ? '#001a00' : '#1a0000'};
+        background: ${isReady ? 'linear-gradient(135deg, #001a00, #000a1a)' : 'linear-gradient(135deg, #1a0000, #000a0a)'};
         color: ${isReady ? '#00ff9c' : '#ff5555'};
         padding: 25px;
         border: 3px solid ${isReady ? '#00ff9c' : '#ff5555'};
@@ -3427,87 +4088,92 @@ function showMigrationValidationAlert(isReady, report) {
         text-align: center;
         box-shadow: 0 0 50px ${isReady ? 'rgba(0, 255, 156, 0.5)' : 'rgba(255, 0, 0, 0.5)'};
         font-family: 'Consolas', 'Monaco', monospace;
+        backdrop-filter: blur(10px);
     `;
     
     if (isReady) {
         alertDiv.innerHTML = `
             <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
                 <span>🚀</span>
-                <span>SISTEMA VALIDADO PARA MIGRAÇÃO</span>
+                <span>SISTEMA VALIDADO PARA MIGRAÇÃO v5.4</span>
             </div>
             
-            <div style="background: #003300; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
+            <div style="background: ${isReady ? 'rgba(0, 255, 156, 0.1)' : 'rgba(255, 0, 0, 0.1)'}; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; border: 1px solid ${isReady ? 'rgba(0, 255, 156, 0.3)' : 'rgba(255, 0, 0, 0.3)'};">
                 <div style="font-size: 48px; font-weight: bold; margin-bottom: 10px;">
                     ${report.compatibilityScore}%
                 </div>
                 <div style="font-size: 14px; color: #88ffaa;">
-                    ${report.passed}/${report.total} verificações passaram
+                    ${report.passed}/${report.total} verificações passaram v5.4
                 </div>
             </div>
             
             <div style="text-align: left; margin-bottom: 20px;">
                 <div style="font-size: 14px; color: #88ffaa; margin-bottom: 10px;">
-                    ✅ SISTEMA PRONTO PARA:
+                    ✅ SISTEMA PRONTO PARA v5.4:
                 </div>
                 <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #aaffcc;">
                     <li>Remover módulos antigos de mídia e PDF</li>
                     <li>Manter apenas MediaSystem unificado</li>
                     <li>Atualizar imports em admin.js e properties.js</li>
                     <li>Testar uploads em produção</li>
+                    <li>Usar console.diag para diagnóstico contínuo</li>
                 </ul>
             </div>
             
             <div style="display: flex; gap: 10px; justify-content: center;">
-                <button id="migrate-now-btn" style="
+                <button id="migrate-now-btn-v5-4" style="
                     background: #00ff9c; color: #000; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    font-weight: bold; font-size: 14px; min-width: 120px;
+                    transition: all 0.2s;">
                     MIGRAR AGORA
                 </button>
-                <button id="close-alert-btn" style="
+                <button id="close-alert-btn-v5-4" style="
                     background: #555; color: white; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    font-weight: bold; font-size: 14px; min-width: 120px;
+                    transition: all 0.2s;">
                     FECHAR
                 </button>
-                <button id="export-report-btn" style="
+                <button id="export-report-btn-v5-4" style="
                     background: #0088cc; color: white; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    font-weight: bold; font-size: 14px; min-width: 120px;
+                    transition: all 0.2s;">
                     📊 RELATÓRIO
                 </button>
             </div>
             
             <div style="font-size: 11px; color: #88ffaa; margin-top: 15px;">
-                Sistema validado em ${new Date().toLocaleTimeString()}
+                Sistema validado em ${new Date().toLocaleTimeString()} - v5.4
             </div>
         `;
     } else {
         alertDiv.innerHTML = `
             <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
                 <span>⚠️</span>
-                <span>NÃO PRONTO PARA MIGRAÇÃO</span>
+                <span>NÃO PRONTO PARA MIGRAÇÃO v5.4</span>
             </div>
             
-            <div style="background: #330000; padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center;">
+            <div style="background: rgba(255, 0, 0, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 20px; text-align: center; border: 1px solid rgba(255, 0, 0, 0.3);">
                 <div style="font-size: 48px; font-weight: bold; margin-bottom: 10px; color: #ff5555;">
                     ${report.compatibilityScore}%
                 </div>
                 <div style="font-size: 14px; color: #ff8888;">
-                    Apenas ${report.passed}/${report.total} verificações passaram
+                    Apenas ${report.passed}/${report.total} verificações passaram v5.4
                 </div>
             </div>
             
             <div style="text-align: left; margin-bottom: 20px;">
                 <div style="font-size: 14px; color: #ff8888; margin-bottom: 10px;">
-                    ❌ PROBLEMAS IDENTIFICADOS:
+                    ❌ PROBLEMAS IDENTIFICADOS v5.4:
                 </div>
                 <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #ffaaaa;">
                     ${report.summary.criticalMissing.map(item => `<li>${item}</li>`).join('')}
                 </ul>
                 
                 <div style="font-size: 14px; color: #ffaa00; margin-top: 15px; margin-bottom: 10px;">
-                    💡 RECOMENDAÇÕES:
+                    💡 RECOMENDAÇÕES v5.4:
                 </div>
                 <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #ffcc88;">
                     ${report.summary.recommendations.map(rec => `<li>${rec}</li>`).join('')}
@@ -3515,28 +4181,31 @@ function showMigrationValidationAlert(isReady, report) {
             </div>
             
             <div style="display: flex; gap: 10px; justify-content: center;">
-                <button id="run-diagnostics-btn" style="
+                <button id="run-diagnostics-btn-v5-4" style="
                     background: #ffaa00; color: #000; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    font-weight: bold; font-size: 14px; min-width: 120px;
+                    transition: all 0.2s;">
                     🔍 DIAGNÓSTICO
                 </button>
-                <button id="close-alert-btn" style="
+                <button id="close-alert-btn-v5-4" style="
                     background: #555; color: white; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    font-weight: bold; font-size: 14px; min-width: 120px;
+                    transition: all 0.2s;">
                     FECHAR
                 </button>
-                <button id="export-report-btn" style="
+                <button id="export-report-btn-v5-4" style="
                     background: #0088cc; color: white; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                    font-weight: bold; font-size: 14px; min-width: 120px;">
+                    font-weight: bold; font-size: 14px; min-width: 120px;
+                    transition: all 0.2s;">
                     📊 RELATÓRIO
                 </button>
             </div>
             
             <div style="font-size: 11px; color: #ff8888; margin-top: 15px;">
-                Não remova módulos antigos até corrigir os problemas
+                Não remova módulos antigos até corrigir os problemas - v5.4
             </div>
         `;
     }
@@ -3544,19 +4213,19 @@ function showMigrationValidationAlert(isReady, report) {
     document.body.appendChild(alertDiv);
     
     if (isReady) {
-        document.getElementById('migrate-now-btn')?.addEventListener('click', () => {
-            logToPanel('🚀 Iniciando processo de migração...', 'migration');
+        document.getElementById('migrate-now-btn-v5-4')?.addEventListener('click', () => {
+            logToPanel('🚀 Iniciando processo de migração v5.4...', 'migration');
             alertDiv.innerHTML = `
                 <div style="font-size: 20px; margin-bottom: 15px; color: #00ff9c;">
-                    ⚙️ INICIANDO MIGRAÇÃO...
+                    ⚙️ INICIANDO MIGRAÇÃO v5.4...
                 </div>
                 <div style="font-size: 14px; color: #88ffaa; margin-bottom: 20px;">
                     Preparando remoção de módulos antigos...
                 </div>
-                <div style="background: #003300; padding: 15px; border-radius: 6px;">
+                <div style="background: rgba(0, 255, 156, 0.1); padding: 15px; border-radius: 6px; border: 1px solid rgba(0, 255, 156, 0.3);">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
                         <div class="loader" style="width: 20px; height: 20px; border: 3px solid #00ff9c; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                        <span>Processando...</span>
+                        <span>Processando v5.4...</span>
                     </div>
                     <div style="font-size: 11px; color: #88ffaa;">
                         Esta operação pode levar alguns segundos
@@ -3572,34 +4241,34 @@ function showMigrationValidationAlert(isReady, report) {
             
             setTimeout(() => {
                 document.body.removeChild(alertDiv);
-                logToPanel('✅ Migração simulada concluída!', 'success');
+                logToPanel('✅ Migração simulada concluída v5.4!', 'success');
                 showMigrationSuccessAlert();
             }, 2000);
         });
     } else {
-        document.getElementById('run-diagnostics-btn')?.addEventListener('click', () => {
+        document.getElementById('run-diagnostics-btn-v5-4')?.addEventListener('click', () => {
             document.body.removeChild(alertDiv);
             window.runDiagnostics();
         });
     }
     
-    document.getElementById('close-alert-btn')?.addEventListener('click', () => {
+    document.getElementById('close-alert-btn-v5-4')?.addEventListener('click', () => {
         document.body.removeChild(alertDiv);
     });
     
-    document.getElementById('export-report-btn')?.addEventListener('click', () => {
+    document.getElementById('export-report-btn-v5-4')?.addEventListener('click', () => {
         const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `migration-validation-${Date.now()}.json`;
+        a.download = `migration-validation-v5.4-${Date.now()}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        logToPanel('📊 Relatório de migração exportado', 'migration');
+        logToPanel('📊 Relatório de migração exportado v5.4', 'migration');
     });
 }
 
-/* ================== ALERTA DE SUCESSO DA MIGRAÇÃO ================== */
+/* ================== ALERTA DE SUCESSO DA MIGRAÇÃO v5.4 ================== */
 function showMigrationSuccessAlert() {
     const successDiv = document.createElement('div');
     successDiv.style.cssText = `
@@ -3607,7 +4276,7 @@ function showMigrationSuccessAlert() {
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        background: #001a00;
+        background: linear-gradient(135deg, #001a00, #000a1a);
         color: #00ff9c;
         padding: 30px;
         border: 3px solid #00ff9c;
@@ -3617,17 +4286,18 @@ function showMigrationSuccessAlert() {
         text-align: center;
         box-shadow: 0 0 50px rgba(0, 255, 156, 0.5);
         font-family: 'Consolas', 'Monaco', monospace;
+        backdrop-filter: blur(10px);
     `;
     
     successDiv.innerHTML = `
         <div style="font-size: 24px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
             <span>🎉</span>
-            <span>MIGRAÇÃO CONCLUÍDA!</span>
+            <span>MIGRAÇÃO CONCLUÍDA! v5.4</span>
         </div>
         
-        <div style="background: #003300; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
+        <div style="background: rgba(0, 255, 156, 0.1); padding: 20px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(0, 255, 156, 0.3);">
             <div style="font-size: 18px; margin-bottom: 10px; color: #88ffaa;">
-                Sistema unificado ativado
+                Sistema unificado ativado v5.4
             </div>
             <div style="font-size: 12px; color: #aaffcc;">
                 Todos os módulos antigos podem ser removidos com segurança
@@ -3636,62 +4306,64 @@ function showMigrationSuccessAlert() {
         
         <div style="text-align: left; margin-bottom: 20px;">
             <div style="font-size: 14px; color: #88ffaa; margin-bottom: 10px;">
-                ✅ AÇÕES REALIZADAS:
+                ✅ AÇÕES REALIZADAS v5.4:
             </div>
             <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #aaffcc;">
                 <li>Sistema de mídia unificado ativado</li>
                 <li>Wrappers de compatibilidade configurados</li>
                 <li>Interface admin atualizada</li>
                 <li>Sistema de preview migrado</li>
+                <li>Testes interativos disponíveis</li>
             </ul>
         </div>
         
-        <button id="close-success-alert" style="
+        <button id="close-success-alert-v5-4" style="
             background: #00ff9c; color: #000; border: none;
             padding: 12px 24px; cursor: pointer; border-radius: 5px;
-            font-weight: bold; font-size: 14px; width: 100%;">
+            font-weight: bold; font-size: 14px; width: 100%; transition: all 0.2s;">
             ENTENDIDO
         </button>
         
         <div style="font-size: 11px; color: #88ffaa; margin-top: 15px;">
-            Recomenda-se fazer backup antes de remover arquivos antigos
+            Recomenda-se fazer backup antes de remover arquivos antigos - v5.4
         </div>
     `;
     
     document.body.appendChild(successDiv);
     
-    document.getElementById('close-success-alert').addEventListener('click', () => {
+    document.getElementById('close-success-alert-v5-4').addEventListener('click', () => {
         document.body.removeChild(successDiv);
     });
 }
 
-/* ================== INICIALIZAÇÃO AUTOMÁTICA ================== */
+/* ================== INICIALIZAÇÃO AUTOMÁTICA v5.4 ================== */
 window.autoValidateMigration = function() {
     setTimeout(() => {
-        logToPanel('🔍 Verificação automática de migração iniciada...', 'debug');
+        logToPanel('🔍 Verificação automática de migração iniciada v5.4...', 'debug');
         
         if (DIAGNOSTICS_MODE) {
-            logToPanel('✅ Modo diagnóstico ativo - validação automática habilitada', 'success');
+            logToPanel('✅ Modo diagnóstico ativo - validação automática habilitada v5.4', 'success');
             
             setTimeout(() => {
                 if (typeof window.validateMediaMigration === 'function') {
                     const report = window.validateMediaMigration();
                     updateMigrationTab(report);
                 } else {
-                    logToPanel('❌ Função validateMediaMigration não encontrada', 'error');
+                    logToPanel('❌ Função validateMediaMigration não encontrada v5.4', 'error');
                 }
             }, 1000);
         } else {
-            logToPanel('ℹ️ Modo diagnóstico não ativo - validação automática desabilitada', 'info');
+            logToPanel('ℹ️ Modo diagnóstico não ativo - validação automática desabilitada v5.4', 'info');
         }
     }, 2000);
 };
 
-/* ================== CLASSIFICAÇÃO DE MÓDULOS ================== */
+/* ================== CLASSIFICAÇÃO DE MÓDULOS v5.4 ================== */
 function classifyModule(fileName) {
     const coreModules = [
         'admin.js', 'properties.js', 'gallery.js', 
-        'properties-core.js', 'media-core.js', 'pdf-core.js'
+        'properties-core.js', 'media-core.js', 'pdf-core.js',
+        'diagnostics.js'
     ];
     
     const performanceModules = [
@@ -3713,20 +4385,20 @@ function classifyModule(fileName) {
         'utils.js', 'media-utils.js', 'pdf-utils.js'
     ];
     
-    if (coreModules.includes(fileName)) return { type: 'CORE', emoji: '⚙️' };
-    if (performanceModules.includes(fileName)) return { type: 'PERFORMANCE', emoji: '⚡' };
-    if (supportModules.includes(fileName)) return { type: 'SUPPORT', emoji: '🔧' };
-    if (uiModules.includes(fileName)) return { type: 'UI', emoji: '🎨' };
-    if (utilModules.includes(fileName)) return { type: 'UTIL', emoji: '🧰' };
-    if (fileName.includes('supabase')) return { type: 'EXTERNAL', emoji: '📦' };
+    if (coreModules.includes(fileName)) return { type: 'CORE', emoji: '⚙️', version: '5.4' };
+    if (performanceModules.includes(fileName)) return { type: 'PERFORMANCE', emoji: '⚡', version: '5.4' };
+    if (supportModules.includes(fileName)) return { type: 'SUPPORT', emoji: '🔧', version: '5.4' };
+    if (uiModules.includes(fileName)) return { type: 'UI', emoji: '🎨', version: '5.4' };
+    if (utilModules.includes(fileName)) return { type: 'UTIL', emoji: '🧰', version: '5.4' };
+    if (fileName.includes('supabase')) return { type: 'EXTERNAL', emoji: '📦', version: '5.4' };
     
-    return { type: 'UNKNOWN', emoji: '❓' };
+    return { type: 'UNKNOWN', emoji: '❓', version: '5.4' };
 }
 
-/* ================== ANÁLISE DO SISTEMA ================== */
+/* ================== ANÁLISE DO SISTEMA v5.4 ================== */
 function analyzeSystem() {
-    logToPanel('Iniciando análise do sistema...', 'info');
-    updateStatus('Analisando sistema...');
+    logToPanel('Iniciando análise do sistema v5.4...', 'info');
+    updateStatus('Analisando sistema v5.4...', 'info');
     
     const scripts = Array.from(document.scripts)
         .filter(s => s.src)
@@ -3735,7 +4407,8 @@ function analyzeSystem() {
             fileName: s.src.split('/').pop(),
             async: s.async,
             defer: s.defer,
-            type: s.type
+            type: s.type,
+            timestamp: new Date().toISOString()
         }));
     
     const systems = {
@@ -3748,7 +4421,8 @@ function analyzeSystem() {
         properties: 'properties' in window,
         admin: 'toggleAdminPanel' in window,
         gallery: 'gallery' in window,
-        optimizer: 'performanceOptimizer' in window
+        optimizer: 'performanceOptimizer' in window,
+        diagnostics: 'runDiagnostics' in window
     };
     
     const criticalElements = {
@@ -3759,22 +4433,28 @@ function analyzeSystem() {
         'uploadPreview': document.getElementById('uploadPreview')
     };
     
-    return { scripts, systems, criticalElements };
+    return { 
+        scripts, 
+        systems, 
+        criticalElements,
+        version: '5.4',
+        timestamp: new Date().toISOString()
+    };
 }
 
-/* ================== ATUALIZAR ABA DE MIGRAÇÃO ================== */
+/* ================== ATUALIZAR ABA DE MIGRAÇÃO v5.4 ================== */
 function updateMigrationTab(results) {
     const testsContent = document.getElementById('tests-content');
     if (!testsContent) return;
     
     let html = `
         <div style="margin-bottom: 20px;">
-            <h3 style="color: #ff00ff; margin-bottom: 15px;">🚀 VERIFICAÇÃO AUTOMÁTICA DE MIGRAÇÃO</h3>
+            <h3 style="color: #ff00ff; margin-bottom: 15px;">🚀 VERIFICAÇÃO AUTOMÁTICA DE MIGRAÇÃO v5.4</h3>
             
-            <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="background: rgba(255, 0, 255, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(255, 0, 255, 0.3);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <div>
-                        <div style="font-size: 11px; color: #888;">STATUS DA MIGRAÇÃO</div>
+                        <div style="font-size: 11px; color: #888;">STATUS DA MIGRAÇÃO v5.4</div>
                         <div style="font-size: 24px; color: ${results.migrationReady ? '#00ff9c' : '#ff5555'}">
                             ${results.migrationReady ? '✅ PRONTA' : '❌ NÃO PRONTA'}
                         </div>
@@ -3796,26 +4476,30 @@ function updateMigrationTab(results) {
                 <div style="height: 10px; background: #333; border-radius: 5px; overflow: hidden;">
                     <div style="height: 100%; width: ${results.compatibilityScore}%; background: ${results.compatibilityScore >= 85 ? '#00ff9c' : '#ffaa00'};"></div>
                 </div>
+                <div style="font-size: 10px; color: #888; text-align: center; margin-top: 5px;">
+                    v${results.version || '5.4'}
+                </div>
             </div>
             
             <div>
-                <h4 style="color: #ff00ff; margin-bottom: 10px;">📋 VERIFICAÇÕES REALIZADAS</h4>
+                <h4 style="color: #ff00ff; margin-bottom: 10px;">📋 VERIFICAÇÕES REALIZADAS v5.4</h4>
                 <div style="max-height: 300px; overflow-y: auto;">
     `;
     
     results.checks.forEach((check, index) => {
         html += `
             <div style="
-                background: ${check.passed ? '#001a00' : '#1a0000'};
+                background: ${check.passed ? 'rgba(0, 255, 156, 0.1)' : 'rgba(255, 0, 0, 0.1)'};
                 padding: 10px; margin-bottom: 6px; border-radius: 4px;
                 border-left: 3px solid ${check.passed ? '#00ff9c' : '#ff5555'};
+                border: 1px solid ${check.passed ? 'rgba(0, 255, 156, 0.3)' : 'rgba(255, 0, 0, 0.3)'};
                 display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <div style="font-weight: bold; color: ${check.passed ? '#00ff9c' : '#ff5555'};">
                         ${check.passed ? '✅' : '❌'} ${check.name}
                     </div>
                 </div>
-                <span style="font-size: 10px; color: #888;">${index + 1}</span>
+                <span style="font-size: 10px; color: #888;">#${index + 1}</span>
             </div>
         `;
     });
@@ -3825,8 +4509,8 @@ function updateMigrationTab(results) {
             </div>
             
             ${results.summary.criticalMissing.length > 0 ? `
-                <div style="background: #1a0000; padding: 15px; border-radius: 6px; margin-top: 20px;">
-                    <h4 style="color: #ff5555; margin-bottom: 10px;">⚠️ PROBLEMAS CRÍTICOS</h4>
+                <div style="background: rgba(255, 0, 0, 0.1); padding: 15px; border-radius: 6px; margin-top: 20px; border: 1px solid rgba(255, 0, 0, 0.3);">
+                    <h4 style="color: #ff5555; margin-bottom: 10px;">⚠️ PROBLEMAS CRÍTICOS v5.4</h4>
                     <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #ffaaaa;">
                         ${results.summary.criticalMissing.map(item => `<li>${item}</li>`).join('')}
                     </ul>
@@ -3834,8 +4518,8 @@ function updateMigrationTab(results) {
             ` : ''}
             
             ${results.summary.recommendations.length > 0 ? `
-                <div style="background: #001a1a; padding: 15px; border-radius: 6px; margin-top: 20px;">
-                    <h4 style="color: #00ff9c; margin-bottom: 10px;">💡 RECOMENDAÇÕES</h4>
+                <div style="background: rgba(0, 255, 156, 0.1); padding: 15px; border-radius: 6px; margin-top: 20px; border: 1px solid rgba(0, 255, 156, 0.3);">
+                    <h4 style="color: #00ff9c; margin-bottom: 10px;">💡 RECOMENDAÇÕES v5.4</h4>
                     <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #aaffcc;">
                         ${results.summary.recommendations.map(rec => `<li>${rec}</li>`).join('')}
                     </ul>
@@ -3844,55 +4528,56 @@ function updateMigrationTab(results) {
         </div>
         
         <div style="text-align: center; margin-top: 20px;">
-            <button id="run-auto-migration-check" style="
+            <button id="run-auto-migration-check-v5-4" style="
                 background: linear-gradient(45deg, #ff00ff, #0088cc); 
                 color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold; margin: 5px;">
-                🔄 EXECUTAR NOVAMENTE
+                font-weight: bold; margin: 5px; transition: all 0.2s;">
+                🔄 EXECUTAR NOVAMENTE v5.4
             </button>
-            <button id="export-migration-report" style="
+            <button id="export-migration-report-v5-4" style="
                 background: #555; color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold; margin: 5px;">
-                📊 EXPORTAR RELATÓRIO
+                font-weight: bold; margin: 5px; transition: all 0.2s;">
+                📊 EXPORTAR RELATÓRIO v5.4
             </button>
-            <button id="view-in-console" style="
+            <button id="view-in-console-v5-4" style="
                 background: #0088cc; color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold; margin: 5px;">
-                📝 VER NO CONSOLE F12
+                font-weight: bold; margin: 5px; transition: all 0.2s;">
+                📝 VER NO CONSOLE F12 v5.4
             </button>
         </div>
         
         <div style="font-size: 11px; color: #888; text-align: center; margin-top: 10px;">
-            Verificação automática iniciada após carregar módulos de suporte
+            Verificação automática iniciada após carregar módulos de suporte - v5.4
         </div>
     `;
     
     testsContent.innerHTML = html;
     
-    document.getElementById('run-auto-migration-check')?.addEventListener('click', () => {
+    document.getElementById('run-auto-migration-check-v5-4')?.addEventListener('click', () => {
         if (typeof window.autoValidateMigration === 'function') {
             window.autoValidateMigration();
         }
     });
     
-    document.getElementById('export-migration-report')?.addEventListener('click', () => {
+    document.getElementById('export-migration-report-v5-4')?.addEventListener('click', () => {
         const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `migration-auto-check-${Date.now()}.json`;
+        a.download = `migration-auto-check-v5.4-${Date.now()}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        logToPanel('📊 Relatório de verificação automática exportado', 'migration');
+        logToPanel('📊 Relatório de verificação automática exportado v5.4', 'migration');
     });
     
-    document.getElementById('view-in-console')?.addEventListener('click', () => {
-        console.group('🚀 RELATÓRIO DE VERIFICAÇÃO AUTOMÁTICA');
+    document.getElementById('view-in-console-v5-4')?.addEventListener('click', () => {
+        console.group('🚀 RELATÓRIO DE VERIFICAÇÃO AUTOMÁTICA v5.4');
         console.log('Status:', results.migrationReady ? '✅ PRONTO PARA MIGRAÇÃO' : '❌ NÃO PRONTO');
         console.log('Pontuação:', `${results.compatibilityScore}% (${results.passed}/${results.total})`);
+        console.log('Versão:', results.version || '5.4');
         console.log('Verificações:');
         results.checks.forEach(check => {
             console.log(`${check.passed ? '✅' : '❌'} ${check.name}`);
@@ -3907,24 +4592,35 @@ function updateMigrationTab(results) {
     });
 }
 
-/* ================== TESTES AUTOMÁTICOS ================== */
+/* ================== TESTES AUTOMÁTICOS v5.4 ================== */
 async function testMediaUnifiedComplete() {
-    logToPanel('🧪 Iniciando teste completo do sistema unificado...', 'debug');
+    logToPanel('🧪 Iniciando teste completo do sistema unificado v5.4...', 'debug');
     
     const results = {
         passed: 0,
         failed: 0,
         total: 0,
-        tests: []
+        tests: [],
+        version: '5.4',
+        timestamp: new Date().toISOString()
     };
     
     if (!window.MediaSystem) {
-        results.tests.push({ name: 'MediaSystem disponível', passed: false, message: 'MediaSystem não encontrado' });
-        logToPanel('❌ MediaSystem não disponível', 'error');
+        results.tests.push({ 
+            name: 'MediaSystem disponível v5.4', 
+            passed: false, 
+            message: 'MediaSystem não encontrado',
+            timestamp: new Date().toISOString()
+        });
+        logToPanel('❌ MediaSystem não disponível v5.4', 'error');
         results.failed++;
     } else {
-        results.tests.push({ name: 'MediaSystem disponível', passed: true });
-        logToPanel('✅ MediaSystem disponível', 'success');
+        results.tests.push({ 
+            name: 'MediaSystem disponível v5.4', 
+            passed: true,
+            timestamp: new Date().toISOString()
+        });
+        logToPanel('✅ MediaSystem disponível v5.4', 'success');
         results.passed++;
     }
     results.total++;
@@ -3941,27 +4637,28 @@ async function testMediaUnifiedComplete() {
         criticalFunctions.forEach(func => {
             const exists = typeof MediaSystem[func] === 'function';
             results.tests.push({ 
-                name: `MediaSystem.${func}`, 
-                passed: exists 
+                name: `MediaSystem.${func} v5.4`, 
+                passed: exists,
+                timestamp: new Date().toISOString()
             });
             
-            logToPanel(`${exists ? '✅' : '❌'} ${func}`, exists ? 'success' : 'error');
+            logToPanel(`${exists ? '✅' : '❌'} ${func} v5.4`, exists ? 'success' : 'error');
             if (exists) results.passed++;
             else results.failed++;
             results.total++;
         });
     }
     
-    logToPanel('🔍 Verificando funções essenciais de migração...', 'migration');
+    logToPanel('🔍 Verificando funções essenciais de migração v5.4...', 'migration');
     
     const migrationChecks = [
-        { name: 'MediaSystem.addFiles', check: () => typeof MediaSystem.addFiles === 'function' },
-        { name: 'MediaSystem.addPdfs', check: () => typeof MediaSystem.addPdfs === 'function' },
-        { name: 'MediaSystem.uploadAll', check: () => typeof MediaSystem.uploadAll === 'function' },
-        { name: 'window.processAndSavePdfs', check: () => typeof window.processAndSavePdfs === 'function' },
-        { name: 'window.getMediaUrlsForProperty', check: () => typeof window.getMediaUrlsForProperty === 'function' },
-        { name: 'window.clearAllPdfs (wrapper)', check: () => typeof window.clearAllPdfs === 'function' },
-        { name: 'window.loadExistingPdfsForEdit (wrapper)', check: () => typeof window.loadExistingPdfsForEdit === 'function' }
+        { name: 'MediaSystem.addFiles v5.4', check: () => typeof MediaSystem.addFiles === 'function' },
+        { name: 'MediaSystem.addPdfs v5.4', check: () => typeof MediaSystem.addPdfs === 'function' },
+        { name: 'MediaSystem.uploadAll v5.4', check: () => typeof MediaSystem.uploadAll === 'function' },
+        { name: 'window.processAndSavePdfs v5.4', check: () => typeof window.processAndSavePdfs === 'function' },
+        { name: 'window.getMediaUrlsForProperty v5.4', check: () => typeof window.getMediaUrlsForProperty === 'function' },
+        { name: 'window.clearAllPdfs (wrapper) v5.4', check: () => typeof window.clearAllPdfs === 'function' },
+        { name: 'window.loadExistingPdfsForEdit (wrapper) v5.4', check: () => typeof window.loadExistingPdfsForEdit === 'function' }
     ];
     
     migrationChecks.forEach(check => {
@@ -3970,7 +4667,8 @@ async function testMediaUnifiedComplete() {
         results.tests.push({ 
             name: check.name, 
             passed,
-            message: passed ? (isWrapper ? 'Wrapper disponível para compatibilidade' : 'Função disponível para migração') : (isWrapper ? 'Wrapper necessário para compatibilidade' : 'Função necessária para migração')
+            message: passed ? (isWrapper ? 'Wrapper disponível para compatibilidade v5.4' : 'Função disponível para migração v5.4') : (isWrapper ? 'Wrapper necessário para compatibilidade v5.4' : 'Função necessária para migração v5.4'),
+            timestamp: new Date().toISOString()
         });
         
         logToPanel(`${passed ? '✅' : '❌'} ${check.name}`, passed ? 'success' : 'error');
@@ -3979,7 +4677,7 @@ async function testMediaUnifiedComplete() {
         results.total++;
     });
     
-    logToPanel('🔍 Testando modal de PDF...', 'debug');
+    logToPanel('🔍 Testando modal de PDF v5.4...', 'debug');
     const pdfModal = document.getElementById('pdfModal');
     const pdfPassword = document.getElementById('pdfPassword');
     
@@ -3987,23 +4685,25 @@ async function testMediaUnifiedComplete() {
     const passwordExists = !!pdfPassword;
     
     results.tests.push({ 
-        name: 'PDF Modal existe', 
+        name: 'PDF Modal existe v5.4', 
         passed: modalExists,
-        message: modalExists ? 'Modal encontrado' : 'Modal não encontrado'
+        message: modalExists ? 'Modal encontrado v5.4' : 'Modal não encontrado v5.4',
+        timestamp: new Date().toISOString()
     });
     
     results.tests.push({ 
-        name: 'PDF Password field existe', 
+        name: 'PDF Password field existe v5.4', 
         passed: passwordExists,
-        message: passwordExists ? 'Campo encontrado' : 'Campo não encontrado'
+        message: passwordExists ? 'Campo encontrado v5.4' : 'Campo não encontrado v5.4',
+        timestamp: new Date().toISOString()
     });
     
-    logToPanel(`PDF Modal: ${modalExists ? '✅ Existe' : '❌ Não existe'}`, modalExists ? 'success' : 'error');
-    logToPanel(`Password Field: ${passwordExists ? '✅ Existe' : '❌ Não existe'}`, passwordExists ? 'success' : 'warning');
+    logToPanel(`PDF Modal: ${modalExists ? '✅ Existe v5.4' : '❌ Não existe v5.4'}`, modalExists ? 'success' : 'error');
+    logToPanel(`Password Field: ${passwordExists ? '✅ Existe v5.4' : '❌ Não existe v5.4'}`, passwordExists ? 'success' : 'warning');
     
     if (pdfPassword) {
-        logToPanel(`Estilo display: ${pdfPassword.style.display}`, 'info');
-        logToPanel(`Estilo visibility: ${pdfPassword.style.visibility}`, 'info');
+        logToPanel(`Estilo display: ${pdfPassword.style.display} v5.4`, 'info');
+        logToPanel(`Estilo visibility: ${pdfPassword.style.visibility} v5.4`, 'info');
     }
     
     if (modalExists) results.passed++;
@@ -4016,53 +4716,58 @@ async function testMediaUnifiedComplete() {
     
     const uploadPreview = document.getElementById('uploadPreview');
     results.tests.push({
-        name: 'Sistema de preview ativo',
+        name: 'Sistema de preview ativo v5.4',
         passed: !!uploadPreview,
-        message: uploadPreview ? 'Preview disponível para migração' : 'Preview necessário para migração'
+        message: uploadPreview ? 'Preview disponível para migração v5.4' : 'Preview necessário para migração v5.4',
+        timestamp: new Date().toISOString()
     });
-    logToPanel(`Upload Preview: ${uploadPreview ? '✅ Existe' : '❌ Não existe'}`, uploadPreview ? 'success' : 'error');
+    logToPanel(`Upload Preview: ${uploadPreview ? '✅ Existe v5.4' : '❌ Não existe v5.4'}`, uploadPreview ? 'success' : 'error');
     if (uploadPreview) results.passed++;
     else results.failed++;
     results.total++;
     
     if (window.properties && Array.isArray(window.properties)) {
         results.tests.push({ 
-            name: 'Propriedades carregadas', 
+            name: 'Propriedades carregadas v5.4', 
             passed: true,
-            message: `${window.properties.length} propriedades carregadas`
+            message: `${window.properties.length} propriedades carregadas v5.4`,
+            timestamp: new Date().toISOString()
         });
-        logToPanel(`✅ ${window.properties.length} propriedades carregadas`, 'success');
+        logToPanel(`✅ ${window.properties.length} propriedades carregadas v5.4`, 'success');
         results.passed++;
     } else {
         results.tests.push({ 
-            name: 'Propriedades carregadas', 
+            name: 'Propriedades carregadas v5.4', 
             passed: false,
-            message: 'Propriedades não carregadas'
+            message: 'Propriedades não carregadas v5.4',
+            timestamp: new Date().toISOString()
         });
-        logToPanel('❌ Propriedades não carregadas', 'error');
+        logToPanel('❌ Propriedades não carregadas v5.4', 'error');
         results.failed++;
     }
     results.total++;
     
     if (window.supabase) {
         results.tests.push({ 
-            name: 'Supabase Client', 
+            name: 'Supabase Client v5.4', 
             passed: true,
-            message: 'Cliente Supabase disponível'
+            message: 'Cliente Supabase disponível v5.4',
+            timestamp: new Date().toISOString()
         });
-        logToPanel('✅ Supabase Client disponível', 'success');
+        logToPanel('✅ Supabase Client disponível v5.4', 'success');
         results.passed++;
     } else {
         results.tests.push({ 
-            name: 'Supabase Client', 
+            name: 'Supabase Client v5.4', 
             passed: false,
-            message: 'Cliente Supabase não disponível'
+            message: 'Cliente Supabase não disponível v5.4',
+            timestamp: new Date().toISOString()
         });
-        logToPanel('⚠️  Supabase Client não disponível (pode ser normal em fallback)', 'warning');
+        logToPanel('⚠️  Supabase Client não disponível (pode ser normal em fallback) v5.4', 'warning');
     }
     results.total++;
     
-    logToPanel('🔍 Executando novo teste de compatibilidade de módulos...', 'debug');
+    logToPanel('🔍 Executando novo teste de compatibilidade de módulos v5.4...', 'debug');
     try {
         const compatibilityResults = window.testModuleCompatibility();
         
@@ -4070,45 +4775,74 @@ async function testMediaUnifiedComplete() {
         const compatibilityPassed = compatibilityScore >= 0.8;
         
         results.tests.push({
-            name: 'Teste de compatibilidade de módulos',
+            name: 'Teste de compatibilidade de módulos v5.4',
             passed: compatibilityPassed,
-            message: `Compatibilidade: ${compatibilityResults.passed}/${compatibilityResults.total} testes passaram (${Math.round(compatibilityScore * 100)}%)`
+            message: `Compatibilidade: ${compatibilityResults.passed}/${compatibilityResults.total} testes passaram (${Math.round(compatibilityScore * 100)}%) v5.4`,
+            timestamp: new Date().toISOString()
         });
         
         if (compatibilityPassed) {
-            logToPanel(`✅ Compatibilidade OK: ${compatibilityResults.passed}/${compatibilityResults.total} testes`, 'success');
+            logToPanel(`✅ Compatibilidade OK: ${compatibilityResults.passed}/${compatibilityResults.total} testes v5.4`, 'success');
             results.passed++;
         } else {
-            logToPanel(`⚠️ Compatibilidade: ${compatibilityResults.passed}/${compatibilityResults.total} testes passaram`, 'warning');
+            logToPanel(`⚠️ Compatibilidade: ${compatibilityResults.passed}/${compatibilityResults.total} testes passaram v5.4`, 'warning');
             results.failed++;
         }
         results.total++;
     } catch (error) {
         results.tests.push({
-            name: 'Teste de compatibilidade de módulos',
+            name: 'Teste de compatibilidade de módulos v5.4',
             passed: false,
-            message: `Erro: ${error.message}`
+            message: `Erro: ${error.message} v5.4`,
+            timestamp: new Date().toISOString()
         });
-        logToPanel(`❌ Erro no teste de compatibilidade: ${error.message}`, 'error');
+        logToPanel(`❌ Erro no teste de compatibilidade: ${error.message} v5.4`, 'error');
         results.failed++;
         results.total++;
     }
+    
+    // Testar funcionalidades PDF específicas v5.4
+    logToPanel('🔍 Testando funcionalidades PDF específicas v5.4...', 'pdf-check');
+    
+    const pdfSpecificTests = [
+        { name: 'Função testPdfSystem v5.4', check: () => typeof window.testPdfSystem === 'function' },
+        { name: 'Função interactivePdfTest v5.4', check: () => typeof window.interactivePdfTest === 'function' },
+        { name: 'Função diagnosePdfIconProblem v5.4', check: () => typeof window.diagnosePdfIconProblem === 'function' },
+        { name: 'Função runPdfCompatibilityCheck v5.4', check: () => typeof window.runPdfCompatibilityCheck === 'function' }
+    ];
+    
+    pdfSpecificTests.forEach(test => {
+        const passed = test.check();
+        results.tests.push({
+            name: test.name,
+            passed,
+            message: passed ? 'Disponível v5.4' : 'Não disponível v5.4',
+            timestamp: new Date().toISOString()
+        });
+        
+        logToPanel(`${passed ? '✅' : '❌'} ${test.name}`, passed ? 'success' : 'warning');
+        if (passed) results.passed++;
+        else results.failed++;
+        results.total++;
+    });
     
     currentTestResults = results;
     return results;
 }
 
-/* ================== DIAGNÓSTICO MOBILE PDF ================== */
+/* ================== DIAGNÓSTICO MOBILE PDF v5.4 ================== */
 window.diagnosePdfModalMobile = function() {
     const results = {
         deviceInfo: {},
         modalAnalysis: {},
         cssAnalysis: {},
         layoutIssues: [],
-        recommendations: []
+        recommendations: [],
+        version: '5.4',
+        timestamp: new Date().toISOString()
     };
     
-    console.group('🔍 DIAGNÓSTICO DO MODAL PDF EM MOBILE');
+    console.group('🔍 DIAGNÓSTICO DO MODAL PDF EM MOBILE v5.4');
     
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const isTablet = /iPad|Tablet|Kindle|Samsung Tablet/i.test(navigator.userAgent);
@@ -4121,17 +4855,18 @@ window.diagnosePdfModalMobile = function() {
             height: window.innerHeight,
             pixelRatio: window.devicePixelRatio
         },
-        touchSupport: 'ontouchstart' in window
+        touchSupport: 'ontouchstart' in window,
+        timestamp: new Date().toISOString()
     };
     
-    console.log('📱 Dispositivo:', results.deviceInfo.type);
+    console.log('📱 Dispositivo v5.4:', results.deviceInfo.type);
     console.log('📏 Viewport:', window.innerWidth, 'x', window.innerHeight);
     console.log('👆 Touch:', results.deviceInfo.touchSupport);
     
     const pdfModal = document.getElementById('pdfModal');
     results.modalAnalysis.exists = !!pdfModal;
     
-    console.log('✅ Modal PDF existe?', results.modalAnalysis.exists);
+    console.log('✅ Modal PDF existe? v5.4', results.modalAnalysis.exists);
     
     if (pdfModal) {
         const computedStyle = window.getComputedStyle(pdfModal);
@@ -4145,10 +4880,11 @@ window.diagnosePdfModalMobile = function() {
             padding: computedStyle.padding,
             margin: computedStyle.margin,
             zIndex: computedStyle.zIndex,
-            overflow: computedStyle.overflow
+            overflow: computedStyle.overflow,
+            timestamp: new Date().toISOString()
         };
         
-        console.log('🎨 Estilo do modal:');
+        console.log('🎨 Estilo do modal v5.4:');
         Object.entries(results.modalAnalysis.style).forEach(([key, value]) => {
             console.log(`- ${key}:`, value);
         });
@@ -4156,7 +4892,8 @@ window.diagnosePdfModalMobile = function() {
         const modalContent = pdfModal.querySelector('.pdf-modal-content');
         results.modalAnalysis.content = {
             hasContentDiv: !!modalContent,
-            contentStyle: {}
+            contentStyle: {},
+            timestamp: new Date().toISOString()
         };
         
         if (modalContent) {
@@ -4167,10 +4904,11 @@ window.diagnosePdfModalMobile = function() {
                 padding: contentStyle.padding,
                 margin: contentStyle.margin,
                 backgroundColor: contentStyle.backgroundColor,
-                borderRadius: contentStyle.borderRadius
+                borderRadius: contentStyle.borderRadius,
+                timestamp: new Date().toISOString()
             };
             
-            console.log('📦 Estilo do conteúdo:');
+            console.log('📦 Estilo do conteúdo v5.4:');
             Object.entries(results.modalAnalysis.content.contentStyle).forEach(([key, value]) => {
                 console.log(`- ${key}:`, value);
             });
@@ -4179,10 +4917,11 @@ window.diagnosePdfModalMobile = function() {
         const passwordInput = document.getElementById('pdfPassword');
         results.modalAnalysis.passwordField = {
             exists: !!passwordInput,
-            style: {}
+            style: {},
+            timestamp: new Date().toISOString()
         };
         
-        console.log('🔐 Campo de senha:', passwordInput ? 'EXISTE' : 'NÃO EXISTE');
+        console.log('🔐 Campo de senha v5.4:', passwordInput ? 'EXISTE' : 'NÃO EXISTE');
         if (passwordInput) {
             const passwordStyle = window.getComputedStyle(passwordInput);
             results.modalAnalysis.passwordField.style = {
@@ -4190,7 +4929,8 @@ window.diagnosePdfModalMobile = function() {
                 width: passwordStyle.width,
                 visibility: passwordStyle.visibility,
                 opacity: passwordStyle.opacity,
-                position: passwordStyle.position
+                position: passwordStyle.position,
+                timestamp: new Date().toISOString()
             };
             
             Object.entries(results.modalAnalysis.passwordField.style).forEach(([key, value]) => {
@@ -4202,7 +4942,7 @@ window.diagnosePdfModalMobile = function() {
                                       pdfModal.style.display === 'block' ||
                                       getComputedStyle(pdfModal).display !== 'none';
         
-        console.log('👁️ Modal visível?', results.modalAnalysis.visible);
+        console.log('👁️ Modal visível? v5.4', results.modalAnalysis.visible);
         
         if (results.modalAnalysis.visible) {
             const rect = pdfModal.getBoundingClientRect();
@@ -4212,22 +4952,23 @@ window.diagnosePdfModalMobile = function() {
                 bottom: rect.bottom,
                 left: rect.left,
                 width: rect.width,
-                height: rect.height
+                height: rect.height,
+                timestamp: new Date().toISOString()
             };
             
-            console.log('📐 Bounding Box:', rect);
+            console.log('📐 Bounding Box v5.4:', rect);
             
             if (rect.width > window.innerWidth) {
-                results.layoutIssues.push('Modal mais largo que a viewport');
+                results.layoutIssues.push('Modal mais largo que a viewport v5.4');
             }
             if (rect.height > window.innerHeight) {
-                results.layoutIssues.push('Modal mais alto que a viewport');
+                results.layoutIssues.push('Modal mais alto que a viewport v5.4');
             }
             if (rect.left < 0 || rect.right > window.innerWidth) {
-                results.layoutIssues.push('Modal fora da viewport horizontalmente');
+                results.layoutIssues.push('Modal fora da viewport horizontalmente v5.4');
             }
             if (rect.top < 0 || rect.bottom > window.innerHeight) {
-                results.layoutIssues.push('Modal fora da viewport verticalmente');
+                results.layoutIssues.push('Modal fora da viewport verticalmente v5.4');
             }
         }
     }
@@ -4238,14 +4979,16 @@ window.diagnosePdfModalMobile = function() {
         sheets: allStyles.map(ss => ({
             href: ss.href || 'inline',
             disabled: ss.disabled,
-            rulesCount: 0
+            rulesCount: 0,
+            timestamp: new Date().toISOString()
         })).slice(0, 10),
         galleryCss: !!allStyles.find(ss => ss.href && ss.href.includes('gallery.css')),
         adminCss: !!allStyles.find(ss => ss.href && ss.href.includes('admin.css')),
-        pdfCss: !!allStyles.find(ss => ss.href && ss.href.includes('pdf') && ss.href.includes('.css'))
+        pdfCss: !!allStyles.find(ss => ss.href && ss.href.includes('pdf') && ss.href.includes('.css')),
+        timestamp: new Date().toISOString()
     };
     
-    console.log('🎨 CSS Carregado:');
+    console.log('🎨 CSS Carregado v5.4:');
     console.log('- Total sheets:', results.cssAnalysis.totalSheets);
     console.log('- gallery.css:', results.cssAnalysis.galleryCss);
     console.log('- admin.css:', results.cssAnalysis.adminCss);
@@ -4253,31 +4996,32 @@ window.diagnosePdfModalMobile = function() {
     
     if (isMobile || isTablet) {
         if (!results.modalAnalysis.exists) {
-            results.recommendations.push('Criar modal PDF específico para mobile');
+            results.recommendations.push('Criar modal PDF específico para mobile v5.4');
         } else {
             const modalWidth = parseInt(results.modalAnalysis.style.width) || 0;
             const viewportWidth = window.innerWidth;
             
             if (modalWidth > viewportWidth * 0.95) {
-                results.recommendations.push('Reduzir largura do modal para 95% da viewport');
+                results.recommendations.push('Reduzir largura do modal para 95% da viewport v5.4');
             }
             
             if (!results.modalAnalysis.style.maxWidth || results.modalAnalysis.style.maxWidth === 'none') {
-                results.recommendations.push('Definir max-width no modal (ex: 95vw)');
+                results.recommendations.push('Definir max-width no modal (ex: 95vw) v5.4');
             }
             
             if (results.modalAnalysis.passwordField.exists && 
                 results.modalAnalysis.passwordField.style.width === '100%') {
-                results.recommendations.push('Reduzir largura do campo de senha para 90% em mobile');
+                results.recommendations.push('Reduzir largura do campo de senha para 90% em mobile v5.4');
             }
             
             if (!results.modalAnalysis.content.hasContentDiv) {
-                results.recommendations.push('Adicionar div .pdf-modal-content para melhor controle de layout');
+                results.recommendations.push('Adicionar div .pdf-modal-content para melhor controle de layout v5.4');
             }
         }
         
-        results.recommendations.push('Adicionar @media queries específicas para mobile');
-        results.recommendations.push('Considerar modal full-screen em dispositivos muito pequenos');
+        results.recommendations.push('Adicionar @media queries específicas para mobile v5.4');
+        results.recommendations.push('Considerar modal full-screen em dispositivos muito pequenos v5.4');
+        results.recommendations.push('Usar console.diag.pdf.interactive() para testes em mobile v5.4');
     }
     
     console.groupEnd();
@@ -4285,7 +5029,7 @@ window.diagnosePdfModalMobile = function() {
     return results;
 };
 
-/* ================== RELATÓRIOS ================== */
+/* ================== RELATÓRIOS v5.4 ================== */
 function updateOverview(data) {
     const overviewContent = document.getElementById('overview-content');
     if (!overviewContent) return;
@@ -4301,90 +5045,100 @@ function updateOverview(data) {
     
     let html = `
         <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 10px;">📊 RESUMO DO SISTEMA v5.3</h3>
+            <h3 style="color: #00ff9c; margin-bottom: 10px;">📊 RESUMO DO SISTEMA v5.4</h3>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-                <div style="background: #111; padding: 15px; border-radius: 6px;">
+                <div style="background: rgba(0, 255, 156, 0.1); padding: 15px; border-radius: 6px; border: 1px solid rgba(0, 255, 156, 0.3);">
                     <div style="color: #888; font-size: 11px;">SCRIPTS</div>
                     <div style="font-size: 24px; color: #00ff9c;">${scripts.length}</div>
                 </div>
-                <div style="background: #111; padding: 15px; border-radius: 6px;">
+                <div style="background: rgba(0, 255, 156, 0.1); padding: 15px; border-radius: 6px; border: 1px solid rgba(0, 255, 156, 0.3);">
                     <div style="color: #888; font-size: 11px;">SISTEMAS ATIVOS</div>
                     <div style="font-size: 24px; color: #00ff9c;">
                         ${Object.values(systems).filter(Boolean).length}/${Object.keys(systems).length}
                     </div>
                 </div>
-                <div style="background: #111; padding: 15px; border-radius: 6px;">
+                <div style="background: rgba(0, 255, 156, 0.1); padding: 15px; border-radius: 6px; border: 1px solid rgba(0, 255, 156, 0.3);">
                     <div style="color: #888; font-size: 11px;">HEALTH SCORE</div>
                     <div style="font-size: 24px; color: #00ff9c;" id="health-score">--</div>
                 </div>
+            </div>
+            <div style="font-size: 10px; color: #888; text-align: center; margin-top: 5px;">
+                v5.4 - Diagnóstico completo do sistema PDF
             </div>
         </div>
         
         <div style="margin-bottom: 20px;">
             <div style="text-align: center; margin: 20px 0;">
-                <button id="verify-migration-btn" style="
+                <button id="verify-migration-btn-v5-4" style="
                     background: linear-gradient(45deg, #ff00ff, #0088cc); 
                     color: white; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                    font-weight: bold; font-size: 14px; margin: 10px;">
-                    🚀 VERIFICAÇÃO DE MIGRAÇÃO
+                    font-weight: bold; font-size: 14px; margin: 10px; transition: all 0.2s;">
+                    🚀 VERIFICAÇÃO DE MIGRAÇÃO v5.4
                 </button>
-                <button id="test-compatibility-btn" style="
+                <button id="test-compatibility-btn-v5-4" style="
                     background: linear-gradient(45deg, #00ff9c, #0088cc); 
                     color: #000; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                    font-weight: bold; font-size: 14px; margin: 10px;">
-                    🔍 TESTE DE COMPATIBILIDADE
+                    font-weight: bold; font-size: 14px; margin: 10px; transition: all 0.2s;">
+                    🔍 TESTE DE COMPATIBILIDADE v5.4
                 </button>
-                <button id="auto-migration-check-btn" style="
+                <button id="auto-migration-check-btn-v5-4" style="
                     background: linear-gradient(45deg, #0088cc, #00ff9c); 
                     color: #000; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                    font-weight: bold; font-size: 14px; margin: 10px;">
-                    🔄 VERIFICAÇÃO AUTOMÁTICA
+                    font-weight: bold; font-size: 14px; margin: 10px; transition: all 0.2s;">
+                    🔄 VERIFICAÇÃO AUTOMÁTICA v5.4
                 </button>
-                <button id="analyze-placeholders-btn" style="
+                <button id="analyze-placeholders-btn-v5-4" style="
                     background: linear-gradient(45deg, #ff5500, #ffaa00); 
                     color: #000; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                    font-weight: bold; font-size: 14px; margin: 10px;">
-                    🗑️ ANALISAR ARQUIVOS PARA EXCLUSÃO
+                    font-weight: bold; font-size: 14px; margin: 10px; transition: all 0.2s;">
+                    🗑️ ANALISAR ARQUIVOS PARA EXCLUSÃO v5.4
                 </button>
-                <button id="analyze-references-btn" style="
+                <button id="analyze-references-btn-v5-4" style="
                     background: linear-gradient(45deg, #ff8800, #ffaa00); 
                     color: #000; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                    font-weight: bold; font-size: 14px; margin: 10px;">
-                    🔗 ANALISAR REFERÊNCIAS (404s)
+                    font-weight: bold; font-size: 14px; margin: 10px; transition: all 0.2s;">
+                    🔗 ANALISAR REFERÊNCIAS (404s) v5.4
                 </button>
-                <button id="run-pdf-check-btn" style="
+                <button id="run-pdf-check-btn-v5-4" style="
                     background: linear-gradient(45deg, #00aaff, #0088cc); 
                     color: white; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                    font-weight: bold; font-size: 14px; margin: 10px;">
-                    📄 VERIFICAÇÃO PDF
+                    font-weight: bold; font-size: 14px; margin: 10px; transition: all 0.2s;">
+                    📄 VERIFICAÇÃO PDF v5.4
                 </button>
-                <button id="diagnose-pdf-icon-btn" style="
+                <button id="diagnose-pdf-icon-btn-v5-4" style="
                     background: linear-gradient(45deg, #ff5500, #ffaa00); 
                     color: #000; border: none;
                     padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                    font-weight: bold; font-size: 14px; margin: 10px;">
-                    🔍 DIAGNÓSTICO ÍCONE PDF
+                    font-weight: bold; font-size: 14px; margin: 10px; transition: all 0.2s;">
+                    🔍 DIAGNÓSTICO ÍCONE PDF v5.4
+                </button>
+                <button id="interactive-pdf-test-btn-v5-4" style="
+                    background: linear-gradient(45deg, #00aaff, #0088cc); 
+                    color: white; border: none;
+                    padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                    font-weight: bold; font-size: 14px; margin: 10px; transition: all 0.2s;">
+                    🎮 TESTE INTERATIVO PDF v5.4
                 </button>
                 <div style="font-size: 11px; color: #888; margin-top: 5px;">
-                    v5.3: Inclui diagnóstico de ícone PDF e correções de compatibilidade
+                    v5.4: Inclui diagnóstico de ícone PDF e correções de compatibilidade
                 </div>
             </div>
         </div>
         
         <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 10px;">🔧 SISTEMAS PRINCIPAIS</h3>
+            <h3 style="color: #00ff9c; margin-bottom: 10px;">🔧 SISTEMAS PRINCIPAIS v5.4</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
     `;
     
     Object.entries(systems).forEach(([system, active]) => {
         html += `
-            <div style="background: #111; padding: 10px; border-radius: 4px; border-left: 3px solid ${active ? '#00ff9c' : '#ff5555'};">
+            <div style="background: rgba(0, 255, 156, 0.1); padding: 10px; border-radius: 4px; border-left: 3px solid ${active ? '#00ff9c' : '#ff5555'}; border: 1px solid ${active ? 'rgba(0, 255, 156, 0.3)' : 'rgba(255, 0, 0, 0.3)'};">
                 <div style="display: flex; justify-content: space-between;">
                     <span>${system}</span>
                     <span style="color: ${active ? '#00ff9c' : '#ff5555'}">
@@ -4400,14 +5154,14 @@ function updateOverview(data) {
         </div>
         
         <div>
-            <h3 style="color: #00ff9c; margin-bottom: 10px;">🎯 ELEMENTOS CRÍTICOS</h3>
+            <h3 style="color: #00ff9c; margin-bottom: 10px;">🎯 ELEMENTOS CRÍTICOS v5.4</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
     `;
     
     Object.entries(criticalElements).forEach(([element, domElement]) => {
         const exists = !!domElement;
         html += `
-            <div style="background: #111; padding: 10px; border-radius: 4px; border-left: 3px solid ${exists ? '#00ff9c' : '#ff5555'};">
+            <div style="background: rgba(0, 255, 156, 0.1); padding: 10px; border-radius: 4px; border-left: 3px solid ${exists ? '#00ff9c' : '#ff5555'}; border: 1px solid ${exists ? 'rgba(0, 255, 156, 0.3)' : 'rgba(255, 0, 0, 0.3)'};">
                 <div style="display: flex; justify-content: space-between;">
                     <span>${element}</span>
                     <span style="color: ${exists ? '#00ff9c' : '#ff5555'}">
@@ -4426,54 +5180,55 @@ function updateOverview(data) {
     
     overviewContent.innerHTML = html;
     
-    document.getElementById('verify-migration-btn')?.addEventListener('click', () => {
+    document.getElementById('verify-migration-btn-v5-4')?.addEventListener('click', () => {
         window.verifyMediaMigration();
     });
     
-    document.getElementById('test-compatibility-btn')?.addEventListener('click', () => {
+    document.getElementById('test-compatibility-btn-v5-4')?.addEventListener('click', () => {
         window.testModuleCompatibility();
     });
     
-    document.getElementById('auto-migration-check-btn')?.addEventListener('click', () => {
-        logToPanel('🔄 Iniciando simulação de carregamento condicional...', 'debug');
-        logToPanel('⏳ Aguardando 2 segundos (simulação de carregamento)...', 'info');
+    document.getElementById('auto-migration-check-btn-v5-4')?.addEventListener('click', () => {
+        logToPanel('🔄 Iniciando simulação de carregamento condicional v5.4...', 'debug');
+        logToPanel('⏳ Aguardando 2 segundos (simulação de carregamento) v5.4...', 'info');
         
         setTimeout(() => {
             if (typeof window.autoValidateMigration === 'function') {
                 window.autoValidateMigration();
             } else {
-                logToPanel('❌ Função autoValidateMigration não encontrada', 'error');
+                logToPanel('❌ Função autoValidateMigration não encontrada v5.4', 'error');
             }
         }, 2000);
     });
     
-    document.getElementById('analyze-placeholders-btn')?.addEventListener('click', () => {
+    document.getElementById('analyze-placeholders-btn-v5-4')?.addEventListener('click', () => {
         if (typeof window.analyzePlaceholders === 'function') {
             window.analyzePlaceholders();
         } else {
-            logToPanel('❌ Função analyzePlaceholders não encontrada', 'error');
+            logToPanel('❌ Função analyzePlaceholders não encontrada v5.4', 'error');
         }
     });
     
-    document.getElementById('analyze-references-btn')?.addEventListener('click', () => {
+    document.getElementById('analyze-references-btn-v5-4')?.addEventListener('click', () => {
         if (typeof window.analyzeBrokenReferences === 'function') {
             window.analyzeBrokenReferences();
         } else {
-            logToPanel('❌ Função analyzeBrokenReferences não encontrada', 'error');
+            logToPanel('❌ Função analyzeBrokenReferences não encontrada v5.4', 'error');
         }
     });
     
-    document.getElementById('run-pdf-check-btn')?.addEventListener('click', () => {
+    document.getElementById('run-pdf-check-btn-v5-4')?.addEventListener('click', () => {
         if (typeof window.runPdfCompatibilityCheck === 'function') {
             window.runPdfCompatibilityCheck();
         } else {
             // Executar verificação básica
-            console.log('🔍 Executando verificação PDF básica...');
+            console.log('🔍 Executando verificação PDF básica v5.4...');
             const tests = {
                 'PdfSystem': !!window.PdfSystem,
                 'Modal': !!document.getElementById('pdfModal'),
                 'Campo senha': !!document.getElementById('pdfPassword'),
-                'Função processAndSavePdfs': typeof window.processAndSavePdfs === 'function'
+                'Função processAndSavePdfs': typeof window.processAndSavePdfs === 'function',
+                'Função testPdfSystem': typeof window.testPdfSystem === 'function'
             };
             
             let passed = 0;
@@ -4483,15 +5238,23 @@ function updateOverview(data) {
             });
             
             const score = Math.round((passed / Object.keys(tests).length) * 100);
-            console.log(`📊 Score PDF básico: ${passed}/${Object.keys(tests).length} (${score}%)`);
+            console.log(`📊 Score PDF básico v5.4: ${passed}/${Object.keys(tests).length} (${score}%)`);
         }
     });
     
-    document.getElementById('diagnose-pdf-icon-btn')?.addEventListener('click', () => {
+    document.getElementById('diagnose-pdf-icon-btn-v5-4')?.addEventListener('click', () => {
         if (typeof window.diagnosePdfIconProblem === 'function') {
             window.diagnosePdfIconProblem();
         } else {
-            logToPanel('❌ Função diagnosePdfIconProblem não encontrada', 'error');
+            logToPanel('❌ Função diagnosePdfIconProblem não encontrada v5.4', 'error');
+        }
+    });
+    
+    document.getElementById('interactive-pdf-test-btn-v5-4')?.addEventListener('click', () => {
+        if (typeof window.interactivePdfTest === 'function') {
+            window.interactivePdfTest();
+        } else {
+            logToPanel('❌ Função interactivePdfTest não encontrada v5.4', 'error');
         }
     });
 }
@@ -4504,109 +5267,122 @@ function updateTestsTab(testResults) {
         testsContent.innerHTML = `
             <div style="text-align: center; padding: 40px; color: #888;">
                 <div style="font-size: 48px; margin-bottom: 20px;">🧪</div>
-                <div>Execute os testes para ver os resultados</div>
-                <button id="run-tests-btn" style="
+                <div>Execute os testes para ver os resultados v5.4</div>
+                <button id="run-tests-btn-v5-4" style="
                     margin-top: 20px; background: #00ff9c; color: #000;
                     border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px;
-                    cursor: pointer; font-weight: bold;">
-                    🧪 EXECUTAR TESTES COMPLETOS
+                    cursor: pointer; font-weight: bold; transition: all 0.2s;">
+                    🧪 EXECUTAR TESTES COMPLETOS v5.4
                 </button>
                 <div style="margin-top: 15px;">
-                    <button id="run-compatibility-test-btn" style="
+                    <button id="run-compatibility-test-btn-v5-4" style="
                         background: linear-gradient(45deg, #00ff9c, #0088cc); 
                         color: #000; border: none;
                         padding: 10px 20px; cursor: pointer; border-radius: 4px;
-                        font-weight: bold; margin: 5px;">
-                        🔍 TESTE DE COMPATIBILIDADE
+                        font-weight: bold; margin: 5px; transition: all 0.2s;">
+                        🔍 TESTE DE COMPATIBILIDADE v5.4
                     </button>
-                    <button id="run-migration-test-btn" style="
+                    <button id="run-migration-test-btn-v5-4" style="
                         background: linear-gradient(45deg, #ff00ff, #0088cc); 
                         color: white; border: none;
                         padding: 10px 20px; cursor: pointer; border-radius: 4px;
-                        font-weight: bold; margin: 5px;">
-                        🚀 VERIFICAÇÃO DE MIGRAÇÃO
+                        font-weight: bold; margin: 5px; transition: all 0.2s;">
+                        🚀 VERIFICAÇÃO DE MIGRAÇÃO v5.4
                     </button>
-                    <button id="run-auto-check-btn" style="
+                    <button id="run-auto-check-btn-v5-4" style="
                         background: linear-gradient(45deg, #0088cc, #00ff9c); 
                         color: #000; border: none;
                         padding: 10px 20px; cursor: pointer; border-radius: 4px;
-                        font-weight: bold; margin: 5px;">
-                        🔄 VERIFICAÇÃO AUTOMÁTICA
+                        font-weight: bold; margin: 5px; transition: all 0.2s;">
+                        🔄 VERIFICAÇÃO AUTOMÁTICA v5.4
                     </button>
-                    <button id="run-placeholder-analysis-btn" style="
+                    <button id="run-placeholder-analysis-btn-v5-4" style="
                         background: linear-gradient(45deg, #ff5500, #ffaa00); 
                         color: #000; border: none;
                         padding: 10px 20px; cursor: pointer; border-radius: 4px;
-                        font-weight: bold; margin: 5px;">
-                        🗑️ ANÁLISE DE PLACEHOLDERS
+                        font-weight: bold; margin: 5px; transition: all 0.2s;">
+                        🗑️ ANÁLISE DE PLACEHOLDERS v5.4
                     </button>
-                    <button id="run-reference-check-btn" style="
+                    <button id="run-reference-check-btn-v5-4" style="
                         background: linear-gradient(45deg, #ff8800, #ffaa00); 
                         color: #000; border: none;
                         padding: 10px 20px; cursor: pointer; border-radius: 4px;
-                        font-weight: bold; margin: 5px;">
-                        🔗 VERIFICAÇÃO DE REFERÊNCIAS
+                        font-weight: bold; margin: 5px; transition: all 0.2s;">
+                        🔗 VERIFICAÇÃO DE REFERÊNCIAS v5.4
                     </button>
-                    <button id="run-pdf-check-btn" style="
+                    <button id="run-pdf-check-btn-v5-4" style="
                         background: linear-gradient(45deg, #00aaff, #0088cc); 
                         color: white; border: none;
                         padding: 10px 20px; cursor: pointer; border-radius: 4px;
-                        font-weight: bold; margin: 5px;">
-                        📄 VERIFICAÇÃO PDF
+                        font-weight: bold; margin: 5px; transition: all 0.2s;">
+                        📄 VERIFICAÇÃO PDF v5.4
                     </button>
-                    <button id="run-pdf-icon-diagnosis-btn" style="
+                    <button id="run-pdf-icon-diagnosis-btn-v5-4" style="
                         background: linear-gradient(45deg, #ff5500, #ffaa00); 
                         color: #000; border: none;
                         padding: 10px 20px; cursor: pointer; border-radius: 4px;
-                        font-weight: bold; margin: 5px;">
-                        🔍 DIAGNÓSTICO ÍCONE PDF
+                        font-weight: bold; margin: 5px; transition: all 0.2s;">
+                        🔍 DIAGNÓSTICO ÍCONE PDF v5.4
+                    </button>
+                    <button id="run-interactive-pdf-test-btn-v5-4" style="
+                        background: linear-gradient(45deg, #00aaff, #0088cc); 
+                        color: white; border: none;
+                        padding: 10px 20px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; margin: 5px; transition: all 0.2s;">
+                        🎮 TESTE INTERATIVO PDF v5.4
                     </button>
                 </div>
                 <div style="font-size: 11px; color: #888; margin-top: 10px;">
-                    v5.3: Inclui diagnóstico completo do ícone PDF na foto principal
+                    v5.4: Inclui diagnóstico completo do ícone PDF na foto principal
                 </div>
             </div>
         `;
         
-        document.getElementById('run-tests-btn')?.addEventListener('click', async () => {
+        document.getElementById('run-tests-btn-v5-4')?.addEventListener('click', async () => {
             await runCompleteDiagnosis();
         });
         
-        document.getElementById('run-compatibility-test-btn')?.addEventListener('click', () => {
+        document.getElementById('run-compatibility-test-btn-v5-4')?.addEventListener('click', () => {
             window.testModuleCompatibility();
         });
         
-        document.getElementById('run-migration-test-btn')?.addEventListener('click', () => {
+        document.getElementById('run-migration-test-btn-v5-4')?.addEventListener('click', () => {
             window.verifyMediaMigration();
         });
         
-        document.getElementById('run-auto-check-btn')?.addEventListener('click', () => {
+        document.getElementById('run-auto-check-btn-v5-4')?.addEventListener('click', () => {
             if (typeof window.autoValidateMigration === 'function') {
                 window.autoValidateMigration();
             }
         });
         
-        document.getElementById('run-placeholder-analysis-btn')?.addEventListener('click', () => {
+        document.getElementById('run-placeholder-analysis-btn-v5-4')?.addEventListener('click', () => {
             if (typeof window.analyzePlaceholders === 'function') {
                 window.analyzePlaceholders();
             }
         });
         
-        document.getElementById('run-reference-check-btn')?.addEventListener('click', () => {
+        document.getElementById('run-reference-check-btn-v5-4')?.addEventListener('click', () => {
             if (typeof window.analyzeBrokenReferences === 'function') {
                 window.analyzeBrokenReferences();
             }
         });
         
-        document.getElementById('run-pdf-check-btn')?.addEventListener('click', () => {
+        document.getElementById('run-pdf-check-btn-v5-4')?.addEventListener('click', () => {
             if (typeof window.runPdfCompatibilityCheck === 'function') {
                 window.runPdfCompatibilityCheck();
             }
         });
         
-        document.getElementById('run-pdf-icon-diagnosis-btn')?.addEventListener('click', () => {
+        document.getElementById('run-pdf-icon-diagnosis-btn-v5-4')?.addEventListener('click', () => {
             if (typeof window.diagnosePdfIconProblem === 'function') {
                 window.diagnosePdfIconProblem();
+            }
+        });
+        
+        document.getElementById('run-interactive-pdf-test-btn-v5-4')?.addEventListener('click', () => {
+            if (typeof window.interactivePdfTest === 'function') {
+                window.interactivePdfTest();
             }
         });
         
@@ -4620,12 +5396,12 @@ function updateTestsTab(testResults) {
     
     let html = `
         <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 15px;">🧪 RESULTADO DOS TESTES</h3>
+            <h3 style="color: #00ff9c; margin-bottom: 15px;">🧪 RESULTADO DOS TESTES v5.4</h3>
             
-            <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="background: rgba(0, 255, 156, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(0, 255, 156, 0.3);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <div>
-                        <div style="font-size: 11px; color: #888;">STATUS GERAL</div>
+                        <div style="font-size: 11px; color: #888;">STATUS GERAL v5.4</div>
                         <div style="font-size: 24px; color: ${percentage >= 80 ? '#00ff9c' : percentage >= 50 ? '#ffaa00' : '#ff5555'}">
                             ${percentage}%
                         </div>
@@ -4645,10 +5421,13 @@ function updateTestsTab(testResults) {
                 <div style="height: 10px; background: #333; border-radius: 5px; overflow: hidden;">
                     <div style="height: 100%; width: ${percentage}%; background: ${percentage >= 80 ? '#00ff9c' : percentage >= 50 ? '#ffaa00' : '#ff5555'};"></div>
                 </div>
+                <div style="font-size: 10px; color: #888; text-align: center; margin-top: 5px;">
+                    v${testResults.version || '5.4'}
+                </div>
             </div>
             
             <div>
-                <h4 style="color: #00ff9c; margin-bottom: 10px;">📋 DETALHES DOS TESTES</h4>
+                <h4 style="color: #00ff9c; margin-bottom: 10px;">📋 DETALHES DOS TESTES v5.4</h4>
                 <div style="max-height: 300px; overflow-y: auto;">
     `;
     
@@ -4657,21 +5436,26 @@ function updateTestsTab(testResults) {
         const isMigrationTest = test.name.includes('migração') || test.message?.includes('migração');
         const isWrapperTest = test.name.includes('wrapper');
         const isPdfIconTest = test.name.includes('PDF Icon') || test.name.includes('pdf icon');
+        const isPdfSpecificTest = test.name.includes('PDF') && !isPdfIconTest;
         
-        let backgroundColor = test.passed ? '#001a00' : '#1a0000';
+        let backgroundColor = test.passed ? 'rgba(0, 255, 156, 0.1)' : 'rgba(255, 0, 0, 0.1)';
         let borderColor = test.passed ? '#00ff9c' : '#ff5555';
         let emoji = test.passed ? '✅' : '❌';
         
         if (isCompatibilityTest) {
-            backgroundColor = test.passed ? '#001a1a' : '#1a0000';
+            backgroundColor = test.passed ? 'rgba(0, 136, 204, 0.1)' : 'rgba(255, 0, 0, 0.1)';
             borderColor = test.passed ? '#0088cc' : '#ff5555';
             emoji = test.passed ? '🔍' : '⚠️';
         } else if (isMigrationTest || isWrapperTest) {
-            backgroundColor = test.passed ? '#001a00' : '#1a0000';
+            backgroundColor = test.passed ? 'rgba(255, 0, 255, 0.1)' : 'rgba(255, 0, 0, 0.1)';
             borderColor = test.passed ? '#ff00ff' : '#ff5555';
             emoji = test.passed ? '🔗' : '❌';
         } else if (isPdfIconTest) {
-            backgroundColor = test.passed ? '#001a1a' : '#1a0000';
+            backgroundColor = test.passed ? 'rgba(0, 170, 255, 0.1)' : 'rgba(255, 0, 0, 0.1)';
+            borderColor = test.passed ? '#00aaff' : '#ff5555';
+            emoji = test.passed ? '📄' : '❌';
+        } else if (isPdfSpecificTest) {
+            backgroundColor = test.passed ? 'rgba(0, 170, 255, 0.1)' : 'rgba(255, 0, 0, 0.1)';
             borderColor = test.passed ? '#00aaff' : '#ff5555';
             emoji = test.passed ? '📄' : '❌';
         }
@@ -4681,6 +5465,7 @@ function updateTestsTab(testResults) {
                 background: ${backgroundColor};
                 padding: 12px; margin-bottom: 8px; border-radius: 4px;
                 border-left: 3px solid ${borderColor};
+                border: 1px solid ${borderColor.replace(')', ', 0.3)')};
                 display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <div style="font-weight: bold; color: ${borderColor};">
@@ -4699,98 +5484,111 @@ function updateTestsTab(testResults) {
         </div>
         
         <div style="text-align: center; margin-top: 20px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-            <button id="run-migration-test" style="
+            <button id="run-migration-test-v5-4" style="
                 background: linear-gradient(45deg, #ff00ff, #0088cc); 
                 color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold; margin: 5px;">
-                🚀 VERIFICAÇÃO MIGRAÇÃO
+                font-weight: bold; margin: 5px; transition: all 0.2s;">
+                🚀 VERIFICAÇÃO MIGRAÇÃO v5.4
             </button>
-            <button id="run-compatibility-test" style="
+            <button id="run-compatibility-test-v5-4" style="
                 background: linear-gradient(45deg, #00ff9c, #0088cc); 
                 color: #000; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold; margin: 5px;">
-                🔍 TESTE COMPATIBILIDADE
+                font-weight: bold; margin: 5px; transition: all 0.2s;">
+                🔍 TESTE COMPATIBILIDADE v5.4
             </button>
-            <button id="run-auto-check" style="
+            <button id="run-auto-check-v5-4" style="
                 background: linear-gradient(45deg, #0088cc, #00ff9c); 
                 color: #000; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold; margin: 5px;">
-                🔄 VERIFICAÇÃO AUTOMÁTICA
+                font-weight: bold; margin: 5px; transition: all 0.2s;">
+                🔄 VERIFICAÇÃO AUTOMÁTICA v5.4
             </button>
-            <button id="run-placeholder-analysis" style="
+            <button id="run-placeholder-analysis-v5-4" style="
                 background: linear-gradient(45deg, #ff5500, #ffaa00); 
                 color: #000; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold; margin: 5px;">
-                🗑️ ANÁLISE PLACEHOLDERS
+                font-weight: bold; margin: 5px; transition: all 0.2s;">
+                🗑️ ANÁLISE PLACEHOLDERS v5.4
             </button>
-            <button id="run-reference-check" style="
+            <button id="run-reference-check-v5-4" style="
                 background: linear-gradient(45deg, #ff8800, #ffaa00); 
                 color: #000; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold; margin: 5px;">
-                🔗 VERIFICAÇÃO REFERÊNCIAS
+                font-weight: bold; margin: 5px; transition: all 0.2s;">
+                🔗 VERIFICAÇÃO REFERÊNCIAS v5.4
             </button>
-            <button id="run-pdf-check" style="
+            <button id="run-pdf-check-v5-4" style="
                 background: linear-gradient(45deg, #00aaff, #0088cc); 
                 color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold; margin: 5px;">
-                📄 VERIFICAÇÃO PDF
+                font-weight: bold; margin: 5px; transition: all 0.2s;">
+                📄 VERIFICAÇÃO PDF v5.4
             </button>
-            <button id="run-pdf-icon-diagnosis" style="
+            <button id="run-pdf-icon-diagnosis-v5-4" style="
                 background: linear-gradient(45deg, #ff5500, #ffaa00); 
                 color: #000; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 6px;
-                font-weight: bold; margin: 5px;">
-                🔍 DIAGNÓSTICO ÍCONE PDF
+                font-weight: bold; margin: 5px; transition: all 0.2s;">
+                🔍 DIAGNÓSTICO ÍCONE PDF v5.4
+            </button>
+            <button id="run-interactive-pdf-test-v5-4" style="
+                background: linear-gradient(45deg, #00aaff, #0088cc); 
+                color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 6px;
+                font-weight: bold; margin: 5px; transition: all 0.2s;">
+                🎮 TESTE INTERATIVO PDF v5.4
             </button>
         </div>
         <div style="font-size: 11px; color: #888; text-align: center; margin-top: 10px;">
-            v5.3: Diagnóstico completo do ícone PDF na foto principal
+            v5.4: Diagnóstico completo do ícone PDF na foto principal
         </div>
     `;
     
     testsContent.innerHTML = html;
     
-    document.getElementById('run-migration-test')?.addEventListener('click', () => {
+    document.getElementById('run-migration-test-v5-4')?.addEventListener('click', () => {
         window.verifyMediaMigration();
     });
     
-    document.getElementById('run-compatibility-test')?.addEventListener('click', () => {
+    document.getElementById('run-compatibility-test-v5-4')?.addEventListener('click', () => {
         window.testModuleCompatibility();
     });
     
-    document.getElementById('run-auto-check')?.addEventListener('click', () => {
+    document.getElementById('run-auto-check-v5-4')?.addEventListener('click', () => {
         if (typeof window.autoValidateMigration === 'function') {
             window.autoValidateMigration();
         }
     });
     
-    document.getElementById('run-placeholder-analysis')?.addEventListener('click', () => {
+    document.getElementById('run-placeholder-analysis-v5-4')?.addEventListener('click', () => {
         if (typeof window.analyzePlaceholders === 'function') {
             window.analyzePlaceholders();
         }
     });
     
-    document.getElementById('run-reference-check')?.addEventListener('click', () => {
+    document.getElementById('run-reference-check-v5-4')?.addEventListener('click', () => {
         if (typeof window.analyzeBrokenReferences === 'function') {
             window.analyzeBrokenReferences();
         }
     });
     
-    document.getElementById('run-pdf-check')?.addEventListener('click', () => {
+    document.getElementById('run-pdf-check-v5-4')?.addEventListener('click', () => {
         if (typeof window.runPdfCompatibilityCheck === 'function') {
             window.runPdfCompatibilityCheck();
         }
     });
     
-    document.getElementById('run-pdf-icon-diagnosis')?.addEventListener('click', () => {
+    document.getElementById('run-pdf-icon-diagnosis-v5-4')?.addEventListener('click', () => {
         if (typeof window.diagnosePdfIconProblem === 'function') {
             window.diagnosePdfIconProblem();
+        }
+    });
+    
+    document.getElementById('run-interactive-pdf-test-v5-4')?.addEventListener('click', () => {
+        if (typeof window.interactivePdfTest === 'function') {
+            window.interactivePdfTest();
         }
     });
     
@@ -4798,31 +5596,32 @@ function updateTestsTab(testResults) {
         const migrationSection = document.createElement('div');
         migrationSection.style.marginTop = '20px';
         migrationSection.style.padding = '15px';
-        migrationSection.style.background = '#001a1a';
+        migrationSection.style.background = 'rgba(0, 136, 204, 0.1)';
         migrationSection.style.borderRadius = '6px';
+        migrationSection.style.border = '1px solid rgba(0, 136, 204, 0.3)';
         migrationSection.innerHTML = `
-            <h4 style="color: #ff00ff; margin-bottom: 10px;">📋 ÚLTIMA VERIFICAÇÃO AUTOMÁTICA</h4>
+            <h4 style="color: #ff00ff; margin-bottom: 10px;">📋 ÚLTIMA VERIFICAÇÃO AUTOMÁTICA v5.4</h4>
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <div style="color: ${lastMigrationReport.migrationReady ? '#00ff9c' : '#ff5555'}; font-weight: bold;">
-                        ${lastMigrationReport.migrationReady ? '✅ PRONTO PARA MIGRAÇÃO' : '❌ NÃO PRONTO'}
+                        ${lastMigrationReport.migrationReady ? '✅ PRONTO PARA MIGRAÇÃO' : '❌ NÃO PRONTO'} v5.4
                     </div>
                     <div style="font-size: 11px; color: #888;">
                         Pontuação: ${lastMigrationReport.compatibilityScore}% (${lastMigrationReport.passed}/${lastMigrationReport.total})
                     </div>
                 </div>
-                <button id="view-last-report" style="
+                <button id="view-last-report-v5-4" style="
                     background: #555; color: white; border: none;
                     padding: 6px 12px; cursor: pointer; border-radius: 4px;
-                    font-size: 11px;">
-                    VER DETALHES
+                    font-size: 11px; transition: all 0.2s;">
+                    VER DETALHES v5.4
                 </button>
             </div>
         `;
         
         testsContent.appendChild(migrationSection);
         
-        document.getElementById('view-last-report')?.addEventListener('click', () => {
+        document.getElementById('view-last-report-v5-4')?.addEventListener('click', () => {
             updateMigrationTab(lastMigrationReport);
         });
     }
@@ -4834,10 +5633,10 @@ function updatePdfMobileTab(results) {
     
     let html = `
         <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 15px;">📱 DIAGNÓSTICO MOBILE PDF</h3>
+            <h3 style="color: #00ff9c; margin-bottom: 15px;">📱 DIAGNÓSTICO MOBILE PDF v5.4</h3>
             
-            <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                <h4 style="color: #00ff9c; margin-bottom: 10px;">📱 INFORMAÇÕES DO DISPOSITIVO</h4>
+            <div style="background: rgba(0, 136, 204, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(0, 136, 204, 0.3);">
+                <h4 style="color: #00ff9c; margin-bottom: 10px;">📱 INFORMAÇÕES DO DISPOSITIVO v5.4</h4>
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
                     <div>
                         <div style="color: #888; font-size: 11px;">TIPO</div>
@@ -4864,18 +5663,21 @@ function updatePdfMobileTab(results) {
                         </div>
                     </div>
                 </div>
+                <div style="font-size: 10px; color: #888; text-align: center; margin-top: 10px;">
+                    v${results.version || '5.4'}
+                </div>
             </div>
             
-            <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                <h4 style="color: #00ff9c; margin-bottom: 10px;">🎯 ANÁLISE DO MODAL PDF</h4>
+            <div style="background: rgba(0, 136, 204, 0.1); padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(0, 136, 204, 0.3);">
+                <h4 style="color: #00ff9c; margin-bottom: 10px;">🎯 ANÁLISE DO MODAL PDF v5.4</h4>
     `;
     
     if (results.modalAnalysis.exists) {
         html += `
             <div style="margin-bottom: 15px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span>Status do Modal</span>
-                    <span style="color: #00ff9c; background: #003300; padding: 4px 8px; border-radius: 3px;">
+                    <span>Status do Modal v5.4</span>
+                    <span style="color: #00ff9c; background: rgba(0, 255, 156, 0.2); padding: 4px 8px; border-radius: 3px;">
                         ✅ PRESENTE
                     </span>
                 </div>
@@ -4883,14 +5685,14 @@ function updatePdfMobileTab(results) {
                 <div style="margin-bottom: 15px;">
                     <div style="color: #888; font-size: 11px; margin-bottom: 5px;">VISIBILIDADE</div>
                     <div style="color: ${results.modalAnalysis.visible ? '#00ff9c' : '#ffaa00'};">
-                        ${results.modalAnalysis.visible ? '👁️ VISÍVEL' : '👁️‍🗨️ OCULTO'}
+                        ${results.modalAnalysis.visible ? '👁️ VISÍVEL' : '👁️‍🗨️ OCULTO'} v5.4
                     </div>
                 </div>
                 
                 <div style="margin-bottom: 15px;">
                     <div style="color: #888; font-size: 11px; margin-bottom: 5px;">CAMPO DE SENHA</div>
                     <div style="color: ${results.modalAnalysis.passwordField.exists ? '#00ff9c' : '#ff5555'};">
-                        ${results.modalAnalysis.passwordField.exists ? '✅ PRESENTE' : '❌ AUSENTE'}
+                        ${results.modalAnalysis.passwordField.exists ? '✅ PRESENTE' : '❌ AUSENTE'} v5.4
                     </div>
                 </div>
             </div>
@@ -4899,8 +5701,8 @@ function updatePdfMobileTab(results) {
         if (results.modalAnalysis.boundingBox) {
             html += `
                 <div style="margin-bottom: 15px;">
-                    <h5 style="color: #888; margin-bottom: 5px;">📏 BOUNDING BOX</h5>
-                    <div style="background: #0a0a0a; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px;">
+                    <h5 style="color: #888; margin-bottom: 5px;">📏 BOUNDING BOX v5.4</h5>
+                    <div style="background: rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px;">
                         <div style="margin-bottom: 2px;">width: <span style="color: #00ff9c;">${results.modalAnalysis.boundingBox.width}px</span></div>
                         <div style="margin-bottom: 2px;">height: <span style="color: #00ff9c;">${results.modalAnalysis.boundingBox.height}px</span></div>
                         <div style="margin-bottom: 2px;">top: <span style="color: #00ff9c;">${results.modalAnalysis.boundingBox.top}px</span></div>
@@ -4914,7 +5716,7 @@ function updatePdfMobileTab(results) {
         html += `
             <div style="text-align: center; padding: 30px; color: #ff5555;">
                 <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
-                <div style="font-size: 16px;">MODAL PDF NÃO ENCONTRADO</div>
+                <div style="font-size: 16px;">MODAL PDF NÃO ENCONTRADO v5.4</div>
                 <div style="font-size: 12px; color: #888; margin-top: 10px;">
                     O elemento #pdfModal não existe no DOM
                 </div>
@@ -4928,12 +5730,12 @@ function updatePdfMobileTab(results) {
     
     if (results.layoutIssues.length > 0 || results.recommendations.length > 0) {
         html += `
-            <div style="background: ${results.layoutIssues.length > 0 ? '#1a0000' : '#001a00'}; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="background: ${results.layoutIssues.length > 0 ? 'rgba(255, 0, 0, 0.1)' : 'rgba(0, 255, 156, 0.1)'}; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid ${results.layoutIssues.length > 0 ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 255, 156, 0.3)'};">
         `;
         
         if (results.layoutIssues.length > 0) {
             html += `
-                <h4 style="color: #ff5555; margin-bottom: 10px;">⚠️ PROBLEMAS DETECTADOS</h4>
+                <h4 style="color: #ff5555; margin-bottom: 10px;">⚠️ PROBLEMAS DETECTADOS v5.4</h4>
                 <div style="margin-left: 15px;">
             `;
             
@@ -4950,7 +5752,7 @@ function updatePdfMobileTab(results) {
         
         if (results.recommendations.length > 0) {
             html += `
-                <h4 style="color: #00ff9c; margin-top: ${results.layoutIssues.length > 0 ? '20px' : '0'}; margin-bottom: 10px;">💡 RECOMENDAÇÕES</h4>
+                <h4 style="color: #00ff9c; margin-top: ${results.layoutIssues.length > 0 ? '20px' : '0'}; margin-bottom: 10px;">💡 RECOMENDAÇÕES v5.4</h4>
                 <div style="margin-left: 15px;">
             `;
             
@@ -4970,29 +5772,30 @@ function updatePdfMobileTab(results) {
     
     html += `
         <div style="text-align: center;">
-            <button id="fix-mobile-pdf" style="
-                background: #0088cc; color: white; border: none;
+            <button id="fix-mobile-pdf-v5-4" style="
+                background: linear-gradient(45deg, #0088cc, #00aaff); 
+                color: white; border: none;
                 padding: 12px 24px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; font-size: 14px;">
-                🛠️ APLICAR CORREÇÕES SUGERIDAS
+                font-weight: bold; font-size: 14px; transition: all 0.2s;">
+                🛠️ APLICAR CORREÇÕES SUGERIDAS v5.4
             </button>
             <div style="font-size: 11px; color: #888; margin-top: 10px;">
-                Cria estilos otimizados para mobile
+                Cria estilos otimizados para mobile - v5.4
             </div>
         </div>
     `;
     
     pdfMobileContent.innerHTML = html;
     
-    document.getElementById('fix-mobile-pdf')?.addEventListener('click', () => {
+    document.getElementById('fix-mobile-pdf-v5-4')?.addEventListener('click', () => {
         applyMobilePdfFixes(results);
     });
 }
 
 function applyMobilePdfFixes(results) {
-    logToPanel('🛠️ Aplicando correções para mobile PDF...', 'mobile');
+    logToPanel('🛠️ Aplicando correções para mobile PDF v5.4...', 'mobile');
     
-    const styleId = 'diagnostics-mobile-pdf-fixes';
+    const styleId = 'diagnostics-mobile-pdf-fixes-v5-4';
     let styleTag = document.getElementById(styleId);
     
     if (!styleTag) {
@@ -5039,28 +5842,34 @@ function applyMobilePdfFixes(results) {
                 padding: 10px !important;
             }
         }
+        
+        /* Estilos específicos para diagnóstico v5.4 */
+        .pdf-icon, .icon-pdf {
+            min-height: 44px !important;
+            min-width: 44px !important;
+        }
     `;
     
     styleTag.textContent = css;
     
-    logToPanel('✅ Estilos mobile PDF aplicados', 'success');
-    logToPanel('💡 Recarregue a página para ver as mudanças', 'info');
+    logToPanel('✅ Estilos mobile PDF aplicados v5.4', 'success');
+    logToPanel('💡 Recarregue a página para ver as mudanças v5.4', 'info');
     
     const pdfModal = document.getElementById('pdfModal');
     if (pdfModal) {
         pdfModal.style.display = 'none';
         setTimeout(() => {
             pdfModal.style.display = 'flex';
-            logToPanel('🔄 Modal recarregado com estilos mobile', 'mobile');
+            logToPanel('🔄 Modal recarregado com estilos mobile v5.4', 'mobile');
         }, 100);
     }
 }
 
-/* ================== FUNÇÕES PRINCIPAIS ================== */
+/* ================== FUNÇÕES PRINCIPAIS v5.4 ================== */
 async function runCompleteDiagnosis() {
     try {
-        logToPanel('🚀 Iniciando diagnóstico completo v5.3...', 'debug');
-        updateStatus('Diagnóstico em andamento...', 'info');
+        logToPanel('🚀 Iniciando diagnóstico completo v5.4...', 'debug');
+        updateStatus('Diagnóstico em andamento v5.4...', 'info');
         
         const systemData = analyzeSystem();
         
@@ -5076,14 +5885,14 @@ async function runCompleteDiagnosis() {
             healthScoreElement.textContent = `${healthScore}%`;
         }
         
-        logToPanel(`✅ Diagnóstico completo! Health Score: ${healthScore}%`, 'success');
-        updateStatus('Diagnóstico completo', 'success');
+        logToPanel(`✅ Diagnóstico completo v5.4! Health Score: ${healthScore}%`, 'success');
+        updateStatus('Diagnóstico completo v5.4', 'success');
         
         return { systemData, testResults, healthScore };
         
     } catch (error) {
-        logToPanel(`❌ Erro no diagnóstico: ${error.message}`, 'error');
-        updateStatus('Erro no diagnóstico', 'error');
+        logToPanel(`❌ Erro no diagnóstico v5.4: ${error.message}`, 'error');
+        updateStatus('Erro no diagnóstico v5.4', 'error');
         console.error(error);
     }
 }
@@ -5093,7 +5902,7 @@ function calculateHealthScore(systemData, testResults) {
     
     Object.entries(systemData.systems).forEach(([system, active]) => {
         if (!active) {
-            const criticalSystems = ['MediaSystem', 'PdfSystem', 'properties', 'supabase'];
+            const criticalSystems = ['MediaSystem', 'PdfSystem', 'properties', 'supabase', 'diagnostics'];
             if (criticalSystems.includes(system)) score -= 10;
             else score -= 5;
         }
@@ -5139,487 +5948,623 @@ function exportReport() {
         testResults: currentTestResults,
         lastMigrationReport: lastMigrationReport,
         referenceAnalysis: referenceAnalysisCache,
-        migrationStatus: window.verifyMediaMigration ? 'Função disponível' : 'Função não disponível',
-        compatibilityStatus: window.testModuleCompatibility ? 'Função disponível' : 'Função não disponível',
-        autoValidationStatus: window.autoValidateMigration ? 'Função disponível' : 'Função não disponível',
-        placeholderAnalysisStatus: window.analyzePlaceholders ? 'Função disponível v5.3' : 'Função não disponível',
-        referenceAnalysisStatus: window.analyzeBrokenReferences ? 'Função disponível v5.3' : 'Função não disponível',
-        pdfIconDiagnosisStatus: window.diagnosePdfIconProblem ? 'Função disponível v5.3' : 'Função não disponível',
-        pdfCompatibilityStatus: window.runPdfCompatibilityCheck ? 'Função disponível v5.3' : 'Função não disponível'
+        migrationStatus: window.verifyMediaMigration ? 'Função disponível v5.4' : 'Função não disponível',
+        compatibilityStatus: window.testModuleCompatibility ? 'Função disponível v5.4' : 'Função não disponível',
+        autoValidationStatus: window.autoValidateMigration ? 'Função disponível v5.4' : 'Função não disponível',
+        placeholderAnalysisStatus: window.analyzePlaceholders ? 'Função disponível v5.4' : 'Função não disponível',
+        referenceAnalysisStatus: window.analyzeBrokenReferences ? 'Função disponível v5.4' : 'Função não disponível',
+        pdfIconDiagnosisStatus: window.diagnosePdfIconProblem ? 'Função disponível v5.4' : 'Função não disponível',
+        pdfCompatibilityStatus: window.runPdfCompatibilityCheck ? 'Função disponível v5.4' : 'Função não disponível',
+        interactivePdfTestStatus: window.interactivePdfTest ? 'Função disponível v5.4' : 'Função não disponível',
+        version: '5.4'
     };
     
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `diagnostico-sistema-v5.3-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    logToPanel('📊 Relatório exportado como JSON (v5.3)', 'success');
-}
-
-function runPdfMobileDiagnosis() {
-    logToPanel('📱 Iniciando diagnóstico mobile PDF...', 'mobile');
-    updateStatus('Analisando layout mobile PDF...', 'mobile');
-    
-    try {
-        const results = window.diagnosePdfModalMobile();
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `diagnostico-sistema-v5.4-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
         
-        updatePdfMobileTab(results);
-        
-        logToPanel(`📱 Dispositivo: ${results.deviceInfo.type}`, 'mobile');
-        logToPanel(`📏 Viewport: ${results.deviceInfo.viewport.width}×${results.deviceInfo.viewport.height}`, 'mobile');
-        logToPanel(`✅ Modal PDF: ${results.modalAnalysis.exists ? 'PRESENTE' : 'AUSENTE'}`, 
-                   results.modalAnalysis.exists ? 'success' : 'error');
-        
-        if (results.modalAnalysis.exists) {
-            logToPanel(`👁️ Modal visível: ${results.modalAnalysis.visible ? 'SIM' : 'NÃO'}`, 
-                       results.modalAnalysis.visible ? 'success' : 'warning');
-            logToPanel(`🔐 Campo senha: ${results.modalAnalysis.passwordField.exists ? 'PRESENTE' : 'AUSENTE'}`,
-                       results.modalAnalysis.passwordField.exists ? 'success' : 'warning');
-            
-            if (results.layoutIssues.length > 0) {
-                logToPanel('⚠️ Problemas de layout detectados:', 'warning');
-                results.layoutIssues.forEach(issue => {
-                    logToPanel(`   • ${issue}`, 'warning');
-                });
-            }
-            
-            if (results.recommendations.length > 0) {
-                logToPanel('💡 Recomendações:', 'info');
-                results.recommendations.forEach(rec => {
-                    logToPanel(`   • ${rec}`, 'info');
-                });
-            }
-        }
-        
-        logToPanel('✅ Diagnóstico mobile PDF concluído', 'success');
-        updateStatus('Diagnóstico mobile completo', 'success');
-        
-        const mobileTabBtn = document.querySelector('[data-tab="pdf-mobile"]');
-        if (mobileTabBtn) {
-            mobileTabBtn.click();
-        }
-        
-    } catch (error) {
-        logToPanel(`❌ Erro no diagnóstico mobile: ${error.message}`, 'error');
-        updateStatus('Erro no diagnóstico mobile', 'error');
+        logToPanel('📊 Relatório exportado como JSON (v5.4)', 'success');
     }
-}
-
-/* ================== PAINEL VISUAL ================== */
-function createDiagnosticsPanel() {
-    diagnosticsPanel = document.createElement('div');
-    diagnosticsPanel.id = 'diagnostics-panel-complete';
-    diagnosticsPanel.style.cssText = `
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        width: 900px;
-        max-height: 90vh;
-        overflow-y: auto;
-        background: #0b0b0b;
-        color: #00ff9c;
-        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-        font-size: 12px;
-        padding: 15px;
-        border: 2px solid #00ff9c;
-        border-radius: 8px;
-        z-index: 999999;
-        box-shadow: 0 0 30px rgba(0, 255, 156, 0.4);
-    `;
     
-    diagnosticsPanel.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <div style="font-size: 16px; font-weight: bold; color: #00ff9c;">
-                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA v5.3
+    function runPdfMobileDiagnosis() {
+        logToPanel('📱 Iniciando diagnóstico mobile PDF v5.4...', 'mobile');
+        updateStatus('Analisando layout mobile PDF v5.4...', 'mobile');
+        
+        try {
+            const results = window.diagnosePdfModalMobile();
+            
+            updatePdfMobileTab(results);
+            
+            logToPanel(`📱 Dispositivo v5.4: ${results.deviceInfo.type}`, 'mobile');
+            logToPanel(`📏 Viewport v5.4: ${results.deviceInfo.viewport.width}×${results.deviceInfo.viewport.height}`, 'mobile');
+            logToPanel(`✅ Modal PDF v5.4: ${results.modalAnalysis.exists ? 'PRESENTE' : 'AUSENTE'}`, 
+                       results.modalAnalysis.exists ? 'success' : 'error');
+            
+            if (results.modalAnalysis.exists) {
+                logToPanel(`👁️ Modal visível v5.4: ${results.modalAnalysis.visible ? 'SIM' : 'NÃO'}`, 
+                           results.modalAnalysis.visible ? 'success' : 'warning');
+                logToPanel(`🔐 Campo senha v5.4: ${results.modalAnalysis.passwordField.exists ? 'PRESENTE' : 'AUSENTE'}`,
+                           results.modalAnalysis.passwordField.exists ? 'success' : 'warning');
+                
+                if (results.layoutIssues.length > 0) {
+                    logToPanel('⚠️ Problemas de layout detectados v5.4:', 'warning');
+                    results.layoutIssues.forEach(issue => {
+                        logToPanel(`   • ${issue}`, 'warning');
+                    });
+                }
+                
+                if (results.recommendations.length > 0) {
+                    logToPanel('💡 Recomendações v5.4:', 'info');
+                    results.recommendations.forEach(rec => {
+                        logToPanel(`   • ${rec}`, 'info');
+                    });
+                }
+            }
+            
+            logToPanel('✅ Diagnóstico mobile PDF concluído v5.4', 'success');
+            updateStatus('Diagnóstico mobile completo v5.4', 'success');
+            
+            const mobileTabBtn = document.querySelector('[data-tab="pdf-mobile"]');
+            if (mobileTabBtn) {
+                mobileTabBtn.click();
+            }
+            
+        } catch (error) {
+            logToPanel(`❌ Erro no diagnóstico mobile v5.4: ${error.message}`, 'error');
+            updateStatus('Erro no diagnóstico mobile v5.4', 'error');
+        }
+    }
+    
+    /* ================== PAINEL VISUAL v5.4 ================== */
+    function createDiagnosticsPanel() {
+        diagnosticsPanel = document.createElement('div');
+        diagnosticsPanel.id = 'diagnostics-panel-complete';
+        diagnosticsPanel.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            background: #0b0b0b;
+            color: #00ff9c;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            padding: 15px;
+            border: 2px solid #00ff9c;
+            border-radius: 8px;
+            z-index: 999999;
+            box-shadow: 0 0 30px rgba(0, 255, 156, 0.4);
+        `;
+        
+        diagnosticsPanel.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div style="font-size: 16px; font-weight: bold; color: #00ff9c;">
+                    🚀 DIAGNÓSTICO COMPLETO DO SISTEMA v5.4
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button id="test-compatibility-main-v5-4" style="
+                        background: linear-gradient(45deg, #00ff9c, #0088cc); 
+                        color: #000; border: none; 
+                        padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                        font-size: 10px; font-weight: bold;">
+                        🔍 COMPATIBILIDADE v5.4
+                    </button>
+                    <button id="auto-migration-main-v5-4" style="
+                        background: linear-gradient(45deg, #0088cc, #00ff9c); 
+                        color: #000; border: none; 
+                        padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                        font-size: 10px; font-weight: bold;">
+                        🔄 AUTO-VALIDAÇÃO v5.4
+                    </button>
+                    <button id="verify-migration-main-v5-4" style="
+                        background: linear-gradient(45deg, #ff00ff, #0088cc); 
+                        color: white; border: none; 
+                        padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                        font-size: 10px; font-weight: bold;">
+                        🚀 MIGRAÇÃO v5.4
+                    </button>
+                    <button id="analyze-placeholders-main-v5-4" style="
+                        background: linear-gradient(45deg, #ff5500, #ffaa00); 
+                        color: #000; border: none; 
+                        padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                        font-size: 10px; font-weight: bold;">
+                        🗑️ PLACEHOLDERS v5.4
+                    </button>
+                    <button id="analyze-references-main-v5-4" style="
+                        background: linear-gradient(45deg, #ff8800, #ffaa00); 
+                        color: #000; border: none; 
+                        padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                        font-size: 10px; font-weight: bold;">
+                        🔗 REFERÊNCIAS v5.4
+                    </button>
+                    <button id="run-pdf-check-main-v5-4" style="
+                        background: linear-gradient(45deg, #00aaff, #0088cc); 
+                        color: white; border: none; 
+                        padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                        font-size: 10px; font-weight: bold;">
+                        📄 PDF CHECK v5.4
+                    </button>
+                    <button id="diagnose-pdf-icon-main-v5-4" style="
+                        background: linear-gradient(45deg, #ff5500, #ffaa00); 
+                        color: #000; border: none; 
+                        padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                        font-size: 10px; font-weight: bold;">
+                        🔍 ÍCONE PDF v5.4
+                    </button>
+                    <button id="interactive-pdf-main-v5-4" style="
+                        background: linear-gradient(45deg, #00aaff, #0088cc); 
+                        color: white; border: none; 
+                        padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                        font-size: 10px; font-weight: bold;">
+                        🎮 TESTE INTERATIVO v5.4
+                    </button>
+                    <button id="minimize-btn-v5-4" style="
+                        background: #555; color: white; border: none; 
+                        padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                        font-size: 10px;">
+                        ▁
+                    </button>
+                    <button id="close-btn-v5-4" style="
+                        background: #ff5555; color: white; border: none; 
+                        padding: 4px 8px; cursor: pointer; border-radius: 3px;
+                        font-size: 10px;">
+                        ✕
+                    </button>
+                </div>
             </div>
-            <div style="display: flex; gap: 8px;">
-                <button id="test-compatibility-main" style="
-                    background: linear-gradient(45deg, #00ff9c, #0088cc); 
-                    color: #000; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px; font-weight: bold;">
-                    🔍 COMPATIBILIDADE
+            <div style="color: #888; font-size: 11px; margin-bottom: 20px; display: flex; justify-content: space-between;">
+                <div>
+                    Modo: ${DEBUG_MODE ? 'DEBUG' : 'NORMAL'} | 
+                    ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'} | v5.4
+                </div>
+                <div id="device-indicator-v5-4" style="background: #333; padding: 2px 8px; border-radius: 3px;">
+                    📱 Detectando dispositivo v5.4...
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                <button id="run-all-tests-v5-4" style="
+                    background: #00ff9c; color: #000; border: none;
+                    padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                    font-weight: bold; flex: 1;">
+                    🧪 TESTE COMPLETO v5.4
                 </button>
-                <button id="auto-migration-main" style="
-                    background: linear-gradient(45deg, #0088cc, #00ff9c); 
-                    color: #000; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px; font-weight: bold;">
-                    🔄 AUTO-VALIDAÇÃO
+                <button id="test-pdf-mobile-v5-4" style="
+                    background: #0088cc; color: white; border: none;
+                    padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                    font-weight: bold; flex: 1;">
+                    📱 TESTE MOBILE PDF v5.4
                 </button>
-                <button id="verify-migration-main" style="
-                    background: linear-gradient(45deg, #ff00ff, #0088cc); 
-                    color: white; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px; font-weight: bold;">
-                    🚀 MIGRAÇÃO
+                <button id="analyze-references-btn-v5-4" style="
+                    background: #ff8800; color: #000; border: none;
+                    padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                    font-weight: bold; flex: 1;">
+                    🔗 REFERÊNCIAS 404 v5.4
                 </button>
-                <button id="analyze-placeholders-main" style="
-                    background: linear-gradient(45deg, #ff5500, #ffaa00); 
-                    color: #000; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px; font-weight: bold;">
-                    🗑️ PLACEHOLDERS
+                <button id="run-pdf-check-btn-v5-4" style="
+                    background: #00aaff; color: white; border: none;
+                    padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                    font-weight: bold; flex: 1;">
+                    📄 VERIFICAÇÃO PDF v5.4
                 </button>
-                <button id="analyze-references-main" style="
-                    background: linear-gradient(45deg, #ff8800, #ffaa00); 
-                    color: #000; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px; font-weight: bold;">
-                    🔗 REFERÊNCIAS
+                <button id="diagnose-pdf-icon-btn-v5-4" style="
+                    background: #ff5500; color: #000; border: none;
+                    padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                    font-weight: bold; flex: 1;">
+                    🔍 DIAGNÓSTICO ÍCONE PDF v5.4
                 </button>
-                <button id="run-pdf-check-main" style="
+                <button id="interactive-pdf-test-btn-v5-4" style="
                     background: linear-gradient(45deg, #00aaff, #0088cc); 
-                    color: white; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px; font-weight: bold;">
-                    📄 PDF CHECK
+                    color: white; border: none;
+                    padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                    font-weight: bold; flex: 1;">
+                    🎮 TESTE INTERATIVO PDF v5.4
                 </button>
-                <button id="diagnose-pdf-icon-main" style="
-                    background: linear-gradient(45deg, #ff5500, #ffaa00); 
-                    color: #000; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px; font-weight: bold;">
-                    🔍 ÍCONE PDF
-                </button>
-                <button id="minimize-btn" style="
-                    background: #555; color: white; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px;">
-                    ▁
-                </button>
-                <button id="close-btn" style="
-                    background: #ff5555; color: white; border: none; 
-                    padding: 4px 8px; cursor: pointer; border-radius: 3px;
-                    font-size: 10px;">
-                    ✕
+                <button id="export-btn-v5-4" style="
+                    background: #555; color: white; border: none;
+                    padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                    font-weight: bold; flex: 1;">
+                    📊 EXPORTAR RELATÓRIO v5.4
                 </button>
             </div>
-        </div>
-        <div style="color: #888; font-size: 11px; margin-bottom: 20px; display: flex; justify-content: space-between;">
-            <div>
-                Modo: ${DEBUG_MODE ? 'DEBUG' : 'NORMAL'} | 
-                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'} | v5.3
+            <div id="tabs-v5-4" style="display: flex; border-bottom: 1px solid #333; margin-bottom: 15px;">
+                <button data-tab="overview" class="tab-btn-v5-4 active" style="
+                    background: #333; color: #00ff9c; border: none; border-bottom: 2px solid #00ff9c;
+                    padding: 8px 16px; cursor: pointer;">
+                    📈 VISÃO GERAL v5.4
+                </button>
+                <button data-tab="modules" class="tab-btn-v5-4" style="
+                    background: transparent; color: #888; border: none;
+                    padding: 8px 16px; cursor: pointer;">
+                    ⚙️ MÓDULOS v5.4
+                </button>
+                <button data-tab="tests" class="tab-btn-v5-4" style="
+                    background: transparent; color: #888; border: none;
+                    padding: 8px 16px; cursor: pointer;">
+                    🧪 TESTES v5.4
+                </button>
+                <button data-tab="pdf-mobile" class="tab-btn-v5-4" style="
+                    background: transparent; color: #888; border: none;
+                    padding: 8px 16px; cursor: pointer;">
+                    📱 PDF MOBILE v5.4
+                </button>
+                <button data-tab="console" class="tab-btn-v5-4" style="
+                    background: transparent; color: #888; border: none;
+                    padding: 8px 16px; cursor: pointer;">
+                    📝 CONSOLE v5.4
+                </button>
             </div>
-            <div id="device-indicator" style="background: #333; padding: 2px 8px; border-radius: 3px;">
-                📱 Detectando dispositivo...
+            <div id="content-area-v5-4" style="min-height: 400px; max-height: 60vh; overflow-y: auto;">
+                <div id="overview-content-v5-4" class="tab-content-v5-4" style="display: block;"></div>
+                <div id="modules-content-v5-4" class="tab-content-v5-4" style="display: none;"></div>
+                <div id="tests-content-v5-4" class="tab-content-v5-4" style="display: none;"></div>
+                <div id="pdf-mobile-content-v5-4" class="tab-content-v5-4" style="display: none;"></div>
+                <div id="console-content-v5-4" class="tab-content-v5-4" style="display: none;"></div>
             </div>
-        </div>
-        <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-            <button id="run-all-tests" style="
-                background: #00ff9c; color: #000; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                🧪 TESTE COMPLETO v5.3
-            </button>
-            <button id="test-pdf-mobile" style="
-                background: #0088cc; color: white; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                📱 TESTE MOBILE PDF
-            </button>
-            <button id="analyze-references-btn" style="
-                background: #ff8800; color: #000; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                🔗 REFERÊNCIAS 404
-            </button>
-            <button id="run-pdf-check-btn" style="
-                background: #00aaff; color: white; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                📄 VERIFICAÇÃO PDF
-            </button>
-            <button id="diagnose-pdf-icon-btn" style="
-                background: #ff5500; color: #000; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                🔍 DIAGNÓSTICO ÍCONE PDF
-            </button>
-            <button id="export-btn" style="
-                background: #555; color: white; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1;">
-                📊 EXPORTAR RELATÓRIO
-            </button>
-        </div>
-        <div id="tabs" style="display: flex; border-bottom: 1px solid #333; margin-bottom: 15px;">
-            <button data-tab="overview" class="tab-btn active" style="
-                background: #333; color: #00ff9c; border: none; border-bottom: 2px solid #00ff9c;
-                padding: 8px 16px; cursor: pointer;">
-                📈 VISÃO GERAL
-            </button>
-            <button data-tab="modules" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                ⚙️ MÓDULOS
-            </button>
-            <button data-tab="tests" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                🧪 TESTES
-            </button>
-            <button data-tab="pdf-mobile" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                📱 PDF MOBILE
-            </button>
-            <button data-tab="console" class="tab-btn" style="
-                background: transparent; color: #888; border: none;
-                padding: 8px 16px; cursor: pointer;">
-                📝 CONSOLE
-            </button>
-        </div>
-        <div id="content-area" style="min-height: 400px; max-height: 60vh; overflow-y: auto;">
-            <div id="overview-content" class="tab-content" style="display: block;"></div>
-            <div id="modules-content" class="tab-content" style="display: none;"></div>
-            <div id="tests-content" class="tab-content" style="display: none;"></div>
-            <div id="pdf-mobile-content" class="tab-content" style="display: none;"></div>
-            <div id="console-content" class="tab-content" style="display: none;"></div>
-        </div>
-        <div id="status-bar" style="
-            margin-top: 15px; padding: 8px; background: #111; 
-            border-radius: 4px; font-size: 11px; color: #888;">
-            Status: Inicializando...
-        </div>
-    `;
-    
-    document.body.appendChild(diagnosticsPanel);
-    
-    setupPanelEvents();
-    
-    updateDeviceIndicator();
-    
-    // Adicionar botão de diagnóstico PDF
-    setTimeout(addPdfDiagnosticButton, 1500);
-}
-
-function setupPanelEvents() {
-    const closeBtn = document.getElementById('close-btn');
-    const minimizeBtn = document.getElementById('minimize-btn');
-    const verifyMigrationBtn = document.getElementById('verify-migration-main');
-    const testCompatibilityBtn = document.getElementById('test-compatibility-main');
-    const autoMigrationBtn = document.getElementById('auto-migration-main');
-    const analyzePlaceholdersBtn = document.getElementById('analyze-placeholders-main');
-    const analyzeReferencesBtn = document.getElementById('analyze-references-main');
-    const runPdfCheckBtn = document.getElementById('run-pdf-check-main');
-    const diagnosePdfIconBtn = document.getElementById('diagnose-pdf-icon-main');
-    
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            diagnosticsPanel.style.display = 'none';
-        });
+            <div id="status-bar-v5-4" style="
+                margin-top: 15px; padding: 8px; background: #111; 
+                border-radius: 4px; font-size: 11px; color: #888;">
+                Status: Inicializando v5.4...
+            </div>
+        `;
+        
+        document.body.appendChild(diagnosticsPanel);
+        
+        setupPanelEvents();
+        
+        updateDeviceIndicator();
+        
+        // Adicionar botão de diagnóstico PDF
+        setTimeout(addPdfDiagnosticButton, 1500);
+        
+        // Aplicar melhorias para F12
+        window.enhanceDevTools();
     }
     
-    if (minimizeBtn) {
-        minimizeBtn.addEventListener('click', () => {
-            const content = document.getElementById('content-area');
-            if (content) {
-                content.style.display = content.style.display === 'none' ? 'block' : 'none';
-            }
-        });
-    }
-    
-    if (verifyMigrationBtn) {
-        verifyMigrationBtn.addEventListener('click', () => {
-            window.verifyMediaMigration();
-        });
-    }
-    
-    if (testCompatibilityBtn) {
-        testCompatibilityBtn.addEventListener('click', () => {
-            window.testModuleCompatibility();
-        });
-    }
-    
-    if (autoMigrationBtn) {
-        autoMigrationBtn.addEventListener('click', () => {
-            if (typeof window.autoValidateMigration === 'function') {
-                window.autoValidateMigration();
-            }
-        });
-    }
-    
-    if (analyzePlaceholdersBtn) {
-        analyzePlaceholdersBtn.addEventListener('click', () => {
-            if (typeof window.analyzePlaceholders === 'function') {
-                window.analyzePlaceholders();
-            }
-        });
-    }
-    
-    if (analyzeReferencesBtn) {
-        analyzeReferencesBtn.addEventListener('click', () => {
-            if (typeof window.analyzeBrokenReferences === 'function') {
-                window.analyzeBrokenReferences();
-            }
-        });
-    }
-    
-    if (runPdfCheckBtn) {
-        runPdfCheckBtn.addEventListener('click', () => {
-            if (typeof window.runPdfCompatibilityCheck === 'function') {
-                window.runPdfCompatibilityCheck();
-            }
-        });
-    }
-    
-    if (diagnosePdfIconBtn) {
-        diagnosePdfIconBtn.addEventListener('click', () => {
-            if (typeof window.diagnosePdfIconProblem === 'function') {
-                window.diagnosePdfIconProblem();
-            }
-        });
-    }
-    
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.remove('active');
-                b.style.background = 'transparent';
-                b.style.color = '#888';
-                b.style.borderBottom = 'none';
+    function setupPanelEvents() {
+        const closeBtn = document.getElementById('close-btn-v5-4');
+        const minimizeBtn = document.getElementById('minimize-btn-v5-4');
+        const verifyMigrationBtn = document.getElementById('verify-migration-main-v5-4');
+        const testCompatibilityBtn = document.getElementById('test-compatibility-main-v5-4');
+        const autoMigrationBtn = document.getElementById('auto-migration-main-v5-4');
+        const analyzePlaceholdersBtn = document.getElementById('analyze-placeholders-main-v5-4');
+        const analyzeReferencesBtn = document.getElementById('analyze-references-main-v5-4');
+        const runPdfCheckBtn = document.getElementById('run-pdf-check-main-v5-4');
+        const diagnosePdfIconBtn = document.getElementById('diagnose-pdf-icon-main-v5-4');
+        const interactivePdfBtn = document.getElementById('interactive-pdf-main-v5-4');
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                diagnosticsPanel.style.display = 'none';
+                logToPanel('Panel fechado v5.4', 'info');
             });
-            
-            btn.classList.add('active');
-            btn.style.background = '#333';
-            btn.style.color = '#00ff9c';
-            btn.style.borderBottom = '2px solid #00ff9c';
-            
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.style.display = 'none';
+        }
+        
+        if (minimizeBtn) {
+            minimizeBtn.addEventListener('click', () => {
+                const content = document.getElementById('content-area-v5-4');
+                if (content) {
+                    content.style.display = content.style.display === 'none' ? 'block' : 'none';
+                    logToPanel(`Panel ${content.style.display === 'none' ? 'minimizado' : 'restaurado'} v5.4`, 'info');
+                }
             });
-            const targetContent = document.getElementById(`${btn.dataset.tab}-content`);
-            if (targetContent) {
-                targetContent.style.display = 'block';
-            }
-        });
-    });
-    
-    const runAllTestsBtn = document.getElementById('run-all-tests');
-    if (runAllTestsBtn) {
-        runAllTestsBtn.addEventListener('click', async () => {
-            await runCompleteDiagnosis();
-        });
-    }
-    
-    const testPdfMobileBtn = document.getElementById('test-pdf-mobile');
-    if (testPdfMobileBtn) {
-        testPdfMobileBtn.addEventListener('click', () => {
-            runPdfMobileDiagnosis();
-        });
-    }
-    
-    const analyzeReferencesPanelBtn = document.getElementById('analyze-references-btn');
-    if (analyzeReferencesPanelBtn) {
-        analyzeReferencesPanelBtn.addEventListener('click', () => {
-            if (typeof window.analyzeBrokenReferences === 'function') {
-                window.analyzeBrokenReferences();
-            }
-        });
-    }
-    
-    const runPdfCheckPanelBtn = document.getElementById('run-pdf-check-btn');
-    if (runPdfCheckPanelBtn) {
-        runPdfCheckPanelBtn.addEventListener('click', () => {
-            if (typeof window.runPdfCompatibilityCheck === 'function') {
-                window.runPdfCompatibilityCheck();
-            }
-        });
-    }
-    
-    const diagnosePdfIconPanelBtn = document.getElementById('diagnose-pdf-icon-btn');
-    if (diagnosePdfIconPanelBtn) {
-        diagnosePdfIconPanelBtn.addEventListener('click', () => {
-            if (typeof window.diagnosePdfIconProblem === 'function') {
-                window.diagnosePdfIconProblem();
-            }
-        });
-    }
-    
-    const exportBtn = document.getElementById('export-btn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', exportReport);
-    }
-}
-
-/* ================== ATUALIZAÇÃO DOS BOTÕES PDF NO PAINEL ================== */
-function updatePdfCheckButtons() {
-    // Atualizar botão principal de verificação PDF
-    const runPdfCheckBtn = document.getElementById('run-pdf-check-btn');
-    if (runPdfCheckBtn) {
-        runPdfCheckBtn.addEventListener('click', () => {
-            if (typeof window.runPdfCompatibilityCheck === 'function') {
-                window.runPdfCompatibilityCheck();
-            } else {
-                // Fallback para verificação básica
-                console.log('🔍 Executando verificação PDF básica...');
-                const tests = {
-                    'PdfSystem': !!window.PdfSystem,
-                    'Modal': !!document.getElementById('pdfModal'),
-                    'Campo senha': !!document.getElementById('pdfPassword'),
-                    'Função processAndSavePdfs': typeof window.processAndSavePdfs === 'function'
-                };
-                
-                let passed = 0;
-                Object.entries(tests).forEach(([name, result]) => {
-                    console.log(`${result ? '✅' : '❌'} ${name}: ${result}`);
-                    if (result) passed++;
+        }
+        
+        if (verifyMigrationBtn) {
+            verifyMigrationBtn.addEventListener('click', () => {
+                logToPanel('🚀 Executando verificação de migração v5.4...', 'migration');
+                window.verifyMediaMigration();
+            });
+        }
+        
+        if (testCompatibilityBtn) {
+            testCompatibilityBtn.addEventListener('click', () => {
+                logToPanel('🔍 Executando teste de compatibilidade v5.4...', 'debug');
+                window.testModuleCompatibility();
+            });
+        }
+        
+        if (autoMigrationBtn) {
+            autoMigrationBtn.addEventListener('click', () => {
+                logToPanel('🔄 Executando validação automática v5.4...', 'migration');
+                if (typeof window.autoValidateMigration === 'function') {
+                    window.autoValidateMigration();
+                } else {
+                    logToPanel('❌ Função autoValidateMigration não encontrada v5.4', 'error');
+                }
+            });
+        }
+        
+        if (analyzePlaceholdersBtn) {
+            analyzePlaceholdersBtn.addEventListener('click', () => {
+                logToPanel('🗑️ Analisando placeholders v5.4...', 'placeholder');
+                if (typeof window.analyzePlaceholders === 'function') {
+                    window.analyzePlaceholders();
+                } else {
+                    logToPanel('❌ Função analyzePlaceholders não encontrada v5.4', 'error');
+                }
+            });
+        }
+        
+        if (analyzeReferencesBtn) {
+            analyzeReferencesBtn.addEventListener('click', () => {
+                logToPanel('🔗 Analisando referências v5.4...', 'reference');
+                if (typeof window.analyzeBrokenReferences === 'function') {
+                    window.analyzeBrokenReferences();
+                } else {
+                    logToPanel('❌ Função analyzeBrokenReferences não encontrada v5.4', 'error');
+                }
+            });
+        }
+        
+        if (runPdfCheckBtn) {
+            runPdfCheckBtn.addEventListener('click', () => {
+                logToPanel('📄 Executando verificação PDF v5.4...', 'pdf-check');
+                if (typeof window.runPdfCompatibilityCheck === 'function') {
+                    window.runPdfCompatibilityCheck();
+                } else {
+                    logToPanel('❌ Função runPdfCompatibilityCheck não encontrada v5.4', 'error');
+                }
+            });
+        }
+        
+        if (diagnosePdfIconBtn) {
+            diagnosePdfIconBtn.addEventListener('click', () => {
+                logToPanel('🔍 Executando diagnóstico do ícone PDF v5.4...', 'pdf-check');
+                if (typeof window.diagnosePdfIconProblem === 'function') {
+                    window.diagnosePdfIconProblem();
+                } else {
+                    logToPanel('❌ Função diagnosePdfIconProblem não encontrada v5.4', 'error');
+                }
+            });
+        }
+        
+        if (interactivePdfBtn) {
+            interactivePdfBtn.addEventListener('click', () => {
+                logToPanel('🎮 Iniciando teste interativo PDF v5.4...', 'pdf-check');
+                if (typeof window.interactivePdfTest === 'function') {
+                    window.interactivePdfTest();
+                } else {
+                    logToPanel('❌ Função interactivePdfTest não encontrada v5.4', 'error');
+                }
+            });
+        }
+        
+        document.querySelectorAll('.tab-btn-v5-4').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn-v5-4').forEach(b => {
+                    b.classList.remove('active');
+                    b.style.background = 'transparent';
+                    b.style.color = '#888';
+                    b.style.borderBottom = 'none';
                 });
                 
-                const score = Math.round((passed / Object.keys(tests).length) * 100);
-                console.log(`📊 Score PDF básico: ${passed}/${Object.keys(tests).length} (${score}%)`);
-            }
+                btn.classList.add('active');
+                btn.style.background = '#333';
+                btn.style.color = '#00ff9c';
+                btn.style.borderBottom = '2px solid #00ff9c';
+                
+                document.querySelectorAll('.tab-content-v5-4').forEach(content => {
+                    content.style.display = 'none';
+                });
+                const targetContent = document.getElementById(`${btn.dataset.tab}-content-v5-4`);
+                if (targetContent) {
+                    targetContent.style.display = 'block';
+                }
+                
+                logToPanel(`📊 Aba alterada para: ${btn.dataset.tab} v5.4`, 'info');
+            });
         });
+        
+        const runAllTestsBtn = document.getElementById('run-all-tests-v5-4');
+        if (runAllTestsBtn) {
+            runAllTestsBtn.addEventListener('click', async () => {
+                logToPanel('🧪 Iniciando teste completo v5.4...', 'debug');
+                await runCompleteDiagnosis();
+            });
+        }
+        
+        const testPdfMobileBtn = document.getElementById('test-pdf-mobile-v5-4');
+        if (testPdfMobileBtn) {
+            testPdfMobileBtn.addEventListener('click', () => {
+                logToPanel('📱 Iniciando diagnóstico mobile PDF v5.4...', 'mobile');
+                runPdfMobileDiagnosis();
+            });
+        }
+        
+        const analyzeReferencesPanelBtn = document.getElementById('analyze-references-btn-v5-4');
+        if (analyzeReferencesPanelBtn) {
+            analyzeReferencesPanelBtn.addEventListener('click', () => {
+                logToPanel('🔗 Analisando referências v5.4...', 'reference');
+                if (typeof window.analyzeBrokenReferences === 'function') {
+                    window.analyzeBrokenReferences();
+                } else {
+                    logToPanel('❌ Função analyzeBrokenReferences não encontrada v5.4', 'error');
+                }
+            });
+        }
+        
+        const runPdfCheckPanelBtn = document.getElementById('run-pdf-check-btn-v5-4');
+        if (runPdfCheckPanelBtn) {
+            runPdfCheckPanelBtn.addEventListener('click', () => {
+                logToPanel('📄 Executando verificação PDF v5.4...', 'pdf-check');
+                if (typeof window.runPdfCompatibilityCheck === 'function') {
+                    window.runPdfCompatibilityCheck();
+                } else {
+                    logToPanel('❌ Função runPdfCompatibilityCheck não encontrada v5.4', 'error');
+                }
+            });
+        }
+        
+        const diagnosePdfIconPanelBtn = document.getElementById('diagnose-pdf-icon-btn-v5-4');
+        if (diagnosePdfIconPanelBtn) {
+            diagnosePdfIconPanelBtn.addEventListener('click', () => {
+                logToPanel('🔍 Executando diagnóstico do ícone PDF v5.4...', 'pdf-check');
+                if (typeof window.diagnosePdfIconProblem === 'function') {
+                    window.diagnosePdfIconProblem();
+                } else {
+                    logToPanel('❌ Função diagnosePdfIconProblem não encontrada v5.4', 'error');
+                }
+            });
+        }
+        
+        const interactivePdfTestPanelBtn = document.getElementById('interactive-pdf-test-btn-v5-4');
+        if (interactivePdfTestPanelBtn) {
+            interactivePdfTestPanelBtn.addEventListener('click', () => {
+                logToPanel('🎮 Iniciando teste interativo PDF v5.4...', 'pdf-check');
+                if (typeof window.interactivePdfTest === 'function') {
+                    window.interactivePdfTest();
+                } else {
+                    logToPanel('❌ Função interactivePdfTest não encontrada v5.4', 'error');
+                }
+            });
+        }
+        
+        const exportBtn = document.getElementById('export-btn-v5-4');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', exportReport);
+        }
     }
     
-    // Atualizar botão no header
-    const runPdfCheckMainBtn = document.getElementById('run-pdf-check-main');
-    if (runPdfCheckMainBtn) {
-        runPdfCheckMainBtn.addEventListener('click', () => {
-            if (typeof window.runPdfCompatibilityCheck === 'function') {
-                window.runPdfCompatibilityCheck();
-            }
-        });
+    /* ================== ATUALIZAÇÃO DOS BOTÕES PDF NO PAINEL v5.4 ================== */
+    function updatePdfCheckButtons() {
+        // Atualizar botão principal de verificação PDF
+        const runPdfCheckBtn = document.getElementById('run-pdf-check-btn-v5-4');
+        if (runPdfCheckBtn) {
+            runPdfCheckBtn.addEventListener('click', () => {
+                if (typeof window.runPdfCompatibilityCheck === 'function') {
+                    window.runPdfCompatibilityCheck();
+                } else {
+                    // Fallback para verificação básica
+                    console.log('🔍 Executando verificação PDF básica v5.4...');
+                    const tests = {
+                        'PdfSystem': !!window.PdfSystem,
+                        'Modal': !!document.getElementById('pdfModal'),
+                        'Campo senha': !!document.getElementById('pdfPassword'),
+                        'Função processAndSavePdfs': typeof window.processAndSavePdfs === 'function',
+                        'Função testPdfSystem': typeof window.testPdfSystem === 'function',
+                        'Função interactivePdfTest': typeof window.interactivePdfTest === 'function'
+                    };
+                    
+                    let passed = 0;
+                    Object.entries(tests).forEach(([name, result]) => {
+                        console.log(`${result ? '✅' : '❌'} ${name}: ${result}`);
+                        if (result) passed++;
+                    });
+                    
+                    const score = Math.round((passed / Object.keys(tests).length) * 100);
+                    console.log(`📊 Score PDF básico v5.4: ${passed}/${Object.keys(tests).length} (${score}%)`);
+                    
+                    logToPanel(`📊 Score PDF básico v5.4: ${score}%`, 'pdf-check');
+                }
+            });
+        }
+        
+        // Atualizar botão no header
+        const runPdfCheckMainBtn = document.getElementById('run-pdf-check-main-v5-4');
+        if (runPdfCheckMainBtn) {
+            runPdfCheckMainBtn.addEventListener('click', () => {
+                if (typeof window.runPdfCompatibilityCheck === 'function') {
+                    window.runPdfCompatibilityCheck();
+                }
+            });
+        }
+        
+        // Atualizar botão na aba de testes
+        const runPdfCheckTestBtn = document.getElementById('run-pdf-check-v5-4');
+        if (runPdfCheckTestBtn) {
+            runPdfCheckTestBtn.addEventListener('click', () => {
+                if (typeof window.runPdfCompatibilityCheck === 'function') {
+                    window.runPdfCompatibilityCheck();
+                }
+            });
+        }
     }
     
-    // Atualizar botão na aba de testes
-    const runPdfCheckTestBtn = document.getElementById('run-pdf-check');
-    if (runPdfCheckTestBtn) {
-        runPdfCheckTestBtn.addEventListener('click', () => {
-            if (typeof window.runPdfCompatibilityCheck === 'function') {
-                window.runPdfCompatibilityCheck();
+    /* ================== EXECUTAR DIAGNÓSTICO AUTOMATICAMENTE SE HOUVER ERROS v5.4 ================== */
+    // Monitorar erros de clique em elementos PDF
+    document.addEventListener('click', function(e) {
+        const target = e.target;
+        const isPdfElement = target.matches?.('.pdf-icon, .icon-pdf, [onclick*="pdf"], [onclick*="Pdf"], [onclick*="PDF"]') ||
+                            target.closest?.('.pdf-icon, .icon-pdf, [onclick*="pdf"], [onclick*="Pdf"], [onclick*="PDF"]);
+        
+        if (isPdfElement) {
+            console.log('🔍 Clique em elemento PDF detectado v5.4:', {
+                tag: target.tagName,
+                class: target.className,
+                id: target.id,
+                onclick: target.getAttribute('onclick')
+            });
+            
+            // Se for um ícone PDF e o diagnóstico estiver ativo, registrar no painel
+            if (DEBUG_MODE && DIAGNOSTICS_MODE) {
+                logToPanel(`🔍 Clique em elemento PDF detectado v5.4: ${target.className || target.tagName}`, 'pdf-check');
+                
+                // Verificar se o modal abre corretamente
+                setTimeout(() => {
+                    const modal = document.getElementById('pdfModal');
+                    if (modal && (modal.style.display === 'flex' || getComputedStyle(modal).display === 'flex')) {
+                        logToPanel('✅ Modal PDF aberto com sucesso v5.4', 'success');
+                    } else {
+                        logToPanel('❌ Modal PDF não abriu v5.4', 'error');
+                    }
+                }, 100);
             }
-        });
-    }
-}
-
-/* ================== EXECUTAR DIAGNÓSTICO AUTOMATICAMENTE SE HOUVER ERROS ================== */
-// Monitorar erros de clique em elementos PDF
-document.addEventListener('click', function(e) {
-    const target = e.target;
-    const isPdfElement = target.matches?.('.pdf-icon, .icon-pdf, [onclick*="pdf"], [onclick*="Pdf"], [onclick*="PDF"]') ||
-                        target.closest?.('.pdf-icon, .icon-pdf, [onclick*="pdf"], [onclick*="Pdf"], [onclick*="PDF"]');
+        }
+    }, true);
     
-    if (isPdfElement) {
-        console.log('🔍 Clique em elemento PDF detectado:', {
-            tag: target.tagName,
-            class: target.className,
-            id: target.id,
-            onclick: target.getAttribute('onclick')
-        });
-    }
-}, true);
-
-/* ================== INICIALIZAÇÃO ================== */
-if (DEBUG_MODE && DIAGNOSTICS_MODE) {
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
+    /* ================== INICIALIZAÇÃO v5.4 ================== */
+    if (DEBUG_MODE && DIAGNOSTICS_MODE) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => {
+                    createDiagnosticsPanel();
+                    logToPanel('Panel de diagnóstico criado v5.4', 'success');
+                    
+                    setTimeout(() => runCompleteDiagnosis(), 2000);
+                    
+                    if (MOBILE_TEST) {
+                        setTimeout(() => runPdfMobileDiagnosis(), 3000);
+                    }
+                    
+                    if (REFERENCE_CHECK) {
+                        setTimeout(() => {
+                            if (typeof window.analyzeBrokenReferences === 'function') {
+                                window.analyzeBrokenReferences();
+                            }
+                        }, 4000);
+                    }
+                    
+                    setTimeout(() => {
+                        if (typeof window.autoValidateMigration === 'function') {
+                            window.autoValidateMigration();
+                        }
+                    }, 5000);
+                    
+                    // Atualizar botões PDF
+                    setTimeout(updatePdfCheckButtons, 1000);
+                    
+                    // Executar diagnóstico do ícone PDF se houver debug específico
+                    if (PDF_DEBUG) {
+                        setTimeout(() => {
+                            if (typeof window.diagnosePdfIconProblem === 'function') {
+                                window.diagnosePdfIconProblem();
+                            }
+                        }, 6000);
+                    }
+                    
+                    console.log('✅ diagnostics.js v5.4 inicializado com sucesso!');
+                }, 1000);
+            });
+        } else {
             setTimeout(() => {
                 createDiagnosticsPanel();
+                logToPanel('Panel de diagnóstico criado v5.4', 'success');
+                
                 setTimeout(() => runCompleteDiagnosis(), 2000);
                 
                 if (MOBILE_TEST) {
@@ -5642,98 +6587,165 @@ if (DEBUG_MODE && DIAGNOSTICS_MODE) {
                 
                 // Atualizar botões PDF
                 setTimeout(updatePdfCheckButtons, 1000);
-            }, 1000);
-        });
-    } else {
-        setTimeout(() => {
-            createDiagnosticsPanel();
-            setTimeout(() => runCompleteDiagnosis(), 2000);
-            
-            if (MOBILE_TEST) {
-                setTimeout(() => runPdfMobileDiagnosis(), 3000);
-            }
-            
-            if (REFERENCE_CHECK) {
-                setTimeout(() => {
-                    if (typeof window.analyzeBrokenReferences === 'function') {
-                        window.analyzeBrokenReferences();
-                    }
-                }, 4000);
-            }
-            
-            setTimeout(() => {
-                if (typeof window.autoValidateMigration === 'function') {
-                    window.autoValidateMigration();
+                
+                // Executar diagnóstico do ícone PDF se houver debug específico
+                if (PDF_DEBUG) {
+                    setTimeout(() => {
+                        if (typeof window.diagnosePdfIconProblem === 'function') {
+                            window.diagnosePdfIconProblem();
+                        }
+                    }, 6000);
                 }
-            }, 5000);
+                
+                console.log('✅ diagnostics.js v5.4 inicializado com sucesso!');
+            }, 1000);
+        }
+    }
+    
+    // Adicionar console helper para teste rápido
+    window.testPdfIcon = function() {
+        console.log('🧪 TESTE RÁPIDO DO ÍCONE PDF v5.4');
+        console.log('1. showPdfModal existe?', typeof window.showPdfModal);
+        console.log('2. PdfSystem existe?', typeof window.PdfSystem);
+        console.log('3. PdfSystem.showModal existe?', typeof window.PdfSystem?.showModal);
+        console.log('4. Modal existe?', !!document.getElementById('pdfModal'));
+        console.log('5. Função testPdfSystem existe?', typeof window.testPdfSystem);
+        console.log('6. Função interactivePdfTest existe?', typeof window.interactivePdfTest);
+        console.log('7. Executando testPdfSystem(101)...');
+        
+        if (typeof window.testPdfSystem === 'function') {
+            window.testPdfSystem(101);
+        } else if (typeof window.showPdfModal === 'function') {
+            window.showPdfModal(101);
+        } else {
+            console.log('❌ showPdfModal não encontrada. Criando teste v5.4...');
+            const modal = document.getElementById('pdfModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                console.log('✅ Modal aberto manualmente v5.4');
+            } else {
+                console.log('❌ Modal não encontrado v5.4');
+            }
+        }
+    };
+    
+    window.runDiagnostics = runCompleteDiagnosis;
+    window.diagnosticsLoaded = true;
+    
+    // Funções auxiliares para acesso rápido
+    window.diag = {
+        pdf: {
+            test: window.testPdfSystem,
+            interactive: window.interactivePdfTest,
+            diagnose: window.diagnosePdfIconProblem,
+            check: window.runPdfCompatibilityCheck
+        },
+        system: {
+            overview: () => console.table(analyzeSystem()),
+            placeholders: window.analyzePlaceholders,
+            references: window.analyzeBrokenReferences
+        },
+        migration: {
+            verify: window.verifyMediaMigration,
+            compatibility: window.testModuleCompatibility,
+            auto: window.autoValidateMigration
+        }
+    };
+    
+    console.log('✅ diagnostics.js v5.4 carregado com sucesso! (com diagnóstico de ícone PDF e melhorias F12)');
+    
+    // Adicionar listener para capturar erros 404 em tempo real
+    window.addEventListener('error', function(e) {
+        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+            console.error('🔍 [DIAGNOSTICS v5.4] ERRO 404 DETECTADO EM TEMPO REAL:', {
+                element: e.target.tagName,
+                src: e.target.src || e.target.href,
+                timestamp: new Date().toISOString(),
+                page: window.location.href
+            });
             
-            // Atualizar botões PDF
-            setTimeout(updatePdfCheckButtons, 1000);
+            // Se diagnostics estiver ativo, logar no painel também
+            if (DEBUG_MODE && DIAGNOSTICS_MODE) {
+                logToPanel(`❌ 404 detectado v5.4: ${e.target.src || e.target.href}`, 'error');
+            }
+        }
+    });
+    
+    // Monitorar fetch para detectar 404s em chamadas AJAX
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+        return originalFetch.apply(this, args).then(response => {
+            if (!response.ok && response.status === 404) {
+                console.warn('🔍 [DIAGNOSTICS v5.4] Fetch 404 detectado:', args[0]);
+                
+                if (DEBUG_MODE && DIAGNOSTICS_MODE) {
+                    logToPanel(`⚠️ Fetch 404 v5.4: ${args[0]}`, 'warning');
+                }
+            }
+            return response;
+        }).catch(error => {
+            if (error.message.includes('404')) {
+                console.error('🔍 [DIAGNOSTICS v5.4] Fetch error 404:', args[0]);
+                
+                if (DEBUG_MODE && DIAGNOSTICS_MODE) {
+                    logToPanel(`❌ Fetch error 404 v5.4: ${args[0]}`, 'error');
+                }
+            }
+            throw error;
+        });
+    };
+    
+    // Inicialização automática se em modo debug
+    if (PDF_DEBUG || location.search.includes('debug=pdf')) {
+        setTimeout(() => {
+            console.log('🔧 Modo debug PDF ativado - inicializando diagnóstico v5.4');
+            window.enhanceDevTools();
+            
+            if (typeof window.interactivePdfTest === 'function') {
+                setTimeout(() => {
+                    window.interactivePdfTest();
+                }, 1500);
+            }
+            
+            if (typeof window.diagnosePdfIconProblem === 'function') {
+                setTimeout(() => {
+                    window.diagnosePdfIconProblem();
+                }, 2500);
+            }
         }, 1000);
     }
-}
-
-// Adicionar console helper para teste rápido
-window.testPdfIcon = function() {
-    console.log('🧪 TESTE RÁPIDO DO ÍCONE PDF');
-    console.log('1. showPdfModal existe?', typeof window.showPdfModal);
-    console.log('2. PdfSystem existe?', typeof window.PdfSystem);
-    console.log('3. Modal existe?', !!document.getElementById('pdfModal'));
-    console.log('4. Executando showPdfModal(101)...');
     
-    if (typeof window.showPdfModal === 'function') {
-        window.showPdfModal(101);
-    } else {
-        console.log('❌ showPdfModal não encontrada. Criando teste...');
-        const modal = document.getElementById('pdfModal');
-        if (modal) {
-            modal.style.display = 'flex';
-            console.log('✅ Modal aberto manualmente');
-        }
+    // Exportar funções globais
+    return {
+        analyzeSystem,
+        runCompleteDiagnosis,
+        testMediaUnifiedComplete,
+        exportReport,
+        createDiagnosticsPanel,
+        logToPanel,
+        updateStatus,
+        updateDeviceIndicator,
+        version: '5.4'
+    };
+    
+    })();
+    
+    console.log('✅ DIAGNOSTICS.JS v5.4 - CARREGAMENTO COMPLETO');
+    console.log('📋 Comandos disponíveis:');
+    console.log('- window.runDiagnostics() - Executar diagnóstico completo');
+    console.log('- window.testPdfSystem() - Testar sistema PDF');
+    console.log('- window.interactivePdfTest() - Teste interativo PDF');
+    console.log('- window.diagnosePdfIconProblem() - Diagnosticar problema do ícone PDF');
+    console.log('- window.runPdfCompatibilityCheck() - Verificar compatibilidade PDF');
+    console.log('- window.analyzeBrokenReferences() - Analisar referências quebradas');
+    console.log('- window.analyzePlaceholders() - Analisar placeholders');
+    console.log('- window.testModuleCompatibility() - Testar compatibilidade de módulos');
+    console.log('- window.verifyMediaMigration() - Verificar migração de mídia');
+    console.log('- window.autoValidateMigration() - Validação automática de migração');
+    console.log('- window.diag - Objeto com todas as funções de diagnóstico');
+    console.log('🎯 Use console.diag.pdf.interactive() para teste interativo do sistema PDF');
+    
+    // Exportar como módulo se suportado
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = diagnosticsModule;
     }
-};
-
-window.runDiagnostics = runCompleteDiagnosis;
-window.diagnosticsLoaded = true;
-console.log('✅ diagnostics.js v5.3 carregado com sucesso! (com diagnóstico de ícone PDF)');
-
-// Adicionar listener para capturar erros 404 em tempo real
-window.addEventListener('error', function(e) {
-    if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
-        console.error('🔍 [DIAGNOSTICS] ERRO 404 DETECTADO EM TEMPO REAL:', {
-            element: e.target.tagName,
-            src: e.target.src || e.target.href,
-            timestamp: new Date().toISOString(),
-            page: window.location.href
-        });
-        
-        // Se diagnostics estiver ativo, logar no painel também
-        if (DEBUG_MODE && DIAGNOSTICS_MODE) {
-            logToPanel(`❌ 404 detectado: ${e.target.src || e.target.href}`, 'error');
-        }
-    }
-});
-
-// Monitorar fetch para detectar 404s em chamadas AJAX
-const originalFetch = window.fetch;
-window.fetch = function(...args) {
-    return originalFetch.apply(this, args).then(response => {
-        if (!response.ok && response.status === 404) {
-            console.warn('🔍 [DIAGNOSTICS] Fetch 404 detectado:', args[0]);
-            
-            if (DEBUG_MODE && DIAGNOSTICS_MODE) {
-                logToPanel(`⚠️ Fetch 404: ${args[0]}`, 'warning');
-            }
-        }
-        return response;
-    }).catch(error => {
-        if (error.message.includes('404')) {
-            console.error('🔍 [DIAGNOSTICS] Fetch error 404:', args[0]);
-            
-            if (DEBUG_MODE && DIAGNOSTICS_MODE) {
-                logToPanel(`❌ Fetch error 404: ${args[0]}`, 'error');
-            }
-        }
-        throw error;
-    });
-};
