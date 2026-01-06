@@ -6745,9 +6745,11 @@ function exportReport() {
     console.log('- window.diag - Objeto com todas as funções de diagnóstico');
     console.log('🎯 Use console.diag.pdf.interactive() para teste interativo do sistema PDF');
     
-       // Exportar como módulo se suportado
+    // Exportar como módulo se suportado
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = diagnosticsModule;
     }
-        
+    
+    })();  
+    
     console.log('✅ DIAGNOSTICS.JS v5.4 - CARREGAMENTO COMPLETO');
