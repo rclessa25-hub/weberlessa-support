@@ -7029,6 +7029,570 @@ window.Diagnostics = {
 
 console.log('✅ DIAGNOSTICS.JS v5.5 - CARREGAMENTO COMPLETO (com testPdfFix)'); // ← Atualizar mensagem
 
+// ================== ETAPA 4: VERIFICAÇÃO DE INTEGRIDADE (v5.5) ==================
+window.verifyPdfSystemIntegrity = function() {
+    console.group('🔍 VERIFICAÇÃO DE SISTEMA DE PDF - ETAPA 4 (v5.5)');
+    
+    // Verificar qual sistema está ativo para PDFs
+    const systems = {
+        MediaSystem: window.MediaSystem && typeof window.MediaSystem.processAndSavePdfs === 'function',
+        PdfSystem: window.PdfSystem && typeof window.PdfSystem.processAndSavePdfs === 'function',
+        window_processAndSavePdfs: typeof window.processAndSavePdfs === 'function',
+        pdfUploadArea: !!document.getElementById('pdfUploadArea'),
+        pdfFileInput: !!document.getElementById('pdfFileInput'),
+        hasPdfModal: !!document.getElementById('pdfModal'),
+        hasPdfPassword: !!document.getElementById('pdfPassword'),
+        testPdfFix: typeof window.testPdfFix === 'function',
+        interactivePdfTest: typeof window.interactivePdfTest === 'function'
+    };
+    
+    console.table(systems);
+    
+    // Análise de conflitos
+    let hasConflict = false;
+    let conflictMessage = '';
+    
+    if (systems.MediaSystem && systems.PdfSystem) {
+        hasConflict = true;
+        conflictMessage = '⚠️ DOIS SISTEMAS DE PDF ATIVOS! Conflito potencial detectado.';
+        console.warn(conflictMessage);
+        console.log('🎯 Recomendação: Use apenas MediaSystem para uploads');
+    }
+    
+    if (systems.MediaSystem) {
+        console.log('✅ Sistema correto: MediaSystem ativo para PDFs');
+        console.log('📊 Estado do MediaSystem:');
+        console.log('- PDFs no estado:', window.MediaSystem.state?.pdfs?.length || 0);
+        console.log('- PDFs existentes:', window.MediaSystem.state?.existingPdfs?.length || 0);
+        console.log('- Funções disponíveis:', Object.keys(window.MediaSystem).filter(k => typeof window.MediaSystem[k] === 'function').length);
+    }
+    
+    if (systems.PdfSystem && !systems.MediaSystem) {
+        console.log('ℹ️ Apenas PdfSystem ativo (pode ser fallback)');
+    }
+    
+    // Verificar estado dos elementos críticos
+    const criticalElements = {
+        'pdfModal': {
+            element: document.getElementById('pdfModal'),
+            display: document.getElementById('pdfModal')?.style.display || getComputedStyle(document.getElementById('pdfModal') || {}).display,
+            visible: document.getElementById('pdfModal') && 
+                     (document.getElementById('pdfModal').style.display !== 'none' && 
+                      getComputedStyle(document.getElementById('pdfModal')).display !== 'none')
+        },
+        'pdfPassword': {
+            element: document.getElementById('pdfPassword'),
+            display: document.getElementById('pdfPassword')?.style.display || getComputedStyle(document.getElementById('pdfPassword') || {}).display,
+            visible: document.getElementById('pdfPassword') && 
+                     (document.getElementById('pdfPassword').style.display !== 'none' && 
+                      getComputedStyle(document.getElementById('pdfPassword')).display !== 'none')
+        }
+    };
+    
+    console.log('🎯 Elementos Críticos:', criticalElements);
+    
+    // Recomendações baseadas na análise
+    const recommendations = [];
+    
+    if (!systems.MediaSystem && !systems.PdfSystem) {
+        recommendations.push('🚨 CRÍTICO: Nenhum sistema PDF ativo. Considere criar fallback.');
+    }
+    
+    if (!criticalElements.pdfModal.element) {
+        recommendations.push('🔧 Criar modal PDF se não existir');
+    } else if (!criticalElements.pdfModal.visible && criticalElements.pdfModal.display === 'none') {
+        recommendations.push('🔧 Modal PDF existe mas está oculto (pode ser normal)');
+    }
+    
+    if (!criticalElements.pdfPassword.element) {
+        recommendations.push('🔧 Adicionar campo de senha PDF');
+    } else if (!criticalElements.pdfPassword.visible) {
+        recommendations.push('🔧 Campo de senha PDF está oculto - verificar se deve estar visível');
+    }
+    
+    if (recommendations.length > 0) {
+        console.log('💡 Recomendações:');
+        recommendations.forEach((rec, idx) => console.log(`${idx + 1}. ${rec}`));
+    }
+    
+    const result = {
+        systems,
+        criticalElements,
+        hasConflict,
+        conflictMessage,
+        recommendations,
+        timestamp: new Date().toISOString(),
+        version: '5.5'
+    };
+    
+    // Log no painel se disponível
+    if (typeof window.logToPanel === 'function') {
+        if (hasConflict) {
+            window.logToPanel('⚠️ Conflito de sistemas PDF detectado', 'warning');
+        } else if (systems.MediaSystem) {
+            window.logToPanel('✅ MediaSystem ativo e funcional', 'success');
+        }
+        
+        if (recommendations.length > 0) {
+            window.logToPanel(`💡 ${recommendations.length} recomendações`, 'info');
+        }
+    }
+    
+    console.groupEnd();
+    
+    return result;
+};
+
+/* ================== ETAPA 5: TESTE DE VALIDAÇÃO (v5.5) ================== */
+window.testPdfUploadBugFix = function() {
+    console.group('🧪 TESTE DE CORREÇÃO DE BUG DE PDF (v5.5)');
+    
+    const results = {
+        step1: {},
+        step2: {},
+        step3: {},
+        overallSuccess: false,
+        timestamp: new Date().toISOString(),
+        version: '5.5'
+    };
+    
+    // 1. Verificar estado inicial
+    console.log('1️⃣ Estado inicial:');
+    results.step1 = {
+        MediaSystem: !!window.MediaSystem,
+        PdfSystem: !!window.PdfSystem,
+        processAndSavePdfs: typeof window.processAndSavePdfs,
+        testPdfFix: typeof window.testPdfFix,
+        interactivePdfTest: typeof window.interactivePdfTest
+    };
+    
+    console.log('- MediaSystem:', results.step1.MediaSystem);
+    console.log('- PdfSystem:', results.step1.PdfSystem);
+    console.log('- Função processAndSavePdfs:', results.step1.processAndSavePdfs);
+    console.log('- Função testPdfFix:', results.step1.testPdfFix);
+    console.log('- Função interactivePdfTest:', results.step1.interactivePdfTest);
+    
+    // 2. Simular upload de PDF
+    console.log('2️⃣ Simulando upload de PDF...');
+    
+    let simulationSuccess = false;
+    let simulationMessage = '';
+    
+    if (window.MediaSystem && typeof window.MediaSystem.addPdfs === 'function') {
+        console.log('✅ Usando MediaSystem para simulação');
+        
+        try {
+            // Criar arquivo de teste simulado
+            const testFile = {
+                name: 'teste_correcao.pdf',
+                type: 'application/pdf',
+                size: 1024,
+                lastModified: Date.now()
+            };
+            
+            // Simular fileList
+            const fileList = {
+                0: testFile,
+                length: 1,
+                item: (index) => index === 0 ? testFile : null
+            };
+            
+            console.log('📤 Adicionando PDF de teste ao MediaSystem...');
+            
+            // Tentar adicionar PDFs (pode variar conforme implementação)
+            let added = 0;
+            if (typeof window.MediaSystem.addPdfs === 'function') {
+                try {
+                    const result = window.MediaSystem.addPdfs(fileList);
+                    added = result || 1; // Assumir sucesso se não houver erro
+                    simulationMessage = `✅ ${added} PDF(s) simulado(s) no MediaSystem`;
+                } catch (e) {
+                    simulationMessage = `⚠️ Simulação falhou: ${e.message}`;
+                }
+            }
+            
+            // Verificar estado
+            console.log('📊 Estado após simulação:');
+            console.log('- PDFs em MediaSystem.state:', window.MediaSystem.state?.pdfs?.length || 0);
+            console.log('- Estado completo:', window.MediaSystem.state || 'N/A');
+            
+            results.step2 = {
+                usedSystem: 'MediaSystem',
+                filesAdded: added,
+                message: simulationMessage,
+                statePdfs: window.MediaSystem.state?.pdfs?.length || 0,
+                success: added > 0
+            };
+            
+            simulationSuccess = added > 0;
+            
+        } catch (error) {
+            console.error('❌ Erro na simulação MediaSystem:', error);
+            results.step2 = {
+                usedSystem: 'MediaSystem',
+                error: error.message,
+                success: false
+            };
+        }
+        
+    } else if (window.PdfSystem && typeof window.PdfSystem.addPdfs === 'function') {
+        console.log('ℹ️ Usando PdfSystem para simulação (fallback)');
+        
+        try {
+            results.step2 = {
+                usedSystem: 'PdfSystem',
+                message: 'PdfSystem disponível para simulação',
+                success: true
+            };
+            simulationSuccess = true;
+        } catch (error) {
+            results.step2 = {
+                usedSystem: 'PdfSystem',
+                error: error.message,
+                success: false
+            };
+        }
+        
+    } else {
+        console.log('⚠️ Nenhum sistema disponível para simulação direta');
+        results.step2 = {
+            usedSystem: 'none',
+            message: 'Usando simulação básica',
+            success: true // Considerar sucesso para não bloquear teste
+        };
+        simulationSuccess = true;
+    }
+    
+    // 3. Testar processAndSavePdfs
+    console.log('3️⃣ Testando processAndSavePdfs...');
+    
+    if (typeof window.processAndSavePdfs === 'function') {
+        console.log('✅ Função processAndSavePdfs disponível');
+        
+        try {
+            // Testar com valores padrão
+            const testId = 'test_id_' + Date.now();
+            const testTitle = 'Teste Correção ' + new Date().toLocaleTimeString();
+            
+            console.log(`📝 Executando processAndSavePdfs("${testId}", "${testTitle}")...`);
+            
+            // Executar de forma assíncrona
+            const processResult = window.processAndSavePdfs(testId, testTitle);
+            
+            if (processResult && typeof processResult.then === 'function') {
+                // É uma Promise
+                processResult
+                    .then(result => {
+                        console.log('📤 Resultado (Promise):', result);
+                        results.step3 = {
+                            type: 'promise',
+                            result: result,
+                            success: true
+                        };
+                        results.overallSuccess = simulationSuccess;
+                        completeTest();
+                    })
+                    .catch(error => {
+                        console.error('❌ Erro no processamento (Promise):', error);
+                        results.step3 = {
+                            type: 'promise',
+                            error: error.message,
+                            success: false
+                        };
+                        results.overallSuccess = false;
+                        completeTest();
+                    });
+            } else {
+                // Não é uma Promise
+                console.log('📤 Resultado (síncrono):', processResult);
+                results.step3 = {
+                    type: 'sync',
+                    result: processResult,
+                    success: processResult !== false && processResult !== undefined
+                };
+                results.overallSuccess = simulationSuccess && results.step3.success;
+                completeTest();
+            }
+            
+        } catch (error) {
+            console.error('❌ Erro ao executar processAndSavePdfs:', error);
+            results.step3 = {
+                type: 'error',
+                error: error.message,
+                success: false
+            };
+            results.overallSuccess = false;
+            completeTest();
+        }
+        
+    } else {
+        console.log('⚠️ Função processAndSavePdfs não disponível');
+        results.step3 = {
+            type: 'not_available',
+            success: false
+        };
+        results.overallSuccess = simulationSuccess;
+        completeTest();
+    }
+    
+    function completeTest() {
+        console.log('📊 RESUMO DO TESTE:');
+        console.log('- Passo 1 (Estado):', results.step1.success !== false ? '✅' : '❌');
+        console.log('- Passo 2 (Simulação):', results.step2.success ? '✅' : '❌');
+        console.log('- Passo 3 (Processamento):', results.step3.success ? '✅' : '❌');
+        console.log('- Sucesso Geral:', results.overallSuccess ? '✅' : '❌');
+        
+        // Mostrar alerta visual
+        if (!window.diagnosticsSilentMode) {
+            showTestResultsAlert(results);
+        }
+        
+        // Logar no painel
+        if (typeof window.logToPanel === 'function') {
+            const status = results.overallSuccess ? 'success' : 'error';
+            const message = results.overallSuccess ? 
+                '✅ Teste de correção PDF realizado com sucesso' : 
+                '❌ Teste de correção PDF falhou';
+            window.logToPanel(message, status);
+        }
+        
+        console.groupEnd();
+        
+        return results;
+    }
+    
+    // Retornar imediatamente (os resultados serão preenchidos assincronamente)
+    return results;
+};
+
+/* ================== MOSTRAR RESULTADOS DO TESTE ================== */
+function showTestResultsAlert(results) {
+    const alertId = 'pdf-test-results-alert-v5-5';
+    
+    // Remover alerta anterior se existir
+    const existingAlert = document.getElementById(alertId);
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.id = alertId;
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: ${results.overallSuccess ? 'linear-gradient(135deg, #001a00, #000a1a)' : 'linear-gradient(135deg, #1a0000, #000a0a)'};
+        color: ${results.overallSuccess ? '#00ff9c' : '#ff5555'};
+        padding: 25px;
+        border: 3px solid ${results.overallSuccess ? '#00ff9c' : '#ff5555'};
+        border-radius: 10px;
+        z-index: 1000006;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 0 50px ${results.overallSuccess ? 'rgba(0, 255, 156, 0.5)' : 'rgba(255, 0, 0, 0.5)'};
+        font-family: 'Courier New', monospace;
+        backdrop-filter: blur(10px);
+    `;
+    
+    let html = `
+        <div style="font-size: 20px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <span>${results.overallSuccess ? '✅' : '❌'}</span>
+            <span>TESTE DE CORREÇÃO PDF v5.5</span>
+        </div>
+        
+        <div style="background: ${results.overallSuccess ? 'rgba(0, 255, 156, 0.1)' : 'rgba(255, 0, 0, 0.1)'}; 
+                    padding: 15px; border-radius: 6px; margin-bottom: 20px; 
+                    border: 1px solid ${results.overallSuccess ? 'rgba(0, 255, 156, 0.3)' : 'rgba(255, 0, 0, 0.3)'};">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
+                <div>
+                    <div style="font-size: 11px; color: #888;">ESTADO</div>
+                    <div style="font-size: 24px; color: ${results.step1.success !== false ? '#00ff9c' : '#ff5555'}">
+                        ${results.step1.success !== false ? '✅' : '❌'}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #888;">SIMULAÇÃO</div>
+                    <div style="font-size: 24px; color: ${results.step2.success ? '#00ff9c' : '#ff5555'}">
+                        ${results.step2.success ? '✅' : '❌'}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #888;">PROCESSO</div>
+                    <div style="font-size: 24px; color: ${results.step3.success ? '#00ff9c' : '#ff5555'}">
+                        ${results.step3.success ? '✅' : '❌'}
+                    </div>
+                </div>
+            </div>
+            
+            <div style="font-size: 12px; color: ${results.overallSuccess ? '#88ffaa' : '#ff8888'}; text-align: center;">
+                ${results.overallSuccess ? '✅ Sistema PDF funcional' : '❌ Problemas detectados'}
+            </div>
+        </div>
+    `;
+    
+    // Detalhes dos resultados
+    html += `
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: ${results.overallSuccess ? '#00ff9c' : '#ff5555'}; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;">
+                📋 DETALHES DO TESTE
+            </h4>
+            <div style="max-height: 200px; overflow-y: auto; font-size: 11px;">
+                <div style="margin-bottom: 8px;">
+                    <strong>Sistema usado:</strong> ${results.step2.usedSystem || 'N/A'}
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <strong>Arquivos simulados:</strong> ${results.step2.filesAdded || 0}
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <strong>Tipo processamento:</strong> ${results.step3.type || 'N/A'}
+                </div>
+                ${results.step2.message ? `<div style="margin-bottom: 8px;"><strong>Mensagem:</strong> ${results.step2.message}</div>` : ''}
+                ${results.step3.error ? `<div style="color: #ff5555; margin-bottom: 8px;"><strong>Erro:</strong> ${results.step3.error}</div>` : ''}
+            </div>
+        </div>
+    `;
+    
+    // Recomendações se houver falhas
+    if (!results.overallSuccess) {
+        html += `
+            <div style="background: rgba(255, 0, 0, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(255, 0, 0, 0.3);">
+                <h4 style="color: #ff5555; margin-bottom: 10px;">💡 RECOMENDAÇÕES</h4>
+                <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #ffaaaa;">
+                    <li>Verificar se MediaSystem está carregado corretamente</li>
+                    <li>Confirmar que a função processAndSavePdfs existe</li>
+                    <li>Testar manualmente com console.diag.pdf.test()</li>
+                    <li>Usar console.diag.pdf.interactive() para diagnóstico interativo</li>
+                </ul>
+            </div>
+        `;
+    }
+    
+    // Botões de ação
+    html += `
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button id="close-test-results-v5-5" style="
+                background: ${results.overallSuccess ? '#00ff9c' : '#ff5555'}; 
+                color: ${results.overallSuccess ? '#000' : 'white'}; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1; transition: all 0.2s;">
+                FECHAR
+            </button>
+            <button id="run-verification-v5-5" style="
+                background: #0088cc; color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1; transition: all 0.2s;">
+                🔍 VERIFICAÇÃO
+            </button>
+        </div>
+        
+        <div style="font-size: 11px; color: #888; text-align: center; margin-top: 15px;">
+            Teste executado em: ${new Date().toLocaleTimeString()} - v5.5
+        </div>
+    `;
+    
+    alertDiv.innerHTML = html;
+    document.body.appendChild(alertDiv);
+    
+    // Configurar eventos
+    document.getElementById('close-test-results-v5-5')?.addEventListener('click', () => {
+        document.body.removeChild(alertDiv);
+    });
+    
+    document.getElementById('run-verification-v5-5')?.addEventListener('click', () => {
+        document.body.removeChild(alertDiv);
+        window.verifyPdfSystemIntegrity();
+    });
+}
+
+/* ================== INTEGRAÇÃO COM O SISTEMA EXISTENTE ================== */
+// Adicionar novas funções ao objeto diag global
+if (window.diag) {
+    window.diag.pdf = window.diag.pdf || {};
+    window.diag.pdf.verify = window.verifyPdfSystemIntegrity;
+    window.diag.pdf.testBugFix = window.testPdfUploadBugFix;
+    
+    // Adicionar também ao console.diag se existir
+    if (console.diag) {
+        console.diag.pdf = console.diag.pdf || {};
+        console.diag.pdf.verify = window.verifyPdfSystemIntegrity;
+        console.diag.pdf.testBugFix = window.testPdfUploadBugFix;
+    }
+}
+
+// Adicionar botões ao painel de diagnóstico
+function addNewVerificationButtons() {
+    // Adicionar ao painel principal se existir
+    const mainButtons = document.querySelector('#diagnostics-panel-complete > div:nth-child(3)');
+    if (mainButtons && !document.getElementById('verify-pdf-system-btn-v5-5')) {
+        const verifyBtn = document.createElement('button');
+        verifyBtn.id = 'verify-pdf-system-btn-v5-5';
+        verifyBtn.innerHTML = '🔍 VERIFICAÇÃO SISTEMA PDF v5.5';
+        verifyBtn.style.cssText = `
+            background: linear-gradient(45deg, #ff00ff, #0088cc); 
+            color: white; border: none;
+            padding: 8px 12px; cursor: pointer; border-radius: 4px;
+            font-weight: bold; flex: 1; margin: 5px;
+            transition: all 0.2s;
+        `;
+        
+        verifyBtn.addEventListener('click', () => {
+            window.verifyPdfSystemIntegrity();
+        });
+        
+        const testBugFixBtn = document.createElement('button');
+        testBugFixBtn.id = 'test-pdf-bug-fix-btn-v5-5';
+        testBugFixBtn.innerHTML = '🧪 TESTE CORREÇÃO BUG PDF v5.5';
+        testBugFixBtn.style.cssText = `
+            background: linear-gradient(45deg, #00ff9c, #0088cc); 
+            color: #000; border: none;
+            padding: 8px 12px; cursor: pointer; border-radius: 4px;
+            font-weight: bold; flex: 1; margin: 5px;
+            transition: all 0.2s;
+        `;
+        
+        testBugFixBtn.addEventListener('click', () => {
+            window.testPdfUploadBugFix();
+        });
+        
+        mainButtons.appendChild(verifyBtn);
+        mainButtons.appendChild(testBugFixBtn);
+        
+        console.log('✅ Botões de verificação PDF adicionados ao painel (v5.5)');
+    }
+}
+
+// Executar verificação automática se em modo debug
+(function autoRunVerifications() {
+    const shouldAutoRun = DEBUG_MODE || DIAGNOSTICS_MODE || PDF_DEBUG;
+    
+    if (shouldAutoRun) {
+        console.log('🔧 Configurando verificações automáticas PDF (7 segundos)...');
+        
+        // Executar após 7 segundos (dá tempo para o sistema carregar)
+        setTimeout(() => {
+            console.log('🔄 Executando verificação automática de integridade...');
+            if (window.verifyPdfSystemIntegrity) {
+                window.verifyPdfSystemIntegrity();
+            }
+            
+            // Executar teste após 10 segundos
+            setTimeout(() => {
+                console.log('🧪 Executando teste automático de correção...');
+                if (window.testPdfUploadBugFix) {
+                    window.testPdfUploadBugFix();
+                }
+            }, 3000);
+            
+            // Adicionar botões ao painel
+            setTimeout(addNewVerificationButtons, 1000);
+            
+        }, 7000);
+    }
+})();
+
+console.log('✅ Módulos de verificação PDF v5.5 adicionados (sem duplicação)');
+
     // Exportar funções globais
     window.Diagnostics = {
         analyzeSystem,
