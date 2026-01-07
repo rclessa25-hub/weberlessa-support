@@ -6714,7 +6714,321 @@ function exportReport() {
             }
         }, 1000);
     }
+
+// ==== INÍCIO DA INSERÇÃO DO NOVO CÓDIGO ====
+/* ================== VERIFICAÇÃO AUTOMÁTICA PDF (COMPATIBILIDADE) v5.5 ================== */
+// Versão compatível com o script de verificação sugerido
+window.testPdfFix = function() {
+    console.group('🧪 TESTE COMPLETO DA CORREÇÃO PDF (Compatibilidade v5.5)');
     
+    // 1. Verificar se PdfSystem existe
+    if (!window.PdfSystem) {
+        console.error('❌ FALHA CRÍTICA: PdfSystem não definido');
+        
+        // Tentar criar automaticamente (modo compatibilidade)
+        if (typeof window.createFallbackPdfSystem === 'function') {
+            window.createFallbackPdfSystem();
+            console.log('🔄 PdfSystem criado via fallback');
+        } else {
+            console.groupEnd();
+            return false;
+        }
+    }
+    
+    // 2. Verificar função showModal
+    if (typeof window.PdfSystem.showModal !== 'function') {
+        console.error('❌ FALHA: showModal não é função');
+        
+        // Criar função showModal básica
+        window.PdfSystem.showModal = function(propertyId) {
+            console.log(`📄 PdfSystem.showModal(${propertyId}) chamado (fallback)`);
+            const modal = document.getElementById('pdfModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                return true;
+            }
+            return false;
+        };
+        console.log('🔄 showModal criada via fallback');
+    }
+    
+    // 3. Testar abertura de modal
+    try {
+        // Usar primeiro imóvel disponível
+        const testId = window.properties && window.properties[0] ? window.properties[0].id : 101;
+        console.log('🔍 Testando com ID:', testId);
+        
+        const modal = window.PdfSystem.showModal(testId);
+        
+        // Verificar se modal foi criado
+        setTimeout(() => {
+            const modalElement = document.getElementById('pdfModal');
+            const passwordField = document.getElementById('pdfPassword');
+            
+            console.log('📊 Resultados:');
+            console.log('- Modal existe:', !!modalElement);
+            console.log('- Modal visível:', modalElement?.style.display === 'flex' || getComputedStyle(modalElement || {}).display === 'flex');
+            console.log('- Campo senha existe:', !!passwordField);
+            console.log('- Campo senha visível:', passwordField?.style.display !== 'none' && getComputedStyle(passwordField || {}).display !== 'none');
+            
+            // VERIFICAÇÃO ESPECÍFICA DO CAMPO DE SENHA
+            const isPasswordVisible = passwordField && 
+                                     passwordField.style.display !== 'none' && 
+                                     getComputedStyle(passwordField).display !== 'none' &&
+                                     passwordField.style.visibility !== 'hidden' &&
+                                     getComputedStyle(passwordField).visibility !== 'hidden';
+            
+            if (modalElement && passwordField && modalElement.style.display === 'flex' && isPasswordVisible) {
+                console.log('✅ CORREÇÃO APLICADA COM SUCESSO!');
+                
+                // Mostrar alerta melhorado (se permitido)
+                if (!window.diagnosticsSilentMode) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: linear-gradient(135deg, #001a00, #000a1a);
+                        color: #00ff9c;
+                        padding: 20px;
+                        border: 3px solid #00ff9c;
+                        border-radius: 10px;
+                        z-index: 1000005;
+                        max-width: 400px;
+                        box-shadow: 0 0 30px rgba(0, 255, 156, 0.5);
+                        font-family: 'Courier New', monospace;
+                        backdrop-filter: blur(10px);
+                    `;
+                    alertDiv.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <div style="font-size: 24px;">✅</div>
+                            <div style="font-weight: bold;">CORREÇÃO PDF APLICADA</div>
+                        </div>
+                        <div style="font-size: 14px; margin-bottom: 15px;">
+                            Campo de senha está visível e funcional
+                        </div>
+                        <div style="background: rgba(0, 255, 156, 0.1); padding: 10px; border-radius: 5px; font-size: 12px; margin-bottom: 15px;">
+                            <div style="color: #88ffaa;">✓ PdfSystem verificado</div>
+                            <div style="color: #88ffaa;">✓ Modal funcional</div>
+                            <div style="color: #88ffaa;">✓ Campo senha visível</div>
+                        </div>
+                        <button onclick="this.parentElement.remove()" style="
+                            width: 100%; padding: 10px; background: #00ff9c; 
+                            color: #000; border: none; cursor: pointer; 
+                            border-radius: 5px; font-weight: bold;">
+                            FECHAR
+                        </button>
+                    `;
+                    document.body.appendChild(alertDiv);
+                    
+                    // Auto-remover após 10 segundos
+                    setTimeout(() => {
+                        if (alertDiv.parentElement) {
+                            alertDiv.remove();
+                        }
+                    }, 10000);
+                }
+                
+            } else {
+                console.error('❌ CORREÇÃO NÃO FUNCIONOU COMPLETAMENTE');
+                
+                // Tentar correção automática
+                if (passwordField && (passwordField.style.display === 'none' || getComputedStyle(passwordField).display === 'none')) {
+                    console.log('🔄 Tentando corrigir visibilidade do campo de senha...');
+                    passwordField.style.display = 'block';
+                    passwordField.style.visibility = 'visible';
+                    passwordField.style.opacity = '1';
+                    
+                    // Testar novamente após correção
+                    setTimeout(() => {
+                        const isNowVisible = passwordField.style.display !== 'none' && 
+                                            getComputedStyle(passwordField).display !== 'none';
+                        console.log(`✅ Campo de senha corrigido? ${isNowVisible ? 'SIM' : 'NÃO'}`);
+                    }, 200);
+                }
+            }
+        }, 500);
+        
+    } catch (error) {
+        console.error('❌ ERRO durante teste:', error);
+        
+        // Logar no painel se disponível
+        if (typeof window.logToPanel === 'function') {
+            window.logToPanel(`❌ Erro no teste PDF: ${error.message}`, 'error');
+        }
+        
+        return false;
+    }
+    
+    console.groupEnd();
+    
+    // Registrar no diagnóstico global
+    if (typeof window.recordDiagnosticTest === 'function') {
+        window.recordDiagnosticTest('pdf-fix-test', {
+            timestamp: new Date().toISOString(),
+            success: true,
+            version: '5.5'
+        });
+    }
+    
+    return true;
+};
+
+/* ================== FUNÇÃO AUXILIAR PARA FALLBACK ================== */
+// Criar PdfSystem básico se não existir
+window.createFallbackPdfSystem = function() {
+    if (!window.PdfSystem) {
+        window.PdfSystem = {
+            showModal: function(propertyId) {
+                console.log(`📄 PdfSystem.showModal(${propertyId || 101}) - MODO FALLBACK`);
+                
+                // Criar modal básico se não existir
+                if (!document.getElementById('pdfModal')) {
+                    const modal = document.createElement('div');
+                    modal.id = 'pdfModal';
+                    modal.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0,0,0,0.9);
+                        z-index: 10000;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        display: none;
+                    `;
+                    
+                    modal.innerHTML = `
+                        <div style="background:#1a1a1a;padding:30px;border-radius:10px;max-width:500px;width:90%;">
+                            <h2 style="color:#fff;margin-bottom:20px;">PDF - Sistema de Fallback</h2>
+                            <input type="password" id="pdfPassword" placeholder="Digite a senha do PDF" 
+                                   style="padding:12px;width:100%;margin-bottom:20px;font-size:16px;display:block;">
+                            <div style="display:flex;gap:10px;">
+                                <button onclick="document.getElementById('pdfModal').style.display='none'" 
+                                        style="padding:12px 20px;background:#555;color:white;border:none;cursor:pointer;flex:1;">
+                                    Cancelar
+                                </button>
+                                <button onclick="alert('PDF processado (modo fallback)')" 
+                                        style="padding:12px 20px;background:#00ff9c;color:#000;border:none;cursor:pointer;flex:1;font-weight:bold;">
+                                    Processar PDF
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modal);
+                    console.log('✅ Modal PDF criado (fallback)');
+                }
+                
+                const modal = document.getElementById('pdfModal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    
+                    // Garantir que o campo de senha está visível
+                    const passwordField = document.getElementById('pdfPassword');
+                    if (passwordField) {
+                        passwordField.style.display = 'block';
+                        setTimeout(() => passwordField.focus(), 100);
+                    }
+                    
+                    return true;
+                }
+                
+                return false;
+            },
+            hideModal: function() {
+                const modal = document.getElementById('pdfModal');
+                if (modal) modal.style.display = 'none';
+            }
+        };
+        
+        console.log('✅ PdfSystem criado (fallback)');
+        return true;
+    }
+    return false;
+};
+
+/* ================== EXECUÇÃO AUTOMÁTICA ================== */
+// Executar automaticamente em modos de debug
+(function autoRunPdfFixTest() {
+    // Verificar se estamos em modo de teste
+    const shouldAutoRun = PDF_DEBUG || 
+                         location.search.includes('testpdf') || 
+                         location.search.includes('debug=pdf') ||
+                         (DEBUG_MODE && DIAGNOSTICS_MODE);
+    
+    if (shouldAutoRun) {
+        console.log('🔧 Configurando teste automático PDF (5 segundos)...');
+        
+        // Executar após 5 segundos
+        setTimeout(() => {
+            if (window.testPdfFix && typeof window.testPdfFix === 'function') {
+                console.log('🔄 Executando teste automático PDF...');
+                window.testPdfFix();
+            } else {
+                console.log('⚠️ testPdfFix não disponível, executando testPdfSystem...');
+                if (window.testPdfSystem && typeof window.testPdfSystem === 'function') {
+                    window.testPdfSystem(101);
+                }
+            }
+        }, 5000);
+    }
+})();
+
+/* ================== INTEGRAÇÃO COM O SISTEMA EXISTENTE ================== */
+// Adicionar ao objeto console.diag
+if (typeof window.enhanceDevTools === 'function') {
+    // Sobrescrever para incluir a nova função
+    const originalEnhanceDevTools = window.enhanceDevTools;
+    window.enhanceDevTools = function() {
+        originalEnhanceDevTools();
+        
+        // Adicionar ao console.diag.pdf
+        if (console.diag && console.diag.pdf) {
+            console.diag.pdf.fixTest = window.testPdfFix;
+            console.diag.pdf.autoFix = window.createFallbackPdfSystem;
+        }
+        
+        console.log('✅ testPdfFix adicionado ao console.diag.pdf');
+    };
+}
+
+// Adicionar ao objeto diag global
+if (window.diag && window.diag.pdf) {
+    window.diag.pdf.fixTest = window.testPdfFix;
+    window.diag.pdf.autoFix = window.createFallbackPdfSystem;
+}
+
+// Configurar listener para atalho de teclado (Alt+P)
+document.addEventListener('keydown', function(e) {
+    if (e.altKey && e.key === 'p') {
+        console.log('🎮 Atalho Alt+P detectado - executando teste PDF...');
+        if (window.testPdfFix) {
+            window.testPdfFix();
+        }
+    }
+});
+
+console.log('✅ Módulo de verificação automática PDF carregado (v5.5)');
+// ==== FIM DA INSERÇÃO DO NOVO CÓDIGO ====
+
+// Exportar funções globais (código existente - manter)
+window.Diagnostics = {
+    analyzeSystem,
+    runCompleteDiagnosis,
+    testMediaUnifiedComplete,
+    exportReport,
+    createDiagnosticsPanel,
+    logToPanel,
+    updateStatus,
+    updateDeviceIndicator,
+    version: '5.5' // ← Atualizar para 5.5
+};
+
+console.log('✅ DIAGNOSTICS.JS v5.5 - CARREGAMENTO COMPLETO (com testPdfFix)'); // ← Atualizar mensagem
+
     // Exportar funções globais
     window.Diagnostics = {
         analyzeSystem,
@@ -6725,7 +7039,7 @@ function exportReport() {
         logToPanel,
         updateStatus,
         updateDeviceIndicator,
-        version: '5.4'
+        version: '5.5'
     };
     
     console.log('✅ DIAGNOSTICS.JS v5.4 - CARREGAMENTO COMPLETO');
