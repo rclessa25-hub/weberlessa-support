@@ -7593,82 +7593,157 @@ function addNewVerificationButtons() {
 
 console.log('✅ Módulos de verificação PDF v5.5 adicionados (sem duplicação)');
 
-/* ================== ETAPA 5-6: MONITORAMENTO DE REGRESSÕES E CÓDIGO ÓRFÃO (v5.6) ================== */
+/* ================== ETAPA 5-6: MONITORAMENTO DE REGRESSÕES E CÓDIGO ÓRFÃO (v5.7) ================== */
 window.setupRegressionMonitoring = function() {
-    console.group('🔍 CONFIGURANDO MONITORAMENTO DE REGRESSÕES (v5.6)');
+    console.group('🔍 CONFIGURANDO MONITORAMENTO DE REGRESSÕES (v5.7)');
     
-    // Lista de arquivos considerados "órfãos" (devem ter sido migrados)
-    const orphanFiles = [
-        'pdf-ui.js',
-        'pdf-core.js', 
-        'pdf-integration.js',
-        'pdf-utils.js',
-        'pdf-logger.js',
-        'media-ui.js',
+    // ============== ARQUIVOS REALMENTE ÓRFÃOS ==============
+    // Estes DEVEM ter sido migrados para MediaSystem e NÃO devem mais existir
+    const REAL_ORPHAN_FILES = [
+        // Sistemas de mídia antigos (substituídos por media-unified.js)
         'media-core.js',
+        'media-ui.js',
         'media-integration.js',
         'media-utils.js',
-        'media-logger.js',
+        
+        // Sistemas de PDF antigos (substituídos por pdf-unified.js)
+        'pdf-core.js',
+        'pdf-ui.js',
+        'pdf-integration.js',
+        'pdf-utils.js',
+        
+        // Módulos obsoletos (substituídos por diagnostics.js)
         'duplication-checker.js',
         'emergency-recovery.js',
         'simple-checker.js',
         'validation-essentials.js'
     ];
     
-    // Lista de arquivos "permitidos" (não são considerados órfãos)
-    const allowedFiles = [
+    // ============== ARQUIVOS DE SUPORTE (DEBUG/TESTES) ==============
+    // Estes DEVEM permanecer carregados e NÃO são considerados órfãos
+    const SUPPORT_FILES = [
+        // Arquivos principais do Support System
         'diagnostics.js',
+        'function-verifier.js',
+        'media-logger.js',
+        'media-recovery.js',
+        'pdf-logger.js',
+        'core-optimizer.js',
+        'validation.js',
+        'optimizer.js',
+        
+        // Arquivos do Core System (produção)
         'admin.js',
         'properties.js',
         'gallery.js',
         'supabase.js',
-        'MediaSystem.js', // Se existir como arquivo separado
-        'PdfSystem.js'     // Se existir como arquivo separado
+        'utils.js',
+        'media-unified.js',
+        'pdf-unified.js',
+        'pdf-placeholders.js',
+        'properties-core.js',
+        'main.js'
     ];
     
+    // ============== CONFIGURAÇÃO DO MONITORAMENTO ==============
     let monitoringInterval = null;
     let lastDetection = null;
     let detectionCount = 0;
+    let supportFilesLoaded = [];
     
-    // Função principal de detecção
-    function detectOrphanFiles() {
-        const currentTime = new Date().toISOString();
-        const detectedFiles = [];
+    // Detectar arquivos de suporte carregados (para logging informativo)
+    function detectSupportFiles() {
+        const detected = [];
+        const scripts = Array.from(document.scripts);
         
-        orphanFiles.forEach(file => {
-            const selector = `script[src*="${file}"], link[href*="${file}"]`;
-            const elements = document.querySelectorAll(selector);
-            
-            if (elements.length > 0) {
-                elements.forEach(element => {
-                    const src = element.src || element.href;
-                    const fileName = src.split('/').pop();
-                    
-                    // Verificar se não está na lista de permitidos
-                    if (!allowedFiles.some(allowed => fileName.includes(allowed))) {
-                        detectedFiles.push({
-                            file: fileName,
-                            element: element.tagName,
-                            src: src,
-                            timestamp: currentTime
-                        });
-                    }
-                });
+        scripts.forEach(script => {
+            if (script.src) {
+                const fileName = script.src.split('/').pop();
+                if (SUPPORT_FILES.some(supportFile => fileName.includes(supportFile))) {
+                    detected.push({
+                        file: fileName,
+                        src: script.src,
+                        type: 'SUPPORT_SYSTEM',
+                        status: '✅ CORRETO'
+                    });
+                }
             }
         });
         
-        // Verificar também por referências em código
+        return detected;
+    }
+    
+    // Função principal de detecção de código órfão REAL
+    function detectRealOrphanFiles() {
+        const currentTime = new Date().toISOString();
+        const detectedFiles = [];
+        
+        REAL_ORPHAN_FILES.forEach(orphanFile => {
+            // Procurar elementos <script> que carregam arquivos órfãos
+            const scriptSelector = `script[src*="${orphanFile}"]`;
+            const scriptElements = document.querySelectorAll(scriptSelector);
+            
+            // Procurar elementos <link> que carregam CSS órfãos
+            const linkSelector = `link[href*="${orphanFile.replace('.js', '.css')}"]`;
+            const linkElements = document.querySelectorAll(linkSelector);
+            
+            // Verificar scripts
+            scriptElements.forEach(element => {
+                const src = element.src;
+                const fileName = src.split('/').pop();
+                
+                // Verificar se não é um arquivo de suporte
+                if (!SUPPORT_FILES.some(supportFile => fileName.includes(supportFile))) {
+                    detectedFiles.push({
+                        file: fileName,
+                        element: 'SCRIPT',
+                        src: src,
+                        type: 'REAL_ORPHAN',
+                        severity: 'ALTA',
+                        recommendation: 'REMOVER IMEDIATAMENTE - Substituído por MediaSystem',
+                        timestamp: currentTime
+                    });
+                }
+            });
+            
+            // Verificar links CSS
+            linkElements.forEach(element => {
+                const href = element.href;
+                const fileName = href.split('/').pop();
+                
+                detectedFiles.push({
+                    file: fileName,
+                    element: 'LINK (CSS)',
+                    src: href,
+                    type: 'REAL_ORPHAN',
+                    severity: 'MÉDIA',
+                    recommendation: 'Substituir por CSS unificado',
+                    timestamp: currentTime
+                });
+            });
+        });
+        
+        // Detectar referências em código inline
         const scripts = Array.from(document.scripts);
         scripts.forEach(script => {
             if (script.textContent) {
-                orphanFiles.forEach(orphanFile => {
+                REAL_ORPHAN_FILES.forEach(orphanFile => {
                     if (script.textContent.includes(orphanFile) && 
                         !script.src.includes('diagnostics.js')) {
+                        
+                        // Extrair contexto
+                        const contextStart = Math.max(0, script.textContent.indexOf(orphanFile) - 50);
+                        const contextEnd = Math.min(script.textContent.length, script.textContent.indexOf(orphanFile) + 50);
+                        const context = script.textContent.substring(contextStart, contextEnd);
+                        
                         detectedFiles.push({
                             file: orphanFile,
-                            element: 'INLINE_SCRIPT',
-                            src: 'inline code',
-                            context: script.textContent.substring(0, 100) + '...',
+                            element: 'REFERÊNCIA_INLINE',
+                            src: 'Código inline',
+                            context: '...' + context + '...',
+                            type: 'REAL_ORPHAN',
+                            severity: 'ALTA',
+                            recommendation: 'Remover referência ao arquivo obsoleto',
                             timestamp: currentTime
                         });
                     }
@@ -7681,50 +7756,94 @@ window.setupRegressionMonitoring = function() {
     
     // Função de monitoramento periódico
     function runMonitoringCycle() {
-        const detected = detectOrphanFiles();
         const timestamp = new Date().toLocaleTimeString();
         
-        if (detected.length > 0) {
+        // 1. Primeiro detectar arquivos de suporte (só para logging informativo)
+        const loadedSupportFiles = detectSupportFiles();
+        if (loadedSupportFiles.length > 0 && detectionCount === 0) {
+            supportFilesLoaded = loadedSupportFiles;
+            console.log(`📊 Arquivos de suporte carregados (${loadedSupportFiles.length}):`);
+            loadedSupportFiles.forEach((file, idx) => {
+                console.log(`  ${idx + 1}. ${file.file} - ${file.status}`);
+            });
+        }
+        
+        // 2. Detectar código órfão REAL
+        const detectedOrphans = detectRealOrphanFiles();
+        
+        if (detectedOrphans.length > 0) {
             detectionCount++;
             lastDetection = {
                 timestamp: new Date().toISOString(),
-                count: detected.length,
-                files: detected.map(d => d.file)
+                count: detectedOrphans.length,
+                files: detectedOrphans.map(d => ({
+                    file: d.file,
+                    severity: d.severity,
+                    type: d.type
+                }))
             };
             
-            console.group(`❌ REGRESSÃO DETECTADA [${timestamp}] - ${detected.length} arquivo(s) órfão(s)`);
+            console.group(`❌ CÓDIGO ÓRFÃO REAL DETECTADO [${timestamp}] - ${detectedOrphans.length} arquivo(s)`);
             
-            detected.forEach((orphan, index) => {
-                console.error(`  ${index + 1}. ${orphan.file} - ${orphan.element} (${orphan.src})`);
+            // Agrupar por severidade
+            const highSeverity = detectedOrphans.filter(o => o.severity === 'ALTA');
+            const mediumSeverity = detectedOrphans.filter(o => o.severity === 'MÉDIA');
+            
+            if (highSeverity.length > 0) {
+                console.error(`⚠️ ${highSeverity.length} problema(s) CRÍTICO(s):`);
+                highSeverity.forEach((orphan, index) => {
+                    console.error(`  🔴 ${index + 1}. ${orphan.file} - ${orphan.recommendation}`);
+                    console.error(`     Tipo: ${orphan.element} | Origem: ${orphan.src}`);
+                });
+            }
+            
+            if (mediumSeverity.length > 0) {
+                console.warn(`📝 ${mediumSeverity.length} problema(s) secundário(s):`);
+                mediumSeverity.forEach((orphan, index) => {
+                    console.warn(`  🟡 ${index + 1}. ${orphan.file} - ${orphan.recommendation}`);
+                });
+            }
+            
+            // Log no painel se disponível
+            if (typeof window.logToPanel === 'function') {
+                const message = highSeverity.length > 0 ? 
+                    `❌ ${highSeverity.length} código(s) órfão(s) CRÍTICO(s) detectado(s)` :
+                    `⚠️ ${detectedOrphans.length} código(s) órfão(s) detectado(s)`;
                 
-                // Log no painel se disponível
-                if (typeof window.logToPanel === 'function') {
-                    window.logToPanel(`❌ Código órfão: ${orphan.file}`, 'error');
-                }
-            });
+                window.logToPanel(message, highSeverity.length > 0 ? 'error' : 'warning');
+            }
             
-            // Mostrar alerta visual se for a primeira detecção ou a cada 5 detecções
-            if (detectionCount === 1 || detectionCount % 5 === 0) {
-                showOrphanFilesAlert(detected);
+            // Mostrar alerta visual apenas para problemas CRÍTICOS
+            if (highSeverity.length > 0) {
+                showOrphanFilesAlert(detectedOrphans);
             }
             
             console.groupEnd();
             
         } else if (detectionCount > 0) {
             // Se havia detecções anteriores mas agora está limpo
-            console.log(`✅ Sistema limpo - sem código órfão [${timestamp}]`);
+            console.log(`✅ Sistema limpo - sem código órfão REAL [${timestamp}]`);
+            
+            if (typeof window.logToPanel === 'function') {
+                window.logToPanel('✅ Sistema limpo de código órfão', 'success');
+            }
         }
     }
     
-    // Alertas visuais
+    // Alertas visuais APENAS para código órfão REAL
     function showOrphanFilesAlert(detectedFiles) {
-        const alertId = 'orphan-files-alert-v5-6';
+        const alertId = 'real-orphan-files-alert-v5-7';
         
         // Remover alerta anterior se existir
         const existingAlert = document.getElementById(alertId);
         if (existingAlert) {
             existingAlert.remove();
         }
+        
+        // Filtrar apenas problemas de ALTA severidade
+        const criticalFiles = detectedFiles.filter(f => f.severity === 'ALTA');
+        
+        if (criticalFiles.length === 0) return; // Não mostrar alerta para problemas não-críticos
         
         const alertDiv = document.createElement('div');
         alertDiv.id = alertId;
@@ -7757,26 +7876,29 @@ window.setupRegressionMonitoring = function() {
             
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="font-size: 24px;">⚠️</div>
-                    <div style="font-weight: bold; font-size: 16px;">REGRESSÃO DETECTADA</div>
+                    <div style="font-size: 24px;">🚨</div>
+                    <div style="font-weight: bold; font-size: 16px;">CÓDIGO ÓRFÃO CRÍTICO</div>
                 </div>
                 <div style="background: #ff5555; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">
-                    ${detectedFiles.length}
+                    ${criticalFiles.length}
                 </div>
             </div>
             
             <div style="background: rgba(255, 0, 0, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid rgba(255, 0, 0, 0.3);">
                 <div style="font-size: 14px; color: #ff8888; margin-bottom: 10px;">
-                    Código órfão detectado (devia ter sido migrado)
+                    ⚠️ Arquivos que DEVEM ser removidos do CORE
                 </div>
                 
                 <div style="max-height: 150px; overflow-y: auto;">
-                    ${detectedFiles.map((file, idx) => `
+                    ${criticalFiles.map((file, idx) => `
                         <div style="margin-bottom: 8px; padding: 8px; background: rgba(255, 0, 0, 0.1); border-radius: 4px; border-left: 3px solid #ff5555;">
                             <div style="font-weight: bold; color: #ff5555; font-size: 13px;">
                                 ${idx + 1}. ${file.file}
                             </div>
-                            <div style="font-size: 11px; color: #ffaaaa;">
+                            <div style="font-size: 11px; color: #ffaaaa; margin-top: 4px;">
+                                ${file.recommendation}
+                            </div>
+                            <div style="font-size: 10px; color: #ffcccc; margin-top: 2px;">
                                 ${file.element} • ${file.src.substring(file.src.lastIndexOf('/') + 1)}
                             </div>
                         </div>
@@ -7784,14 +7906,21 @@ window.setupRegressionMonitoring = function() {
                 </div>
             </div>
             
+            <div style="background: rgba(255, 170, 0, 0.1); padding: 10px; border-radius: 6px; margin-bottom: 15px; border: 1px solid rgba(255, 170, 0, 0.3);">
+                <div style="font-size: 11px; color: #ffaa00; display: flex; align-items: center; gap: 5px;">
+                    <span>💡</span>
+                    <span>Arquivos de suporte (debug/diagnostics) são permitidos</span>
+                </div>
+            </div>
+            
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                <button id="auto-fix-orphan-files-v5-6" style="
+                <button id="auto-fix-real-orphan-v5-7" style="
                     background: #ff5555; color: white; border: none;
                     padding: 10px; cursor: pointer; border-radius: 5px;
                     font-weight: bold; font-size: 12px; transition: all 0.2s;">
                     🛠️ TENTAR CORREÇÃO
                 </button>
-                <button id="ignore-orphan-files-v5-6" style="
+                <button id="ignore-real-orphan-v5-7" style="
                     background: #555; color: white; border: none;
                     padding: 10px; cursor: pointer; border-radius: 5px;
                     font-weight: bold; font-size: 12px; transition: all 0.2s;">
@@ -7800,21 +7929,22 @@ window.setupRegressionMonitoring = function() {
             </div>
             
             <div style="font-size: 11px; color: #ff8888; text-align: center;">
-                ⚠️ Esses arquivos podem quebrar o sistema após migração
+                ⚠️ Esses arquivos podem causar conflitos no sistema unificado
             </div>
         `;
         
         document.body.appendChild(alertDiv);
         
         // Configurar eventos
-        document.getElementById('auto-fix-orphan-files-v5-6')?.addEventListener('click', () => {
-            attemptOrphanFilesFix(detectedFiles);
+        document.getElementById('auto-fix-real-orphan-v5-7')?.addEventListener('click', () => {
+            attemptRealOrphanFilesFix(criticalFiles);
             alertDiv.remove();
         });
         
-        document.getElementById('ignore-orphan-files-v5-6')?.addEventListener('click', () => {
-            localStorage.setItem('ignoreOrphanFilesUntil', Date.now() + (24 * 60 * 60 * 1000));
+        document.getElementById('ignore-real-orphan-v5-7')?.addEventListener('click', () => {
+            localStorage.setItem('ignoreRealOrphanFilesUntil', Date.now() + (24 * 60 * 60 * 1000));
             alertDiv.remove();
+            console.log('⏸️ Alertas de código órfão ignorados por 24 horas');
         });
         
         // Auto-remover após 30 segundos
@@ -7825,45 +7955,79 @@ window.setupRegressionMonitoring = function() {
         }, 30000);
     }
     
-    // Tentativa de correção automática
-    function attemptOrphanFilesFix(detectedFiles) {
-        console.group('🛠️ TENTANDO CORREÇÃO AUTOMÁTICA DE CÓDIGO ÓRFÃO');
+    // Tentativa de correção automática para código órfão REAL
+    function attemptRealOrphanFilesFix(detectedFiles) {
+        console.group('🛠️ TENTANDO CORREÇÃO DE CÓDIGO ÓRFÃO REAL');
         
         let fixedCount = 0;
         let failedCount = 0;
+        const results = [];
         
         detectedFiles.forEach(orphan => {
             console.log(`🔧 Tentando corrigir: ${orphan.file}`);
             
             try {
-                // Estratégia 1: Remover elementos do DOM
-                if (orphan.element === 'SCRIPT' || orphan.element === 'LINK') {
-                    const selector = orphan.element === 'SCRIPT' ? 
-                        `script[src*="${orphan.file.split('.')[0]}"]` : 
-                        `link[href*="${orphan.file.split('.')[0]}"]`;
-                    
+                // Estratégia 1: Remover scripts do DOM
+                if (orphan.element === 'SCRIPT') {
+                    const selector = `script[src*="${orphan.file.split('.')[0]}"]`;
                     const elements = document.querySelectorAll(selector);
+                    
                     elements.forEach(el => {
-                        if (el.parentNode) {
+                        if (el.parentNode && !el.src.includes('diagnostics')) {
                             el.parentNode.removeChild(el);
-                            console.log(`✅ Removido: ${orphan.file}`);
+                            console.log(`✅ Script removido: ${orphan.file}`);
+                            results.push({
+                                file: orphan.file,
+                                action: 'REMOVED_SCRIPT',
+                                success: true
+                            });
                             fixedCount++;
                         }
                     });
                 }
                 
-                // Estratégia 2: Desativar event listeners problemáticos
-                if (orphan.src.includes('pdfUploadArea') || orphan.src.includes('pdfFileInput')) {
-                    const element = document.getElementById(orphan.file.includes('Upload') ? 'pdfUploadArea' : 'pdfFileInput');
-                    if (element) {
-                        element.replaceWith(element.cloneNode(true));
-                        console.log(`✅ Event listeners resetados para: ${orphan.file}`);
-                        fixedCount++;
-                    }
+                // Estratégia 2: Remover links CSS
+                else if (orphan.element.includes('LINK')) {
+                    const selector = `link[href*="${orphan.file.split('.')[0]}"]`;
+                    const elements = document.querySelectorAll(selector);
+                    
+                    elements.forEach(el => {
+                        if (el.parentNode) {
+                            el.parentNode.removeChild(el);
+                            console.log(`✅ CSS removido: ${orphan.file}`);
+                            results.push({
+                                file: orphan.file,
+                                action: 'REMOVED_CSS',
+                                success: true
+                            });
+                            fixedCount++;
+                        }
+                    });
+                }
+                
+                // Estratégia 3: Referências inline - apenas log (não podemos remover código inline automaticamente)
+                else if (orphan.element === 'REFERÊNCIA_INLINE') {
+                    console.warn(`⚠️ Referência inline detectada: ${orphan.file}`);
+                    console.warn(`   Contexto: ${orphan.context}`);
+                    console.warn(`   Ação necessária: Remover manualmente do código fonte`);
+                    
+                    results.push({
+                        file: orphan.file,
+                        action: 'MANUAL_REVIEW_NEEDED',
+                        success: false,
+                        context: orphan.context
+                    });
+                    failedCount++;
                 }
                 
             } catch (error) {
                 console.error(`❌ Falha ao corrigir ${orphan.file}:`, error);
+                results.push({
+                    file: orphan.file,
+                    action: 'ERROR',
+                    success: false,
+                    error: error.message
+                });
                 failedCount++;
             }
         });
@@ -7872,10 +8036,16 @@ window.setupRegressionMonitoring = function() {
         console.groupEnd();
         
         // Mostrar resultado
+        showFixResults(fixedCount, failedCount, results);
+        
+        return { fixedCount, failedCount, results };
+    }
+    
+    function showFixResults(fixedCount, failedCount, results) {
         const resultDiv = document.createElement('div');
         resultDiv.style.cssText = `
             position: fixed;
-            bottom: 20px;
+            bottom: 80px;
             right: 20px;
             background: ${failedCount === 0 ? 'linear-gradient(135deg, #001a00, #000a1a)' : 'linear-gradient(135deg, #1a0000, #000a0a)'};
             color: ${failedCount === 0 ? '#00ff9c' : '#ff5555'};
@@ -7887,6 +8057,8 @@ window.setupRegressionMonitoring = function() {
             box-shadow: 0 0 30px ${failedCount === 0 ? 'rgba(0, 255, 156, 0.5)' : 'rgba(255, 0, 0, 0.5)'};
             font-family: 'Courier New', monospace;
         `;
+        
+        const manualReviews = results.filter(r => r.action === 'MANUAL_REVIEW_NEEDED');
         
         resultDiv.innerHTML = `
             <div style="font-size: 16px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
@@ -7903,16 +8075,27 @@ window.setupRegressionMonitoring = function() {
                         <div style="font-size: 24px; color: #00ff9c;">${fixedCount}</div>
                     </div>
                     <div>
-                        <div style="font-size: 11px; color: #888;">FALHAS</div>
-                        <div style="font-size: 24px; color: #ff5555;">${failedCount}</div>
+                        <div style="font-size: 11px; color: #888;">REVISÕES</div>
+                        <div style="font-size: 24px; color: #ffaa00;">${manualReviews.length}</div>
                     </div>
                 </div>
             </div>
             
+            ${manualReviews.length > 0 ? `
+                <div style="background: rgba(255, 170, 0, 0.1); padding: 10px; border-radius: 6px; margin-bottom: 15px; border: 1px solid rgba(255, 170, 0, 0.3);">
+                    <div style="font-size: 12px; color: #ffaa00; margin-bottom: 5px;">
+                        ⚠️ ${manualReviews.length} precisa(m) de revisão manual:
+                    </div>
+                    <div style="font-size: 11px; color: #ffcc88;">
+                        ${manualReviews.map(r => `• ${r.file}`).join('<br>')}
+                    </div>
+                </div>
+            ` : ''}
+            
             <div style="font-size: 12px; color: ${failedCount === 0 ? '#88ffaa' : '#ff8888'}; margin-bottom: 15px;">
                 ${failedCount === 0 ? 
-                    '✅ Todos os arquivos órfãos corrigidos' : 
-                    '⚠️ Algumas correções falharam - verifique manualmente'}
+                    '✅ Correções automáticas aplicadas' : 
+                    '⚠️ Algumas correções requerem ação manual'}
             </div>
             
             <button onclick="this.parentElement.remove()" style="
@@ -7929,21 +8112,105 @@ window.setupRegressionMonitoring = function() {
             if (resultDiv.parentElement) {
                 resultDiv.remove();
             }
-        }, 10000);
+        }, 15000);
         
         // Log no painel
         if (typeof window.logToPanel === 'function') {
             const message = failedCount === 0 ? 
                 `✅ ${fixedCount} arquivos órfãos corrigidos` : 
-                `⚠️ ${fixedCount} corrigidos, ${failedCount} falhas`;
+                `⚠️ ${fixedCount} corrigidos, ${manualReviews.length} precisam de revisão manual`;
             window.logToPanel(message, failedCount === 0 ? 'success' : 'warning');
         }
     }
     
-    // Iniciar monitoramento
+    // ============== VERIFICAÇÃO FINAL OTIMIZADA ==============
+    function runFinalValidation() {
+        console.group('🔍 VERIFICAÇÃO FINAL - SISTEMA DE PDF UNIFICADO (v5.7)');
+        
+        // 1. Verificar sistema atual
+        const validation = {
+            // Sistema Core (deve estar ativo)
+            MediaSystem_Ativo: !!window.MediaSystem,
+            MediaSystem_Funcional: typeof window.MediaSystem?.processAndSavePdfs === 'function',
+            
+            // Sistema Legacy (deve estar INATIVO ou como fallback)
+            PdfSystem_Ativo: !!window.PdfSystem,
+            PdfSystem_Funcional: typeof window.PdfSystem?.processAndSavePdfs === 'function',
+            
+            // Arquitetura
+            Sistema_Unificado: !!window.MediaSystem && !window.PdfSystem,
+            Sistema_Hibrido: !!window.MediaSystem && !!window.PdfSystem,
+            Sistema_Legacy: !window.MediaSystem && !!window.PdfSystem,
+            
+            // Elementos do DOM
+            pdfModal_Existe: !!document.getElementById('pdfModal'),
+            pdfPassword_Existe: !!document.getElementById('pdfPassword'),
+            
+            // Código órfão REAL
+            Orfanos_Detectados: (function() {
+                const orphans = detectRealOrphanFiles();
+                return {
+                    total: orphans.length,
+                    criticos: orphans.filter(o => o.severity === 'ALTA').length,
+                    arquivos: orphans.map(o => o.file)
+                };
+            })(),
+            
+            // Arquivos de suporte
+            SupportSystem_Carregado: (function() {
+                const support = detectSupportFiles();
+                return {
+                    total: support.length,
+                    arquivos: support.map(s => s.file)
+                };
+            })(),
+            
+            // Metadata
+            versao: '5.7',
+            timestamp: new Date().toISOString()
+        };
+        
+        console.table(validation);
+        
+        // 2. Análise e recomendações
+        console.log('📊 ANÁLISE DO SISTEMA:');
+        
+        if (validation.Sistema_Unificado) {
+            console.log('✅ ARQUITETURA IDEAL: Sistema unificado ativo (MediaSystem)');
+        }
+        
+        if (validation.Sistema_Hibrido) {
+            console.warn('⚠️ ARQUITETURA HÍBRIDA: Ambos sistemas ativos');
+            console.warn('   Recomendação: Desativar PdfSystem gradualmente');
+        }
+        
+        if (validation.Sistema_Legacy) {
+            console.error('❌ ARQUITETURA LEGACY: Apenas PdfSystem ativo');
+            console.error('   Ação necessária: Migrar para MediaSystem');
+        }
+        
+        if (validation.Orfanos_Detectados.total > 0) {
+            console.error(`❌ ${validation.Orfanos_Detectados.total} CÓDIGO(S) ÓRFÃO(S) REAL DETECTADO(S)`);
+            validation.Orfanos_Detectados.arquivos.forEach((file, idx) => {
+                console.error(`   ${idx + 1}. ${file} - REMOVER DO CORE SYSTEM`);
+            });
+        }
+        
+        if (validation.SupportSystem_Carregado.total > 0) {
+            console.log(`📁 ${validation.SupportSystem_Carregado.total} ARQUIVO(S) DE SUPORTE CARREGADO(S)`);
+            console.log('   ✅ Estes arquivos devem permanecer (debug/diagnostics)');
+        }
+        
+        console.log('✅ Verificação finalizada - v5.7');
+        console.groupEnd();
+        
+        return validation;
+    }
+    
+    // ============== GESTÃO DO MONITORAMENTO ==============
     function startMonitoring() {
         // Verificar se não há ignore ativo
-        const ignoreUntil = localStorage.getItem('ignoreOrphanFilesUntil');
+        const ignoreUntil = localStorage.getItem('ignoreRealOrphanFilesUntil');
         if (ignoreUntil && Date.now() < parseInt(ignoreUntil)) {
             const hoursLeft = Math.round((parseInt(ignoreUntil) - Date.now()) / (1000 * 60 * 60));
             console.log(`⏸️ Monitoramento pausado por ${hoursLeft}h (usuário escolheu ignorar)`);
@@ -7954,18 +8221,18 @@ window.setupRegressionMonitoring = function() {
             // Executar imediatamente
             runMonitoringCycle();
             
-            // Configurar intervalo (10 segundos conforme solicitado)
+            // Configurar intervalo (10 segundos)
             monitoringInterval = setInterval(runMonitoringCycle, 10000);
             
             console.log('✅ Monitoramento de regressões ativado (verifica a cada 10s)');
+            console.log('🎯 Foco: Código órfão REAL (não inclui arquivos de suporte)');
             
             if (typeof window.logToPanel === 'function') {
-                window.logToPanel('🔍 Monitoramento de regressões ativado', 'info');
+                window.logToPanel('🔍 Monitoramento de código órfão ativado (v5.7)', 'info');
             }
         }
     }
     
-    // Parar monitoramento
     function stopMonitoring() {
         if (monitoringInterval) {
             clearInterval(monitoringInterval);
@@ -7974,97 +8241,32 @@ window.setupRegressionMonitoring = function() {
         }
     }
     
-    // Status do monitoramento
     function getMonitoringStatus() {
         return {
             active: !!monitoringInterval,
             detectionCount,
             lastDetection,
+            supportFilesLoaded: supportFilesLoaded.length,
             interval: 10000,
-            version: '5.6'
+            version: '5.7'
         };
     }
     
-    // Executar validação final completa
-    function runFinalValidation() {
-        console.group('🔍 VERIFICAÇÃO FINAL - SISTEMA DE PDF UNIFICADO (v5.6)');
-        
-        const validation = {
-            // Sistema ativo
-            MediaSystem_Ativo: !!window.MediaSystem,
-            PdfSystem_Ativo: !!window.PdfSystem,
-            
-            // Funções críticas
-            MediaSystem_TemProcessPDFs: typeof window.MediaSystem?.processAndSavePdfs === 'function',
-            PdfSystem_TemProcessPDFs: typeof window.PdfSystem?.processAndSavePdfs === 'function',
-            
-            // Referências no DOM
-            pdfUploadArea_Existe: !!document.getElementById('pdfUploadArea'),
-            pdfFileInput_Existe: !!document.getElementById('pdfFileInput'),
-            
-            // Event listeners (estimativa)
-            eventListeners_UploadArea: (function() {
-                const element = document.getElementById('pdfUploadArea');
-                if (!element) return 'Elemento não encontrado';
-                
-                let count = 0;
-                if (element.onclick) count++;
-                if (element.onchange) count++;
-                if (element.oninput) count++;
-                
-                return `${count} listener(s) detectado(s)`;
-            })(),
-            
-            // Arquivos órfãos
-            arquivosOrfaos_Carregados: (function() {
-                const scripts = Array.from(document.scripts);
-                return scripts.filter(s => 
-                    s.src && (s.src.includes('pdf-ui.js') || s.src.includes('pdf-core.js'))
-                ).length;
-            })(),
-            
-            // Sistema de monitoramento
-            monitoramento_Ativo: !!monitoringInterval,
-            versao_Diagnostics: '5.6'
-        };
-        
-        console.table(validation);
-        
-        // RECOMENDAÇÕES FINAIS
-        if (validation.arquivosOrfaos_Carregados > 0) {
-            console.error('❌ CÓDIGO ÓRFÃO AINDA CARREGADO! Recomendado: EXCLUSÃO IMEDIATA');
-        }
-        
-        if (validation.MediaSystem_TemProcessPDFs && validation.PdfSystem_TemProcessPDFs) {
-            console.warn('⚠️ DOIS SISTEMAS DE PDF ATIVOS! Recomendado: Desativar PdfSystem para uploads');
-        }
-        
-        if (validation.MediaSystem_Ativo && validation.MediaSystem_TemProcessPDFs) {
-            console.log('✅ Sistema ideal: MediaSystem ativo e funcional');
-        }
-        
-        console.log('✅ Verificação completa - Sistema pronto para limpeza de código órfão');
-        console.groupEnd();
-        
-        // Retornar dados para possível uso
-        return validation;
-    }
-    
-    // Expor funções públicas
+    // ============== API PÚBLICA ==============
     window.regressionMonitor = {
         start: startMonitoring,
         stop: stopMonitoring,
         status: getMonitoringStatus,
         runValidation: runFinalValidation,
-        testDetection: detectOrphanFiles,
-        version: '5.6'
+        detectOrphans: detectRealOrphanFiles,
+        detectSupport: detectSupportFiles,
+        version: '5.7'
     };
     
     // Iniciar automaticamente se em modo diagnóstico
     if (DEBUG_MODE || DIAGNOSTICS_MODE) {
-        setTimeout(startMonitoring, 5000); // Iniciar após 5 segundos
+        setTimeout(startMonitoring, 5000);
         
-        // Executar validação final após 8 segundos
         setTimeout(() => {
             console.log('🔍 Executando verificação final do sistema...');
             runFinalValidation();
@@ -8076,7 +8278,7 @@ window.setupRegressionMonitoring = function() {
     return window.regressionMonitor;
 };
 
-/* ================== INTEGRAÇÃO COM SISTEMA EXISTENTE ================== */
+/* ================== INTEGRAÇÃO ================== */
 // Adicionar ao objeto diag global
 if (window.diag) {
     window.diag.regression = {
@@ -8084,24 +8286,24 @@ if (window.diag) {
         start: () => window.regressionMonitor?.start(),
         stop: () => window.regressionMonitor?.stop(),
         status: () => window.regressionMonitor?.status(),
-        validate: () => window.regressionMonitor?.runValidation()
+        validate: () => window.regressionMonitor?.runValidation(),
+        detectOrphans: () => window.regressionMonitor?.detectOrphans(),
+        version: '5.7'
     };
     
-    // Adicionar também ao console.diag se existir
     if (console.diag) {
         console.diag.regression = window.diag.regression;
     }
 }
 
-// Adicionar botões ao painel de diagnóstico
+// Adicionar botões ao painel
 function addRegressionMonitoringButtons() {
-    // Adicionar ao painel principal se existir
     const mainButtons = document.querySelector('#diagnostics-panel-complete > div:nth-child(3)');
-    if (mainButtons && !document.getElementById('regression-monitor-btn-v5-6')) {
-        // Botão para ativar/desativar monitoramento
+    if (mainButtons && !document.getElementById('regression-monitor-btn-v5-7')) {
+        
         const monitorBtn = document.createElement('button');
-        monitorBtn.id = 'regression-monitor-btn-v5-6';
-        monitorBtn.innerHTML = '🔍 MONITOR REGRESSÕES v5.6';
+        monitorBtn.id = 'regression-monitor-btn-v5-7';
+        monitorBtn.innerHTML = '🔍 MONITOR ÓRFÃOS REAIS v5.7';
         monitorBtn.style.cssText = `
             background: linear-gradient(45deg, #ff5500, #ffaa00); 
             color: #000; border: none;
@@ -8114,10 +8316,10 @@ function addRegressionMonitoringButtons() {
             if (window.regressionMonitor) {
                 if (window.regressionMonitor.status().active) {
                     window.regressionMonitor.stop();
-                    window.logToPanel('⏸️ Monitoramento de regressões pausado', 'info');
+                    window.logToPanel('⏸️ Monitoramento de código órfão pausado', 'info');
                 } else {
                     window.regressionMonitor.start();
-                    window.logToPanel('🔍 Monitoramento de regressões ativado', 'success');
+                    window.logToPanel('🔍 Monitoramento de código órfão ativado', 'success');
                 }
                 updateMonitorButton();
             } else {
@@ -8126,10 +8328,9 @@ function addRegressionMonitoringButtons() {
             }
         });
         
-        // Botão para validação final
         const validationBtn = document.createElement('button');
-        validationBtn.id = 'final-validation-btn-v5-6';
-        validationBtn.innerHTML = '✅ VALIDAÇÃO FINAL v5.6';
+        validationBtn.id = 'final-validation-btn-v5-7';
+        validationBtn.innerHTML = '✅ VALIDAÇÃO ARQUITETURA v5.7';
         validationBtn.style.cssText = `
             background: linear-gradient(45deg, #00ff9c, #0088cc); 
             color: #000; border: none;
@@ -8140,20 +8341,31 @@ function addRegressionMonitoringButtons() {
         
         validationBtn.addEventListener('click', () => {
             if (window.regressionMonitor) {
-                window.regressionMonitor.runValidation();
-            } else {
-                window.setupRegressionMonitoring();
-                setTimeout(() => window.regressionMonitor.runValidation(), 1000);
+                const result = window.regressionMonitor.runValidation();
+                
+                // Mostrar resumo
+                const summary = `
+ARQUITETURA ATUAL:
+- Sistema: ${result.Sistema_Unificado ? 'UNIFICADO ✅' : result.Sistema_Hibrido ? 'HÍBRIDO ⚠️' : 'LEGACY ❌'}
+- MediaSystem: ${result.MediaSystem_Ativo ? 'Ativo' : 'Inativo'}
+- Código órfão: ${result.Orfanos_Detectados.total} arquivo(s)
+- Suporte: ${result.SupportSystem_Carregado.total} arquivo(s)
+                `.trim();
+                
+                console.log('📋 RESUMO DA ARQUITETURA:\n' + summary);
+                
+                if (typeof window.logToPanel === 'function') {
+                    window.logToPanel('✅ Validação de arquitetura completa', 'success');
+                }
             }
         });
         
-        // Função para atualizar o texto do botão
         function updateMonitorButton() {
             if (window.regressionMonitor) {
                 const isActive = window.regressionMonitor.status().active;
                 monitorBtn.innerHTML = isActive ? 
-                    '⏸️ PAUSAR MONITOR v5.6' : 
-                    '🔍 ATIVAR MONITOR v5.6';
+                    '⏸️ PAUSAR MONITOR v5.7' : 
+                    '🔍 ATIVAR MONITOR v5.7';
                 monitorBtn.style.background = isActive ? 
                     'linear-gradient(45deg, #ff5555, #ff0000)' : 
                     'linear-gradient(45deg, #00ff9c, #0088cc)';
@@ -8163,39 +8375,34 @@ function addRegressionMonitoringButtons() {
         mainButtons.appendChild(monitorBtn);
         mainButtons.appendChild(validationBtn);
         
-        // Atualizar botão periodicamente
         setInterval(updateMonitorButton, 2000);
         
-        console.log('✅ Botões de monitoramento de regressões adicionados (v5.6)');
+        console.log('✅ Botões de monitoramento v5.7 adicionados');
     }
 }
 
-// Inicialização automática
+// Inicialização
 (function initializeRegressionMonitoring() {
-    // Configurar monitoramento se em modo diagnóstico
     if (DEBUG_MODE || DIAGNOSTICS_MODE || PDF_DEBUG) {
-        console.log('🔧 Configurando monitoramento de regressões...');
+        console.log('🔧 Configurando monitoramento de código órfão REAL (v5.7)...');
         
         setTimeout(() => {
-            // Configurar monitoramento
             if (typeof window.setupRegressionMonitoring === 'function') {
                 window.setupRegressionMonitoring();
             }
             
-            // Adicionar botões ao painel
             setTimeout(addRegressionMonitoringButtons, 1500);
             
-            // Log no painel
             if (typeof window.logToPanel === 'function') {
                 setTimeout(() => {
-                    window.logToPanel('🔍 Monitoramento de regressões configurado (v5.6)', 'info');
+                    window.logToPanel('🔍 Monitoramento v5.7: Foco em código órfão REAL', 'info');
                 }, 2000);
             }
         }, 3000);
     }
 })();
 
-console.log('✅ Módulo de monitoramento de regressões v5.6 carregado');
+console.log('✅ Módulo de monitoramento de regressões v5.7 carregado (foco: código órfão REAL)');
 
     // Exportar funções globais
     window.Diagnostics = {
