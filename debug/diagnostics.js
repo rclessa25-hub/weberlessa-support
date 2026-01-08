@@ -9429,6 +9429,777 @@ console.log('- window.showCompatibilityControlPanel() - Mostrar painel de contro
 console.log('- window.safeInitDiagnostics() - Inicialização segura');
 console.log('- window.diag.compat.* - Acesso via objeto diag');
 
+/* ================== VERIFICAÇÃO DE USO DE FUNÇÕES PDF-UTILS.JS ================== */
+// Adicione este código AO FINAL do arquivo diagnostics.js (após a linha 6666 ou no final)
+
+console.log('✅ MÓDULO DE VERIFICAÇÃO DE USO DE FUNÇÕES - v5.7');
+
+/* ================== ANALISADOR DE USO DE FUNÇÕES ESPECÍFICAS ================== */
+window.analyzePdfUtilsUsage = function() {
+    console.group('🔍 ANÁLISE DE USO DAS FUNÇÕES PDF-UTILS.JS');
+    
+    // Lista de funções específicas do pdf-utils.js que queremos verificar
+    const pdfUtilsFunctions = [
+        'pdfFormatFileSize',
+        'pdfValidateUrl', 
+        'pdfVerifyUrl',
+        'pdfExtractFileName',
+        'pdfGenerateThumbnail',
+        'pdfCompressFile',
+        'pdfSanitizeFileName',
+        'pdfCheckMimeType',
+        'pdfCreateDownloadLink',
+        'pdfCalculateFileHash'
+    ];
+    
+    const results = {
+        functions: {},
+        usageSummary: {
+            totalFunctions: pdfUtilsFunctions.length,
+            usedInCode: 0,
+            usedInPdfUnified: 0,
+            usedInOtherFiles: 0,
+            unusedFunctions: 0
+        },
+        recommendations: [],
+        timestamp: new Date().toISOString(),
+        version: '5.7'
+    };
+    
+    console.log('📋 ANALISANDO FUNÇÕES ESPECÍFICAS:');
+    
+    // Analisar cada função
+    pdfUtilsFunctions.forEach(funcName => {
+        console.log(`\n🔍 ${funcName}:`);
+        
+        const functionAnalysis = {
+            exists: false,
+            usedInScripts: [],
+            usedInHtml: false,
+            usedInPdfUnified: false,
+            usageCount: 0,
+            usageLocations: []
+        };
+        
+        // 1. Verificar se a função existe globalmente
+        functionAnalysis.exists = typeof window[funcName] === 'function';
+        console.log(`   Existe globalmente: ${functionAnalysis.exists ? '✅ SIM' : '❌ NÃO'}`);
+        
+        // 2. Verificar uso em scripts carregados
+        const scripts = Array.from(document.scripts);
+        scripts.forEach(script => {
+            if (script.src) {
+                try {
+                    // Verificar no conteúdo do script (se possível)
+                    if (script.textContent && script.textContent.includes(funcName)) {
+                        functionAnalysis.usedInScripts.push(script.src.split('/').pop());
+                        functionAnalysis.usageCount++;
+                        functionAnalysis.usageLocations.push(`script: ${script.src}`);
+                    }
+                } catch (e) {
+                    // Ignorar erros de CORS
+                }
+            }
+        });
+        
+        // 3. Verificar uso no HTML (event handlers, etc)
+        const htmlContent = document.documentElement.outerHTML;
+        functionAnalysis.usedInHtml = htmlContent.includes(funcName);
+        if (functionAnalysis.usedInHtml) {
+            functionAnalysis.usageCount++;
+            functionAnalysis.usageLocations.push('HTML content');
+        }
+        
+        // 4. Verificar uso específico em pdf-unified.js
+        functionAnalysis.usedInPdfUnified = functionAnalysis.usedInScripts.some(script => 
+            script.includes('pdf-unified') || script.includes('pdfUnified')
+        );
+        
+        // 5. Buscar referências no código JavaScript carregado
+        try {
+            // Buscar em scripts inline
+            const inlineScripts = document.querySelectorAll('script:not([src])');
+            inlineScripts.forEach(script => {
+                if (script.textContent.includes(funcName)) {
+                    functionAnalysis.usageCount++;
+                    functionAnalysis.usageLocations.push('inline script');
+                }
+            });
+            
+            // Buscar em event handlers
+            const elementsWithEvents = document.querySelectorAll('[onclick*="'+funcName+'"], [onchange*="'+funcName+'"]');
+            if (elementsWithEvents.length > 0) {
+                functionAnalysis.usageCount += elementsWithEvents.length;
+                functionAnalysis.usageLocations.push(`event handlers (${elementsWithEvents.length})`);
+            }
+        } catch (e) {
+            console.log(`   ⚠️ Erro ao analisar uso: ${e.message}`);
+        }
+        
+        // Armazenar resultados
+        results.functions[funcName] = functionAnalysis;
+        
+        // Atualizar resumo
+        if (functionAnalysis.usageCount > 0) {
+            results.usageSummary.usedInCode++;
+            if (functionAnalysis.usedInPdfUnified) {
+                results.usageSummary.usedInPdfUnified++;
+            }
+            if (functionAnalysis.usedInScripts.length > 1 || functionAnalysis.usedInHtml) {
+                results.usageSummary.usedInOtherFiles++;
+            }
+        } else {
+            results.usageSummary.unusedFunctions++;
+        }
+        
+        // Log detalhado
+        console.log(`   Uso detectado: ${functionAnalysis.usageCount} vez(es)`);
+        if (functionAnalysis.usageLocations.length > 0) {
+            console.log(`   Localizações: ${functionAnalysis.usageLocations.join(', ')}`);
+        }
+    });
+    
+    // Gerar recomendações
+    const unusedFunctions = Object.entries(results.functions)
+        .filter(([_, analysis]) => analysis.usageCount === 0)
+        .map(([funcName]) => funcName);
+    
+    if (unusedFunctions.length > 0) {
+        results.recommendations.push(
+            `🗑️ Considerar remover ${unusedFunctions.length} função(ões) não utilizadas: ${unusedFunctions.slice(0, 5).join(', ')}${unusedFunctions.length > 5 ? '...' : ''}`
+        );
+    }
+    
+    const functionsOnlyInPdfUnified = Object.entries(results.functions)
+        .filter(([_, analysis]) => analysis.usedInPdfUnified && !analysis.usedInHtml && analysis.usedInScripts.length <= 1)
+        .map(([funcName]) => funcName);
+    
+    if (functionsOnlyInPdfUnified.length > 0) {
+        results.recommendations.push(
+            `📦 ${functionsOnlyInPdfUnified.length} função(ões) usadas apenas em pdf-unified.js - possível migração`
+        );
+    }
+    
+    // Exibir resumo
+    console.log('\n📊 RESUMO DA ANÁLISE:');
+    console.log(`- Total de funções analisadas: ${results.usageSummary.totalFunctions}`);
+    console.log(`- Funções utilizadas no código: ${results.usageSummary.usedInCode}`);
+    console.log(`- Funções usadas em pdf-unified.js: ${results.usageSummary.usedInPdfUnified}`);
+    console.log(`- Funções usadas em outros arquivos: ${results.usageSummary.usedInOtherFiles}`);
+    console.log(`- Funções não utilizadas: ${results.usageSummary.unusedFunctions}`);
+    
+    if (results.recommendations.length > 0) {
+        console.log('\n💡 RECOMENDAÇÕES:');
+        results.recommendations.forEach((rec, idx) => {
+            console.log(`${idx + 1}. ${rec}`);
+        });
+    }
+    
+    // Mostrar painel visual se houver funções não utilizadas
+    if (unusedFunctions.length > 0 && !window.diagnosticsSilentMode) {
+        showFunctionUsageReport(results, unusedFunctions);
+    }
+    
+    console.groupEnd();
+    
+    return results;
+};
+
+/* ================== PAINEL DE RELATÓRIO DE USO DE FUNÇÕES ================== */
+function showFunctionUsageReport(results, unusedFunctions) {
+    const reportId = 'function-usage-report-v5-7';
+    
+    const existingReport = document.getElementById(reportId);
+    if (existingReport) existingReport.remove();
+    
+    const reportDiv = document.createElement('div');
+    reportDiv.id = reportId;
+    reportDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #0a0a2a, #001a33);
+        color: #00aaff;
+        padding: 25px;
+        border: 3px solid ${unusedFunctions.length > 0 ? '#ffaa00' : '#00ff9c'};
+        border-radius: 10px;
+        z-index: 1000010;
+        max-width: 800px;
+        width: 95%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 0 40px rgba(0, 170, 255, 0.5);
+        font-family: monospace;
+        backdrop-filter: blur(10px);
+    `;
+    
+    let html = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 20px; color: #00aaff; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span>🔍</span>
+                <span>ANÁLISE DE USO DE FUNÇÕES PDF-UTILS.JS</span>
+            </div>
+            <div style="font-size: 12px; color: #88aaff; margin-top: 5px;">
+                v5.7 - Detecta funções não utilizadas no código
+            </div>
+        </div>
+        
+        <div style="background: rgba(0, 170, 255, 0.1); padding: 20px; border-radius: 6px; margin-bottom: 20px; 
+                    border: 1px solid rgba(0, 170, 255, 0.3);">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #88aaff;">TOTAL</div>
+                    <div style="font-size: 24px; color: #00aaff;">${results.usageSummary.totalFunctions}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #88aaff;">UTILIZADAS</div>
+                    <div style="font-size: 24px; color: #00ff9c;">${results.usageSummary.usedInCode}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #88aaff;">NÃO USADAS</div>
+                    <div style="font-size: 24px; color: ${unusedFunctions.length > 0 ? '#ffaa00' : '#00ff9c'}">${unusedFunctions.length}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #88aaff;">PDF-UNIFIED</div>
+                    <div style="font-size: 24px; color: #0088cc;">${results.usageSummary.usedInPdfUnified}</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Seção de funções não utilizadas
+    if (unusedFunctions.length > 0) {
+        html += `
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #ffaa00; margin-bottom: 10px; border-bottom: 1px solid rgba(255, 170, 0, 0.3); padding-bottom: 5px;">
+                    ⚠️ FUNÇÕES NÃO UTILIZADAS (${unusedFunctions.length})
+                </h4>
+                <div style="max-height: 200px; overflow-y: auto; background: rgba(255, 170, 0, 0.1); 
+                            padding: 10px; border-radius: 4px; border: 1px solid rgba(255, 170, 0, 0.2);">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px;">
+        `;
+        
+        unusedFunctions.forEach(funcName => {
+            html += `
+                <div style="padding: 6px; background: rgba(255, 170, 0, 0.2); border-radius: 3px; 
+                            border-left: 3px solid #ffaa00; font-size: 11px;">
+                    <span style="color: #ffaa00;">🗑️</span>
+                    <span style="color: #ffcc88; margin-left: 6px;">${funcName}</span>
+                </div>
+            `;
+        });
+        
+        html += `
+                    </div>
+                </div>
+                <div style="font-size: 11px; color: #ffaa88; margin-top: 8px;">
+                    ⚠️ Estas funções não são referenciadas em nenhum lugar do código
+                </div>
+            </div>
+        `;
+    }
+    
+    // Seção de funções usadas apenas em pdf-unified
+    const functionsOnlyInPdfUnified = Object.entries(results.functions)
+        .filter(([_, analysis]) => analysis.usedInPdfUnified && !analysis.usedInHtml && analysis.usedInScripts.length <= 1)
+        .map(([funcName]) => funcName);
+    
+    if (functionsOnlyInPdfUnified.length > 0) {
+        html += `
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #0088cc; margin-bottom: 10px; border-bottom: 1px solid rgba(0, 136, 204, 0.3); padding-bottom: 5px;">
+                    📦 FUNÇÕES USADAS APENAS EM PDF-UNIFIED.JS (${functionsOnlyInPdfUnified.length})
+                </h4>
+                <div style="max-height: 150px; overflow-y: auto; background: rgba(0, 136, 204, 0.1); 
+                            padding: 10px; border-radius: 4px; border: 1px solid rgba(0, 136, 204, 0.2);">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
+        `;
+        
+        functionsOnlyInPdfUnified.forEach(funcName => {
+            html += `
+                <div style="padding: 6px; background: rgba(0, 136, 204, 0.2); border-radius: 3px; 
+                            border-left: 3px solid #0088cc; font-size: 11px;">
+                    <span style="color: #0088cc;">📦</span>
+                    <span style="color: #88ccff; margin-left: 6px;">${funcName}</span>
+                </div>
+            `;
+        });
+        
+        html += `
+                    </div>
+                </div>
+                <div style="font-size: 11px; color: #88aaff; margin-top: 8px;">
+                    💡 Estas funções podem ser movidas para pdf-unified.js durante a migração
+                </div>
+            </div>
+        `;
+    }
+    
+    // Recomendações
+    if (results.recommendations.length > 0) {
+        html += `
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #00ff9c; margin-bottom: 10px; border-bottom: 1px solid rgba(0, 255, 156, 0.3); padding-bottom: 5px;">
+                    💡 RECOMENDAÇÕES DE OTIMIZAÇÃO
+                </h4>
+                <div style="max-height: 150px; overflow-y: auto; background: rgba(0, 255, 156, 0.1); 
+                            padding: 10px; border-radius: 4px; border: 1px solid rgba(0, 255, 156, 0.2);">
+        `;
+        
+        results.recommendations.forEach((rec, idx) => {
+            const icon = rec.includes('🗑️') ? '🗑️' : 
+                        rec.includes('📦') ? '📦' : 
+                        '•';
+            
+            html += `
+                <div style="margin-bottom: 6px; padding: 8px; background: rgba(0, 255, 156, 0.1); border-radius: 4px;">
+                    <span style="color: #00ff9c;">${icon}</span>
+                    <span style="color: #aaffcc; margin-left: 8px;">${rec}</span>
+                </div>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    }
+    
+    // Botões de ação
+    html += `
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+            <button id="export-usage-report-v5-7" style="
+                background: linear-gradient(45deg, #00aaff, #0088cc); 
+                color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1; transition: all 0.2s;">
+                📊 EXPORTAR RELATÓRIO
+            </button>
+            <button id="generate-removal-script-v5-7" style="
+                background: ${unusedFunctions.length > 0 ? 'linear-gradient(45deg, #ffaa00, #ff8800)' : '#555'}; 
+                color: ${unusedFunctions.length > 0 ? '#000' : '#888'}; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1; transition: all 0.2s;"
+                ${unusedFunctions.length === 0 ? 'disabled' : ''}>
+                🗑️ GERAR SCRIPT DE REMOÇÃO
+            </button>
+            <button id="close-usage-report-v5-7" style="
+                background: #555; color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1; transition: all 0.2s;">
+                FECHAR
+            </button>
+        </div>
+        
+        <div style="font-size: 11px; color: #88aaff; text-align: center; margin-top: 15px;">
+            Análise executada em: ${new Date().toLocaleTimeString()} - v5.7
+        </div>
+    `;
+    
+    reportDiv.innerHTML = html;
+    document.body.appendChild(reportDiv);
+    
+    // Configurar eventos
+    document.getElementById('export-usage-report-v5-7').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `function-usage-analysis-v5.7-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        if (typeof window.logToPanel === 'function') {
+            window.logToPanel('📊 Relatório de uso de funções exportado', 'success');
+        }
+    });
+    
+    document.getElementById('generate-removal-script-v5-7').addEventListener('click', () => {
+        if (unusedFunctions.length > 0) {
+            generateFunctionRemovalScript(unusedFunctions, results);
+        }
+    });
+    
+    document.getElementById('close-usage-report-v5-7').addEventListener('click', () => {
+        reportDiv.remove();
+    });
+}
+
+/* ================== GERADOR DE SCRIPT DE REMOÇÃO DE FUNÇÕES ================== */
+function generateFunctionRemovalScript(unusedFunctions, results) {
+    console.group('🗑️ GERANDO SCRIPT DE REMOÇÃO DE FUNÇÕES NÃO UTILIZADAS');
+    
+    const timestamp = new Date().toISOString();
+    const domain = window.location.hostname;
+    
+    const removalScript = `
+// ==============================================
+// SCRIPT DE REMOÇÃO DE FUNÇÕES NÃO UTILIZADAS
+// Gerado por: diagnostics.js v5.7
+// Data: ${timestamp}
+// Domínio: ${domain}
+// ==============================================
+
+// FUNÇÕES IDENTIFICADAS COMO NÃO UTILIZADAS (${unusedFunctions.length}):
+${unusedFunctions.map(func => `// - ${func}`).join('\n')}
+
+// MÉTODO 1: REMOÇÃO MANUAL DO CÓDIGO
+// --------------------------------------------------
+// 1. Abra o arquivo pdf-utils.js
+// 2. Localize e remova as seguintes funções:
+${unusedFunctions.map(func => `//    function ${func}(...) { ... }`).join('\n')}
+
+// MÉTODO 2: COMENTAR FUNÇÕES (PARA TESTE)
+// --------------------------------------------------
+// No arquivo pdf-utils.js, comente as funções:
+${unusedFunctions.map(func => `
+/*
+function ${func}(...) {
+    // Função marcada para remoção (não utilizada)
+    console.warn('⚠️ ${func} chamada mas marcada para remoção');
+    return null;
+}
+*/`).join('\n')}
+
+// MÉTODO 3: VERIFICAÇÃO DE DEPENDÊNCIAS ANTES DE REMOVER
+// --------------------------------------------------
+// Execute este teste antes de remover qualquer função:
+
+const testFunctions = {
+${unusedFunctions.map(func => `    '${func}': typeof ${func}`).join(',\n')}
+};
+
+console.log('🔍 TESTE DE DEPENDÊNCIAS PARA REMOÇÃO:');
+Object.entries(testFunctions).forEach(([func, exists]) => {
+    console.log(\`\${exists === 'function' ? '❌ AINDA EXISTE' : '✅ JÁ REMOVIDA'} - \${func}\`);
+});
+
+// MÉTODO 4: SCRIPT DE REMOÇÃO AUTOMÁTICA (AVANÇADO)
+// --------------------------------------------------
+/*
+// CUIDADO: Este script remove funções globalmente
+// Execute apenas se tiver certeza
+
+const functionsToRemove = ${JSON.stringify(unusedFunctions, null, 2)};
+
+functionsToRemove.forEach(funcName => {
+    if (window[funcName] && typeof window[funcName] === 'function') {
+        // Criar placeholder para evitar erros
+        window[funcName] = function() {
+            console.error(\`❌ \${funcName} foi removida mas ainda foi chamada\`);
+            throw new Error(\`\${funcName} foi removida durante a otimização\`);
+        };
+        console.log(\`✅ \${funcName} marcada para remoção\`);
+    }
+});
+*/
+
+// RECOMENDAÇÕES DE SEGURANÇA:
+// 1. Faça backup do arquivo pdf-utils.js antes de modificar
+// 2. Teste todas as funcionalidades do sistema após remoção
+// 3. Mantenha as funções comentadas por 1-2 dias antes de remover completamente
+// 4. Verifique logs de erro para chamadas inesperadas
+
+// ESTATÍSTICAS DA ANÁLISE:
+// - Total de funções analisadas: ${results.usageSummary.totalFunctions}
+// - Funções utilizadas: ${results.usageSummary.usedInCode}
+// - Funções não utilizadas: ${results.usageSummary.unusedFunctions}
+// - Funções usadas apenas em pdf-unified.js: ${results.usageSummary.usedInPdfUnified}
+// - Data da análise: ${results.timestamp}
+// - Versão do diagnóstico: ${results.version}
+
+console.log('✅ Script de remoção gerado com sucesso v5.7');
+console.log('⚠️  IMPORTANTE: Faça backup antes de remover qualquer função!');
+    `;
+    
+    // Criar e baixar o script
+    const blob = new Blob([removalScript], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `remove-unused-functions-v5.7-${Date.now()}.js`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    console.log('✅ Script de remoção gerado e baixado');
+    console.log(`📋 ${unusedFunctions.length} função(ões) identificadas para possível remoção`);
+    
+    // Mostrar alerta de segurança
+    if (!window.diagnosticsSilentMode) {
+        const alertDiv = document.createElement('div');
+        alertDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #1a0a00, #000a0a);
+            color: #ffaa00;
+            padding: 20px;
+            border: 3px solid #ff5500;
+            border-radius: 10px;
+            z-index: 1000011;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(255, 85, 0, 0.5);
+            backdrop-filter: blur(10px);
+        `;
+        
+        alertDiv.innerHTML = `
+            <div style="font-size: 18px; margin-bottom: 15px; color: #ffaa00;">
+                ⚠️ SCRIPT DE REMOÇÃO GERADO
+            </div>
+            <div style="background: rgba(255, 170, 0, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid rgba(255, 170, 0, 0.3);">
+                <div style="font-size: 24px; color: #ff5500; margin-bottom: 10px;">
+                    ${unusedFunctions.length}
+                </div>
+                <div style="font-size: 14px; color: #ffcc88;">
+                    função(ões) identificadas como não utilizadas
+                </div>
+            </div>
+            <div style="text-align: left; margin-bottom: 20px;">
+                <div style="color: #ffcc88; margin-bottom: 10px;">📋 PRECAUÇÕES:</div>
+                <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #ffaa88;">
+                    <li>Faça backup do código antes de remover</li>
+                    <li>Teste todas as funcionalidades após remoção</li>
+                    <li>Comente as funções antes de remover completamente</li>
+                    <li>Monitore logs de erro por 2-3 dias</li>
+                </ul>
+            </div>
+            <button onclick="this.parentElement.remove()" style="
+                width: 100%; padding: 12px; background: #ff5500; color: white; 
+                border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">
+                ENTENDIDO
+            </button>
+            <div style="font-size: 11px; color: #ffaa88; margin-top: 10px;">
+                Script baixado automaticamente
+            </div>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Auto-remover após 8 segundos
+        setTimeout(() => {
+            if (alertDiv.parentElement) {
+                alertDiv.remove();
+            }
+        }, 8000);
+    }
+    
+    console.groupEnd();
+    
+    return removalScript;
+}
+
+/* ================== VERIFICAÇÃO DE MIGRAÇÃO DE FUNÇÕES ================== */
+window.analyzeFunctionMigration = function() {
+    console.group('📦 ANÁLISE DE MIGRAÇÃO DE FUNÇÕES PARA PDF-UNIFIED.JS');
+    
+    // Identificar funções que podem ser movidas para pdf-unified.js
+    const migrationCandidates = [];
+    
+    // Obter todas as funções globais
+    const allGlobalFunctions = Object.getOwnPropertyNames(window)
+        .filter(prop => typeof window[prop] === 'function')
+        .filter(prop => prop.includes('pdf') || prop.includes('Pdf'));
+    
+    console.log(`🔍 Encontradas ${allGlobalFunctions.length} funções globais relacionadas a PDF`);
+    
+    // Analisar cada função
+    allGlobalFunctions.forEach(funcName => {
+        // Ignorar funções de diagnóstico
+        if (funcName.includes('diagnose') || funcName.includes('test') || funcName.includes('analyze')) {
+            return;
+        }
+        
+        try {
+            // Verificar se a função está definida inline (não em arquivo externo)
+            const funcString = window[funcName].toString();
+            
+            // Heurística para identificar funções que podem ser migradas
+            const isUtilityFunction = funcName.startsWith('pdf') && 
+                                     !funcName.includes('System') &&
+                                     !funcName.includes('Modal') &&
+                                     funcString.length < 500; // Funções curtas são mais prováveis de serem utilitárias
+            
+            if (isUtilityFunction) {
+                migrationCandidates.push({
+                    name: funcName,
+                    length: funcString.length,
+                    lines: funcString.split('\n').length,
+                    likelyUtility: true,
+                    signature: funcString.substring(0, funcString.indexOf('{')).trim()
+                });
+            }
+        } catch (e) {
+            // Ignorar erros
+        }
+    });
+    
+    console.log(`📋 ${migrationCandidates.length} candidatas identificadas para migração`);
+    
+    if (migrationCandidates.length > 0) {
+        console.log('\n🎯 CANDIDATAS PARA MIGRAÇÃO PARA PDF-UNIFIED.JS:');
+        migrationCandidates.forEach((candidate, idx) => {
+            console.log(`${idx + 1}. ${candidate.name} (${candidate.lines} linhas) - ${candidate.signature}`);
+        });
+        
+        // Recomendações
+        console.log('\n💡 RECOMENDAÇÕES DE MIGRAÇÃO:');
+        console.log('1. Mova funções utilitárias curtas para pdf-unified.js');
+        console.log('2. Mantenha funções do sistema principal (MediaSystem, PdfSystem) separadas');
+        console.log('3. Teste cada função após a migração');
+        console.log('4. Atualize referências no código');
+    }
+    
+    console.groupEnd();
+    
+    return {
+        candidates: migrationCandidates,
+        totalGlobalFunctions: allGlobalFunctions.length,
+        timestamp: new Date().toISOString(),
+        version: '5.7'
+    };
+};
+
+/* ================== INTEGRAÇÃO COM O SISTEMA EXISTENTE ================== */
+(function integrateFunctionUsageModule() {
+    console.log('🔗 INTEGRANDO MÓDULO DE ANÁLISE DE USO DE FUNÇÕES v5.7');
+    
+    // Adicionar ao objeto diag se existir
+    if (window.diag) {
+        window.diag.analyze = window.diag.analyze || {};
+        
+        // Adicionar novas funções de análise
+        const analysisFunctions = {
+            pdfUtilsUsage: window.analyzePdfUtilsUsage,
+            functionMigration: window.analyzeFunctionMigration
+        };
+        
+        Object.entries(analysisFunctions).forEach(([key, func]) => {
+            if (func && !window.diag.analyze[key]) {
+                window.diag.analyze[key] = func;
+            }
+        });
+        
+        console.log('✅ Módulo de análise adicionado a window.diag.analyze');
+    }
+    
+    // Adicionar ao console.diag se existir
+    if (console.diag) {
+        console.diag.analyze = console.diag.analyze || {};
+        console.diag.analyze.pdfUtils = window.analyzePdfUtilsUsage;
+        console.diag.analyze.migration = window.analyzeFunctionMigration;
+    }
+    
+    // Adicionar botão ao painel de diagnóstico existente
+    function addAnalysisButtonToPanel() {
+        const checkPanel = setInterval(() => {
+            const panel = document.getElementById('diagnostics-panel-complete');
+            if (panel) {
+                clearInterval(checkPanel);
+                
+                // Adicionar botão de análise de uso
+                const mainButtons = panel.querySelector('div:nth-child(3)');
+                if (mainButtons && !document.getElementById('analyze-usage-btn-v5-7')) {
+                    const analyzeBtn = document.createElement('button');
+                    analyzeBtn.id = 'analyze-usage-btn-v5-7';
+                    analyzeBtn.innerHTML = '🔍 ANALISAR USO DE FUNÇÕES v5.7';
+                    analyzeBtn.style.cssText = `
+                        background: linear-gradient(45deg, #00aaff, #0088cc); 
+                        color: white; border: none;
+                        padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; flex: 1; margin: 5px;
+                        transition: all 0.2s;
+                    `;
+                    analyzeBtn.addEventListener('click', window.analyzePdfUtilsUsage);
+                    
+                    const migrationBtn = document.createElement('button');
+                    migrationBtn.id = 'analyze-migration-btn-v5-7';
+                    migrationBtn.innerHTML = '📦 ANALISAR MIGRAÇÃO v5.7';
+                    migrationBtn.style.cssText = `
+                        background: linear-gradient(45deg, #ff00ff, #0088cc); 
+                        color: white; border: none;
+                        padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; flex: 1; margin: 5px;
+                        transition: all 0.2s;
+                    `;
+                    migrationBtn.addEventListener('click', window.analyzeFunctionMigration);
+                    
+                    mainButtons.appendChild(analyzeBtn);
+                    mainButtons.appendChild(migrationBtn);
+                    
+                    console.log('✅ Botões de análise adicionados ao painel (v5.7)');
+                }
+            }
+        }, 1000);
+    }
+    
+    // Executar análise inicial se em modo debug
+    if (window.DEBUG_MODE || window.DIAGNOSTICS_MODE) {
+        setTimeout(() => {
+            console.log('🔄 Executando análise inicial de uso de funções...');
+            
+            // Executar após 5 segundos
+            setTimeout(() => {
+                if (window.analyzePdfUtilsUsage) {
+                    window.analyzePdfUtilsUsage();
+                }
+            }, 5000);
+            
+            // Adicionar botões ao painel
+            setTimeout(addAnalysisButtonToPanel, 2000);
+            
+        }, 3000);
+    }
+    
+    console.log('✅ Módulo de análise de uso de funções v5.7 integrado');
+})();
+
+/* ================== COMANDOS RÁPIDOS PARA TESTE ================== */
+// Adicionar comandos ao console para fácil acesso
+window.quickAnalyze = {
+    pdfUtils: window.analyzePdfUtilsUsage,
+    migration: window.analyzeFunctionMigration,
+    help: function() {
+        console.log(`
+📋 COMANDOS DE ANÁLISE DE USO DE FUNÇÕES (v5.7):
+===============================================
+1. window.analyzePdfUtilsUsage()
+   - Analisa uso das funções do pdf-utils.js
+   - Identifica funções não utilizadas
+   - Gera recomendações de otimização
+
+2. window.analyzeFunctionMigration()
+   - Analisa funções para migração para pdf-unified.js
+   - Identifica candidatas para consolidação
+
+3. window.diag.analyze.pdfUtilsUsage()
+   - Acesso via objeto diag
+
+4. console.diag.analyze.pdfUtils()
+   - Acesso via console.diag
+
+5. window.quickAnalyze.pdfUtils()
+   - Atalho rápido
+        `);
+    }
+};
+
+// Adicionar atalho de teclado (Alt+U)
+document.addEventListener('keydown', function(e) {
+    if (e.altKey && e.key === 'u') {
+        console.log('🎮 Atalho Alt+U detectado - executando análise de uso...');
+        if (window.analyzePdfUtilsUsage) {
+            window.analyzePdfUtilsUsage();
+        }
+    }
+});
+
+console.log('✅ MÓDULO DE ANÁLISE DE USO DE FUNÇÕES v5.7 PRONTO');
+console.log('🎯 Comando rápido: window.analyzePdfUtilsUsage()');
+
     // Exportar funções globais
     window.Diagnostics = {
         analyzeSystem,
