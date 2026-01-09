@@ -11395,6 +11395,145 @@ window.diagnostics.postValidation = {
     createValidationPanel: PostValidationModule.createValidationPanel
 };
 
+// ================== INTEGRAÇÃO COM PAINÉIS EXISTENTES ==================
+function integratePostValidationToExistingPanels() {
+    // Aguardar painéis carregarem
+    setTimeout(() => {
+        const panels = PanelManager.getAllPanels();
+        
+        panels.forEach(panel => {
+            if (panel.element && !panel.hasPostValidationIntegration) {
+                addPostValidationSection(panel);
+                panel.hasPostValidationIntegration = true;
+            }
+        });
+        
+        console.log(`✅ Pós-Validação integrada em ${panels.length} painéis`);
+    }, 3000);
+}
+
+function addPostValidationSection(panel) {
+    if (!panel.element) return;
+    
+    const testsContainer = panel.element.querySelector('.tests-container');
+    if (!testsContainer) return;
+    
+    // Seção de pós-validação
+    const section = document.createElement('div');
+    section.innerHTML = `
+        <div class="post-validation-section" 
+             style="background: rgba(255, 107, 107, 0.1);
+                    border: 1px solid rgba(255, 107, 107, 0.3);
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin: 20px 0;">
+            
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                <span style="color: #ff6b6b; font-weight: bold; font-size: 14px;">🎯 PÓS-VALIDAÇÃO</span>
+                <span style="background: #ff6b6b; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px;">NOVO</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                <button class="quick-test-btn" data-test="files"
+                        style="background: rgba(255, 170, 0, 0.2);
+                               border: 1px solid #ffaa00;
+                               color: #ffaa00;
+                               padding: 8px;
+                               border-radius: 5px;
+                               cursor: pointer;
+                               font-size: 12px;
+                               display: flex;
+                               align-items: center;
+                               gap: 5px;">
+                    🗑️ Arquivos
+                </button>
+                
+                <button class="quick-test-btn" data-test="functions"
+                        style="background: rgba(0, 170, 255, 0.2);
+                               border: 1px solid #00aaff;
+                               color: #00aaff;
+                               padding: 8px;
+                               border-radius: 5px;
+                               cursor: pointer;
+                               font-size: 12px;
+                               display: flex;
+                               align-items: center;
+                               gap: 5px;">
+                    🔧 Funções
+                </button>
+                
+                <button class="quick-test-btn" data-test="performance"
+                        style="background: rgba(0, 255, 156, 0.2);
+                               border: 1px solid #00ff9c;
+                               color: #00ff9c;
+                               padding: 8px;
+                               border-radius: 5px;
+                               cursor: pointer;
+                               font-size: 12px;
+                               display: flex;
+                               align-items: center;
+                               gap: 5px;">
+                    ⚡ Performance
+                </button>
+                
+                <button class="quick-test-btn" data-test="full"
+                        style="background: rgba(255, 107, 107, 0.2);
+                               border: 1px solid #ff6b6b;
+                               color: #ff6b6b;
+                               padding: 8px;
+                               border-radius: 5px;
+                               cursor: pointer;
+                               font-size: 12px;
+                               display: flex;
+                               align-items: center;
+                               gap: 5px;">
+                    ▶️ Completo
+                </button>
+            </div>
+            
+            <div style="margin-top: 10px; font-size: 11px; color: #88aaff; text-align: center;">
+                Clique para executar testes específicos
+            </div>
+        </div>
+    `;
+    
+    // Inserir no início do container
+    testsContainer.insertBefore(section, testsContainer.firstChild);
+    
+    // Adicionar eventos aos botões
+    section.querySelectorAll('.quick-test-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const testType = this.dataset.test;
+            
+            if (panel.addLog) {
+                panel.addLog(`Iniciando teste de ${testType}...`, 'info');
+            }
+            
+            switch(testType) {
+                case 'files':
+                    diagnostics.executeTest('post-validation-files-check');
+                    break;
+                case 'functions':
+                    diagnostics.executeTest('post-validation-functions-check');
+                    break;
+                case 'performance':
+                    diagnostics.executeTest('post-validation-performance');
+                    break;
+                case 'full':
+                    const results = await diagnostics.postValidation.runCompleteValidation();
+                    if (panel.addLog) {
+                        panel.addLog(`Validação completa: ${results.passed}✅ ${results.warnings}⚠️ ${results.failed}❌`, 
+                                    results.failed === 0 ? 'success' : 'warning');
+                    }
+                    break;
+            }
+        });
+    });
+}
+
+// Inicializar integração
+setTimeout(integratePostValidationToExistingPanels, 2500);
+
 // ================== ATUALIZAR INICIALIZAÇÃO ==================
 // Modificar a função de inicialização para incluir pós-validação
 const originalInitialize = window.diagnostics.initialize;
