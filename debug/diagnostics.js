@@ -11028,7 +11028,6 @@ window.DIAGNOSTICS_VERSION.zombieAnalysis = '5.8';
 const PostValidationModule = (function() {
     // Testes de pós-validação
     const postValidationTests = {
-        // Teste de arquivos removidos
         removedFilesCheck: {
             id: 'post-validation-files-check',
             title: 'Verificação de Arquivos Removidos',
@@ -11048,7 +11047,6 @@ const PostValidationModule = (function() {
                     let allRemoved = true;
                     const results = [];
                     
-                    // Verificar cada arquivo
                     removedFiles.forEach(file => {
                         const img = new Image();
                         img.onerror = () => {
@@ -11066,10 +11064,9 @@ const PostValidationModule = (function() {
                                 message: '❌ Arquivo ainda existe!'
                             });
                         };
-                        img.src = file + '?t=' + Date.now(); // Evitar cache
+                        img.src = file + '?t=' + Date.now();
                     });
                     
-                    // Dar tempo para as verificações
                     setTimeout(() => {
                         resolve({
                             status: allRemoved ? 'success' : 'error',
@@ -11088,7 +11085,6 @@ const PostValidationModule = (function() {
             }
         },
         
-        // Teste de funcionalidades críticas
         criticalFunctionsCheck: {
             id: 'post-validation-functions-check',
             title: 'Validação de Funcionalidades Críticas',
@@ -11159,7 +11155,6 @@ const PostValidationModule = (function() {
             }
         },
         
-        // Teste de performance pós-limpeza
         performanceCheck: {
             id: 'post-validation-performance',
             title: 'Análise de Performance Pós-Limpeza',
@@ -11169,12 +11164,7 @@ const PostValidationModule = (function() {
             category: 'cleanup',
             execute: function() {
                 const startTime = performance.now();
-                const memoryBefore = performance.memory ? {
-                    used: performance.memory.usedJSHeapSize,
-                    total: performance.memory.totalJSHeapSize
-                } : null;
                 
-                // Simular operação pesada
                 let operations = 0;
                 for (let i = 0; i < 1000000; i++) {
                     operations += Math.random();
@@ -11183,25 +11173,13 @@ const PostValidationModule = (function() {
                 const endTime = performance.now();
                 const executionTime = endTime - startTime;
                 
-                const memoryAfter = performance.memory ? {
-                    used: performance.memory.usedJSHeapSize,
-                    total: performance.memory.totalJSHeapSize
-                } : null;
-                
-                let memoryImprovement = null;
-                if (memoryBefore && memoryAfter) {
-                    memoryImprovement = ((memoryBefore.used - memoryAfter.used) / memoryBefore.used * 100).toFixed(2);
-                }
-                
                 return {
                     status: executionTime < 100 ? 'success' : 'info',
-                    message: `⏱️ Execução: ${executionTime.toFixed(2)}ms ${memoryImprovement ? `| 📊 Memória: ${memoryImprovement}% melhor` : ''}`,
+                    message: `⏱️ Execução: ${executionTime.toFixed(2)}ms`,
                     details: {
                         executionTime: executionTime,
                         operations: operations,
-                        memoryBefore: memoryBefore,
-                        memoryAfter: memoryAfter,
-                        memoryImprovement: memoryImprovement
+                        timestamp: new Date().toISOString()
                     }
                 };
             }
@@ -11209,22 +11187,21 @@ const PostValidationModule = (function() {
     };
     
     return {
-        // Registrar testes de pós-validação
         registerTests: function() {
-            Object.values(postValidationTests).forEach(testConfig => {
-                // Verificar se já existe antes de registrar
-                const existingTest = TestManager.getTest(testConfig.id);
-                if (!existingTest) {
-                    TestManager.registerTest(testConfig);
-                } else {
-                    console.log(`⚠️ Teste ${testConfig.id} já registrado. Pulando duplicação.`);
-                }
-            });
-            
-            console.log(`✅ Módulo de Pós-Validação: ${Object.keys(postValidationTests).length} testes disponíveis`);
+            // Verificar se já existe um sistema de teste
+            if (typeof TestManager !== 'undefined') {
+                Object.values(postValidationTests).forEach(testConfig => {
+                    const existingTest = TestManager.getTest(testConfig.id);
+                    if (!existingTest) {
+                        TestManager.registerTest(testConfig);
+                    }
+                });
+                console.log(`✅ Módulo de Pós-Validação: ${Object.keys(postValidationTests).length} testes registrados`);
+            } else {
+                console.warn('⚠️ TestManager não encontrado. Testes de pós-validação não registrados.');
+            }
         },
         
-        // Executar validação completa
         runCompleteValidation: async function() {
             console.group('🎯 EXECUTANDO VALIDAÇÃO COMPLETA PÓS-LIMPEZA');
             
@@ -11236,14 +11213,30 @@ const PostValidationModule = (function() {
                 details: []
             };
             
-            // Executar todos os testes de pós-validação
             for (const [key, testConfig] of Object.entries(postValidationTests)) {
                 try {
                     console.log(`▶️ Executando: ${testConfig.title}`);
                     
-                    const test = TestManager.getTest(testConfig.id);
-                    if (test) {
-                        const result = await TestManager.executeTest(testConfig.id);
+                    // Se TestManager existir, usar ele
+                    if (typeof TestManager !== 'undefined') {
+                        const test = TestManager.getTest(testConfig.id);
+                        if (test) {
+                            const result = await TestManager.executeTest(testConfig.id);
+                            
+                            results.total++;
+                            if (result.status === 'success') results.passed++;
+                            if (result.status === 'error') results.failed++;
+                            if (result.status === 'warning') results.warnings++;
+                            
+                            results.details.push({
+                                test: testConfig.title,
+                                status: result.status,
+                                message: result.message
+                            });
+                        }
+                    } else {
+                        // Executar diretamente
+                        const result = await Promise.resolve(testConfig.execute());
                         
                         results.total++;
                         if (result.status === 'success') results.passed++;
@@ -11255,10 +11248,9 @@ const PostValidationModule = (function() {
                             status: result.status,
                             message: result.message
                         });
-                        
-                        // Aguardar entre testes
-                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 } catch (error) {
                     console.error(`❌ Erro no teste ${testConfig.title}:`, error);
                     results.details.push({
@@ -11269,19 +11261,12 @@ const PostValidationModule = (function() {
                 }
             }
             
-            // Resumo final
             console.groupEnd();
             console.log(`📊 RESUMO PÓS-VALIDAÇÃO:`);
             console.log(`   ✅ ${results.passed} passaram`);
             console.log(`   ⚠️ ${results.warnings} com avisos`);
             console.log(`   ❌ ${results.failed} falharam`);
             console.log(`   📈 Total: ${results.total} testes`);
-            
-            // Verificar se passou em todos os críticos
-            const criticalTests = Object.values(postValidationTests).filter(t => t.critical);
-            const allCriticalPassed = results.details
-                .filter(d => criticalTests.some(ct => ct.title === d.test))
-                .every(d => d.status === 'success');
             
             if (allCriticalPassed && results.failed === 0) {
                 console.log('🎉 LIMPEZA COMPLETA VALIDADA COM SUCESSO!');
@@ -11292,288 +11277,317 @@ const PostValidationModule = (function() {
                 }
             } else {
                 console.warn('⚠️ VALIDAÇÃO COM PROBLEMAS - Verificar falhas');
-                
-                if (window.logToPanel) {
-                    window.logToPanel('⚠️ Validação pós-limpeza encontrou problemas', 'warning');
-                }
             }
             
             return results;
         },
         
-        // Criar painel especializado de pós-validação
         createValidationPanel: function() {
-            if (!PanelManager.checkSpaceAvailability()) {
-                console.warn('❌ Não há espaço para novo painel. Use outro arquivo diagnostics.js');
-                return null;
-            }
+            // Primeiro criar um painel simples
+            const panelId = 'post-validation-panel-' + Date.now();
+            const panel = document.createElement('div');
             
-            const panelConfig = {
-                title: 'PÓS-VALIDAÇÃO COMPLETA',
-                category: 'validation',
-                maxTests: 8,
-                position: { top: '200px', left: '540px' },
-                size: { width: '500px', height: '650px' }
-            };
+            panel.id = panelId;
+            panel.innerHTML = `
+                <div style="position: fixed;
+                            top: 100px;
+                            left: 100px;
+                            width: 500px;
+                            height: 600px;
+                            background: linear-gradient(135deg, #0a0a2a, #001a33);
+                            border: 2px solid #ff6b6b;
+                            border-radius: 10px;
+                            z-index: 1000000;
+                            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+                            font-family: monospace;
+                            display: flex;
+                            flex-direction: column;
+                            overflow: hidden;
+                            resize: both;">
+                    
+                    <!-- Cabeçalho -->
+                    <div style="background: rgba(255, 107, 107, 0.2);
+                                padding: 12px 15px;
+                                border-bottom: 1px solid rgba(255, 107, 107, 0.3);
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                cursor: move;">
+                        
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="color: #ff6b6b; font-weight: bold;">🎯 PÓS-VALIDAÇÃO</span>
+                            <span style="background: #ff6b6b;
+                                        color: #001a33;
+                                        padding: 2px 8px;
+                                        border-radius: 10px;
+                                        font-size: 11px;">
+                                3 testes
+                            </span>
+                        </div>
+                        
+                        <div style="display: flex; gap: 5px;">
+                            <button class="minimize-btn" 
+                                    style="background: #555;
+                                           color: white;
+                                           border: none;
+                                           width: 25px;
+                                           height: 25px;
+                                           border-radius: 4px;
+                                           cursor: pointer;">
+                                −
+                            </button>
+                            <button class="close-btn" 
+                                    style="background: #ff5555;
+                                           color: white;
+                                           border: none;
+                                           width: 25px;
+                                           height: 25px;
+                                           border-radius: 4px;
+                                           cursor: pointer;">
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Conteúdo -->
+                    <div style="flex: 1;
+                                padding: 15px;
+                                overflow-y: auto;
+                                overflow-x: hidden;">
+                        
+                        <!-- Testes -->
+                        <div id="pv-tests-container"></div>
+                        
+                        <!-- Botão de validação completa -->
+                        <div style="margin-top: 20px; padding: 15px; background: rgba(255, 107, 107, 0.1); border-radius: 8px; border: 1px solid rgba(255, 107, 107, 0.3);">
+                            <button id="pv-run-complete" 
+                                    style="background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+                                           color: white;
+                                           border: none;
+                                           padding: 12px;
+                                           border-radius: 5px;
+                                           font-weight: bold;
+                                           cursor: pointer;
+                                           width: 100%;
+                                           font-size: 14px;">
+                                ▶️ EXECUTAR VALIDAÇÃO COMPLETA
+                            </button>
+                            <div style="font-size: 11px; color: #ffaaaa; margin-top: 8px; text-align: center;">
+                                Executa todos os 3 testes em sequência
+                            </div>
+                        </div>
+                        
+                        <!-- Logs -->
+                        <div style="margin-top: 20px;
+                                    max-height: 150px;
+                                    overflow-y: auto;
+                                    background: rgba(0, 0, 0, 0.3);
+                                    border-radius: 6px;
+                                    padding: 10px;
+                                    border: 1px solid rgba(255, 107, 107, 0.2);
+                                    font-size: 12px;">
+                            <div style="color: #ffaaaa; margin-bottom: 5px;">📝 LOGS:</div>
+                            <div id="pv-logs-content"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rodapé -->
+                    <div style="background: rgba(255, 107, 107, 0.1);
+                                padding: 10px 15px;
+                                border-top: 1px solid rgba(255, 107, 107, 0.3);
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                font-size: 11px;">
+                        
+                        <div style="color: #ffaaaa;">
+                            <span>Pós-Validação v1.0</span>
+                        </div>
+                        
+                        <div style="color: #ff8888;">
+                            Status: <span id="pv-panel-status">Pronto</span>
+                        </div>
+                    </div>
+                </div>
+            `;
             
-            const panel = PanelManager.createPanel(panelConfig);
-            panel.element = SpecializedPanels.renderPanel(panel);
+            document.body.appendChild(panel);
             
-            // Adicionar testes de pós-validação
-            Object.values(postValidationTests).forEach(testConfig => {
-                const test = TestManager.getTest(testConfig.id);
-                if (test && panel.tests.length < panel.maxTests) {
-                    panel.tests.push(test.id);
-                    SpecializedPanels.addTestToPanel(panel, test);
-                }
-            });
-            
-            // Adicionar botão de validação completa
-            const testsContainer = panel.element.querySelector('.tests-container');
-            if (testsContainer) {
-                const validationButton = document.createElement('div');
-                validationButton.innerHTML = `
-                    <div style="background: rgba(0, 170, 255, 0.2); 
-                                padding: 15px; 
-                                border-radius: 6px; 
-                                border: 1px solid rgba(0, 170, 255, 0.4);
-                                margin-top: 10px;
-                                text-align: center;">
-                        <button id="run-full-validation" 
-                                style="background: linear-gradient(135deg, #00aaff, #0088cc);
-                                       color: white;
-                                       border: none;
-                                       padding: 10px 20px;
-                                       border-radius: 5px;
-                                       font-weight: bold;
-                                       cursor: pointer;
-                                       width: 100%;">
-                            ▶️ EXECUTAR VALIDAÇÃO COMPLETA
-                        </button>
-                        <div style="font-size: 11px; color: #88aaff; margin-top: 8px;">
-                            Executa todos os testes de pós-validação em sequência
+            // Adicionar testes
+            const testsContainer = panel.querySelector('#pv-tests-container');
+            Object.values(postValidationTests).forEach(test => {
+                const testElement = document.createElement('div');
+                testElement.innerHTML = `
+                    <div style="background: rgba(255, 107, 107, 0.1);
+                                padding: 12px;
+                                border-radius: 6px;
+                                margin-bottom: 10px;
+                                border-left: 4px solid #ff6b6b;">
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 16px;">${test.icon}</span>
+                                <span style="font-weight: bold; color: #ff6b6b;">${test.title}</span>
+                            </div>
+                            
+                            <button class="run-pv-test" data-test-id="${test.id}"
+                                    style="background: #ff6b6b;
+                                           color: white;
+                                           border: none;
+                                           padding: 4px 8px;
+                                           border-radius: 3px;
+                                           font-size: 10px;
+                                           cursor: pointer;">
+                                Executar
+                            </button>
+                        </div>
+                        
+                        <div style="color: #ffaaaa; font-size: 12px; margin-bottom: 8px;">
+                            ${test.description}
+                        </div>
+                        
+                        <div class="test-result" 
+                             style="background: rgba(0, 0, 0, 0.3);
+                                    padding: 8px;
+                                    border-radius: 4px;
+                                    margin-top: 8px;
+                                    font-size: 11px;
+                                    color: #ffaaaa;
+                                    display: none;">
+                            Aguardando execução...
                         </div>
                     </div>
                 `;
+                testsContainer.appendChild(testElement);
+            });
+            
+            // Função para adicionar logs
+            const logsContent = panel.querySelector('#pv-logs-content');
+            const addLog = function(message, type = 'info') {
+                const colors = {
+                    info: '#ffaaaa',
+                    success: '#00ff9c',
+                    warning: '#ffaa00',
+                    error: '#ff5555'
+                };
                 
-                testsContainer.appendChild(validationButton);
+                const logEntry = document.createElement('div');
+                logEntry.style.marginBottom = '3px';
+                logEntry.style.color = colors[type] || colors.info;
+                logEntry.style.fontSize = '11px';
+                logEntry.innerHTML = `${new Date().toLocaleTimeString()}: ${message}`;
                 
-                // Adicionar evento
-                document.getElementById('run-full-validation').addEventListener('click', async () => {
-                    if (panel.addLog) {
-                        panel.addLog('Iniciando validação completa...', 'info');
-                    }
+                logsContent.appendChild(logEntry);
+                logsContent.scrollTop = logsContent.scrollHeight;
+            };
+            
+            // Eventos
+            panel.querySelectorAll('.run-pv-test').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const testId = this.dataset.testId;
+                    const test = postValidationTests[Object.keys(postValidationTests).find(key => postValidationTests[key].id === testId)];
                     
-                    const results = await this.runCompleteValidation();
-                    
-                    if (panel.addLog) {
-                        panel.addLog(`Validação concluída: ${results.passed}✅ ${results.warnings}⚠️ ${results.failed}❌`, 
-                                    results.failed === 0 ? 'success' : 'warning');
+                    if (test) {
+                        addLog(`Executando ${test.title}...`, 'info');
+                        this.disabled = true;
+                        this.textContent = 'Executando...';
+                        
+                        try {
+                            const result = await Promise.resolve(test.execute());
+                            addLog(`${test.title}: ${result.message}`, result.status);
+                            
+                            // Atualizar resultado visual
+                            const testElement = this.closest('div');
+                            const resultElement = testElement.querySelector('.test-result');
+                            if (resultElement) {
+                                resultElement.textContent = result.message;
+                                resultElement.style.display = 'block';
+                                resultElement.style.color = 
+                                    result.status === 'success' ? '#00ff9c' :
+                                    result.status === 'error' ? '#ff5555' :
+                                    result.status === 'warning' ? '#ffaa00' : '#ffaaaa';
+                            }
+                        } catch (error) {
+                            addLog(`Erro em ${test.title}: ${error.message}`, 'error');
+                        } finally {
+                            this.disabled = false;
+                            this.textContent = 'Executar';
+                        }
                     }
                 });
+            });
+            
+            // Validação completa
+            panel.querySelector('#pv-run-complete').addEventListener('click', async function() {
+                this.disabled = true;
+                this.textContent = 'Executando...';
+                addLog('Iniciando validação completa...', 'info');
+                
+                const results = await PostValidationModule.runCompleteValidation();
+                
+                this.disabled = false;
+                this.textContent = '▶️ EXECUTAR VALIDAÇÃO COMPLETA';
+                
+                addLog(`Validação concluída: ${results.passed}✅ ${results.warnings}⚠️ ${results.failed}❌`, 
+                      results.failed === 0 ? 'success' : 'warning');
+                
+                // Atualizar status do painel
+                panel.querySelector('#pv-panel-status').textContent = 
+                    results.failed === 0 ? 'Concluído ✅' : 'Com problemas ⚠️';
+            });
+            
+            // Fechar painel
+            panel.querySelector('.close-btn').addEventListener('click', () => {
+                panel.remove();
+            });
+            
+            // Minimizar
+            panel.querySelector('.minimize-btn').addEventListener('click', function() {
+                const content = panel.querySelector('.panel-content') || panel.children[1];
+                const isHidden = content.style.display === 'none';
+                content.style.display = isHidden ? 'flex' : 'none';
+                this.textContent = isHidden ? '−' : '+';
+            });
+            
+            // Tornar arrastável
+            const header = panel.children[0];
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            header.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                offsetX = e.clientX - panel.getBoundingClientRect().left;
+                offsetY = e.clientY - panel.getBoundingClientRect().top;
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+                e.preventDefault();
+            });
+            
+            function drag(e) {
+                if (!isDragging) return;
+                panel.style.left = (e.clientX - offsetX) + 'px';
+                panel.style.top = (e.clientY - offsetY) + 'px';
             }
             
-            SpecializedPanels.initializePanelLogs(panel);
-            SpecializedPanels.makePanelDraggable(panel);
-            
-            if (panel.addLog) {
-                panel.addLog('Painel de Pós-Validação inicializado', 'success');
-                panel.addLog('Use o botão para executar validação completa', 'info');
+            function stopDrag() {
+                isDragging = false;
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
             }
             
-            console.log('✅ Painel de Pós-Validação criado');
+            addLog('Painel de Pós-Validação criado', 'success');
+            console.log('✅ Painel de Pós-Validação visual criado');
+            
             return panel;
         }
     };
 })();
 
-// ================== INTEGRAÇÃO COM O SISTEMA PRINCIPAL ==================
-// Adicionar ao objeto diagnostics global
-window.diagnostics.postValidation = {
-    registerTests: PostValidationModule.registerTests,
-    runCompleteValidation: PostValidationModule.runCompleteValidation,
-    createValidationPanel: PostValidationModule.createValidationPanel
-};
-
-// ================== INTEGRAÇÃO COM PAINÉIS EXISTENTES ==================
-function integratePostValidationToExistingPanels() {
-    // Aguardar painéis carregarem
-    setTimeout(() => {
-        const panels = PanelManager.getAllPanels();
-        
-        panels.forEach(panel => {
-            if (panel.element && !panel.hasPostValidationIntegration) {
-                addPostValidationSection(panel);
-                panel.hasPostValidationIntegration = true;
-            }
-        });
-        
-        console.log(`✅ Pós-Validação integrada em ${panels.length} painéis`);
-    }, 3000);
-}
-
-function addPostValidationSection(panel) {
-    if (!panel.element) return;
-    
-    const testsContainer = panel.element.querySelector('.tests-container');
-    if (!testsContainer) return;
-    
-    // Seção de pós-validação
-    const section = document.createElement('div');
-    section.innerHTML = `
-        <div class="post-validation-section" 
-             style="background: rgba(255, 107, 107, 0.1);
-                    border: 1px solid rgba(255, 107, 107, 0.3);
-                    border-radius: 8px;
-                    padding: 15px;
-                    margin: 20px 0;">
-            
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                <span style="color: #ff6b6b; font-weight: bold; font-size: 14px;">🎯 PÓS-VALIDAÇÃO</span>
-                <span style="background: #ff6b6b; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px;">NOVO</span>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                <button class="quick-test-btn" data-test="files"
-                        style="background: rgba(255, 170, 0, 0.2);
-                               border: 1px solid #ffaa00;
-                               color: #ffaa00;
-                               padding: 8px;
-                               border-radius: 5px;
-                               cursor: pointer;
-                               font-size: 12px;
-                               display: flex;
-                               align-items: center;
-                               gap: 5px;">
-                    🗑️ Arquivos
-                </button>
-                
-                <button class="quick-test-btn" data-test="functions"
-                        style="background: rgba(0, 170, 255, 0.2);
-                               border: 1px solid #00aaff;
-                               color: #00aaff;
-                               padding: 8px;
-                               border-radius: 5px;
-                               cursor: pointer;
-                               font-size: 12px;
-                               display: flex;
-                               align-items: center;
-                               gap: 5px;">
-                    🔧 Funções
-                </button>
-                
-                <button class="quick-test-btn" data-test="performance"
-                        style="background: rgba(0, 255, 156, 0.2);
-                               border: 1px solid #00ff9c;
-                               color: #00ff9c;
-                               padding: 8px;
-                               border-radius: 5px;
-                               cursor: pointer;
-                               font-size: 12px;
-                               display: flex;
-                               align-items: center;
-                               gap: 5px;">
-                    ⚡ Performance
-                </button>
-                
-                <button class="quick-test-btn" data-test="full"
-                        style="background: rgba(255, 107, 107, 0.2);
-                               border: 1px solid #ff6b6b;
-                               color: #ff6b6b;
-                               padding: 8px;
-                               border-radius: 5px;
-                               cursor: pointer;
-                               font-size: 12px;
-                               display: flex;
-                               align-items: center;
-                               gap: 5px;">
-                    ▶️ Completo
-                </button>
-            </div>
-            
-            <div style="margin-top: 10px; font-size: 11px; color: #88aaff; text-align: center;">
-                Clique para executar testes específicos
-            </div>
-        </div>
-    `;
-    
-    // Inserir no início do container
-    testsContainer.insertBefore(section, testsContainer.firstChild);
-    
-    // Adicionar eventos aos botões
-    section.querySelectorAll('.quick-test-btn').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const testType = this.dataset.test;
-            
-            if (panel.addLog) {
-                panel.addLog(`Iniciando teste de ${testType}...`, 'info');
-            }
-            
-            switch(testType) {
-                case 'files':
-                    diagnostics.executeTest('post-validation-files-check');
-                    break;
-                case 'functions':
-                    diagnostics.executeTest('post-validation-functions-check');
-                    break;
-                case 'performance':
-                    diagnostics.executeTest('post-validation-performance');
-                    break;
-                case 'full':
-                    const results = await diagnostics.postValidation.runCompleteValidation();
-                    if (panel.addLog) {
-                        panel.addLog(`Validação completa: ${results.passed}✅ ${results.warnings}⚠️ ${results.failed}❌`, 
-                                    results.failed === 0 ? 'success' : 'warning');
-                    }
-                    break;
-            }
-        });
-    });
-}
-
-// Inicializar integração
-setTimeout(integratePostValidationToExistingPanels, 2500);
-
-// ================== ATUALIZAR INICIALIZAÇÃO ==================
-// Modificar a função de inicialização para incluir pós-validação
-const originalInitialize = window.diagnostics.initialize;
-window.diagnostics.initialize = function() {
-    // Executar inicialização original
-    const result = originalInitialize.call(this);
-    
-    // Registrar testes de pós-validação
+// Inicializar módulo
+setTimeout(() => {
     PostValidationModule.registerTests();
-    
-    // Adicionar comando ao console
-    console.group('🎯 COMANDOS DE PÓS-VALIDAÇÃO:');
-    console.log('%c• diagnostics.postValidation.runCompleteValidation()', 'color: #00ff9c');
-    console.log('%c• diagnostics.postValidation.createValidationPanel()', 'color: #00ff9c');
-    console.groupEnd();
-    
-    return result;
-};
-
-// ================== ADICIONAR ATALHO GLOBAL ==================
-// Mantém compatibilidade com código antigo
-if (!window.finalValidation) {
-    window.finalValidation = function() {
-        console.warn('⚠️ finalValidation() foi migrado para o sistema de diagnóstico');
-        console.info('📋 Use: diagnostics.postValidation.runCompleteValidation()');
-        
-        if (window.diagnostics && window.diagnostics.postValidation) {
-            return window.diagnostics.postValidation.runCompleteValidation();
-        } else {
-            console.error('❌ Sistema de diagnóstico não carregado');
-            return null;
-        }
-    };
-}
-
-// ================== LOG DE CARREGAMENTO ==================
-console.log('%c🔍 MÓDULO DE PÓS-VALIDAÇÃO INTEGRADO', 
-            'color: #00ff9c; font-weight: bold; font-size: 12px; background: #001a33; padding: 3px;');
-console.log('✅ 3 novos testes de validação disponíveis');
-console.log('📋 Use diagnostics.postValidation.createValidationPanel() para criar painel');
+    console.log('✅ Módulo de Pós-Validação carregado');
+}, 1000);
 
 // ================== BOTÃO DE CONTROLE FLUTUANTE ==================
 function createPostValidationControl() {
@@ -11591,7 +11605,6 @@ function createPostValidationControl() {
                     flex-direction: column;
                     gap: 10px;">
             
-            <!-- Botão Principal -->
             <button id="pv-main-btn"
                     style="background: linear-gradient(135deg, #ff6b6b, #ee5a52);
                            color: white;
@@ -11602,11 +11615,13 @@ function createPostValidationControl() {
                            font-size: 24px;
                            cursor: pointer;
                            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
-                           transition: all 0.3s ease;">
+                           transition: all 0.3s ease;
+                           display: flex;
+                           align-items: center;
+                           justify-content: center;">
                 🔍
             </button>
             
-            <!-- Menu de Opções (inicialmente oculto) -->
             <div id="pv-menu" 
                  style="display: none;
                         background: rgba(10, 10, 42, 0.95);
@@ -11614,7 +11629,10 @@ function createPostValidationControl() {
                         border-radius: 10px;
                         padding: 15px;
                         min-width: 200px;
-                        box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);">
+                        box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+                        position: absolute;
+                        bottom: 70px;
+                        right: 0;">
                 
                 <div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ff6b6b; padding-bottom: 5px;">
                     🎯 PÓS-VALIDAÇÃO
@@ -11632,7 +11650,8 @@ function createPostValidationControl() {
                                text-align: left;
                                display: flex;
                                align-items: center;
-                               gap: 8px;">
+                               gap: 8px;
+                               font-family: monospace;">
                     📊 Criar Painel
                 </button>
                 
@@ -11648,7 +11667,8 @@ function createPostValidationControl() {
                                text-align: left;
                                display: flex;
                                align-items: center;
-                               gap: 8px;">
+                               gap: 8px;
+                               font-family: monospace;">
                     ▶️ Executar Completo
                 </button>
                 
@@ -11664,7 +11684,8 @@ function createPostValidationControl() {
                                text-align: left;
                                display: flex;
                                align-items: center;
-                               gap: 8px;">
+                               gap: 8px;
+                               font-family: monospace;">
                     🗑️ Verificar Arquivos
                 </button>
                 
@@ -11685,9 +11706,18 @@ function createPostValidationControl() {
     const statusSpan = document.getElementById('pv-status');
     
     // Toggle menu
-    mainBtn.addEventListener('click', () => {
+    mainBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
         menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
         mainBtn.style.transform = menu.style.display === 'block' ? 'rotate(45deg)' : 'rotate(0)';
+    });
+    
+    // Fechar menu ao clicar fora
+    document.addEventListener('click', (e) => {
+        if (!controlButton.contains(e.target)) {
+            menu.style.display = 'none';
+            mainBtn.style.transform = 'rotate(0)';
+        }
     });
     
     // Criar painel
@@ -11696,7 +11726,7 @@ function createPostValidationControl() {
         statusSpan.style.color = '#00aaff';
         
         setTimeout(() => {
-            const panel = diagnostics.postValidation.createValidationPanel();
+            const panel = PostValidationModule.createValidationPanel();
             if (panel) {
                 statusSpan.textContent = 'Painel criado!';
                 statusSpan.style.color = '#00ff9c';
@@ -11715,7 +11745,7 @@ function createPostValidationControl() {
         statusSpan.style.color = '#ffaa00';
         
         try {
-            const results = await diagnostics.postValidation.runCompleteValidation();
+            const results = await PostValidationModule.runCompleteValidation();
             statusSpan.textContent = `✅ ${results.passed} passaram`;
             statusSpan.style.color = '#00ff9c';
         } catch (error) {
@@ -11729,22 +11759,65 @@ function createPostValidationControl() {
         statusSpan.textContent = 'Verificando arquivos...';
         statusSpan.style.color = '#ffaa00';
         
-        const test = diagnostics.executeTest('post-validation-files-check');
-        if (test) {
-            statusSpan.textContent = 'Teste em execução';
-            setTimeout(() => {
-                statusSpan.textContent = 'Verificação concluída';
-                statusSpan.style.color = '#00aaff';
-            }, 2000);
+        try {
+            const test = PostValidationModule.postValidationTests.removedFilesCheck;
+            if (test) {
+                const result = await Promise.resolve(test.execute());
+                statusSpan.textContent = result.message.split(' ')[0]; // Pega o emoji + primeira palavra
+                statusSpan.style.color = result.status === 'success' ? '#00ff9c' : '#ff5555';
+            }
+        } catch (error) {
+            statusSpan.textContent = 'Erro no teste';
+            statusSpan.style.color = '#ff5555';
         }
     });
     
     console.log('✅ Controle de Pós-Validação criado');
 }
 
-// Inicializar controle quando o sistema estiver pronto
+// Inicializar controle
 setTimeout(createPostValidationControl, 2000);
 
+// ================== FUNÇÕES GLOBAIS ==================
+// Adicionar ao objeto window
+window.PostValidation = PostValidationModule;
+window.PV = {
+    panel: () => PostValidationModule.createValidationPanel(),
+    run: () => PostValidationModule.runCompleteValidation(),
+    test: (testName) => {
+        const test = PostValidationModule.postValidationTests[
+            Object.keys(PostValidationModule.postValidationTests)
+                .find(key => PostValidationModule.postValidationTests[key].id.includes(testName))
+        ];
+        if (test) {
+            return Promise.resolve(test.execute());
+        }
+        return Promise.resolve({status: 'error', message: 'Teste não encontrado'});
+    }
+};
+
+// Exportar funções globais
+window.Diagnostics = {
+    analyzeSystem,
+    runCompleteDiagnosis,
+    testMediaUnifiedComplete,
+    exportReport,
+    createDiagnosticsPanel,
+    logToPanel,
+    updateStatus,
+    updateDeviceIndicator,
+    version: '5.5',
+    postValidation: PostValidationModule // Adicionar referência
+};
+
+console.log('✅ DIAGNOSTICS.JS v5.5 - CARREGAMENTO COMPLETO');
+console.log('🎯 MÓDULO DE PÓS-VALIDAÇÃO ADICIONADO');
+console.log('📋 Novos comandos disponíveis:');
+console.log('- window.PostValidation.createValidationPanel() - Criar painel visual');
+console.log('- window.PostValidation.runCompleteValidation() - Executar validação completa');
+console.log('- window.PV.panel() - Atalho para criar painel');
+console.log('- window.PV.run() - Atalho para executar validação');
+console.log('- Botão 🔍 no canto inferior direito da tela');
     // Exportar funções globais
     window.Diagnostics = {
         analyzeSystem,
