@@ -11575,6 +11575,176 @@ console.log('%c🔍 MÓDULO DE PÓS-VALIDAÇÃO INTEGRADO',
 console.log('✅ 3 novos testes de validação disponíveis');
 console.log('📋 Use diagnostics.postValidation.createValidationPanel() para criar painel');
 
+// ================== BOTÃO DE CONTROLE FLUTUANTE ==================
+function createPostValidationControl() {
+    // Verificar se já existe
+    if (document.getElementById('post-validation-control')) return;
+    
+    const controlButton = document.createElement('div');
+    controlButton.id = 'post-validation-control';
+    controlButton.innerHTML = `
+        <div style="position: fixed;
+                    bottom: 100px;
+                    right: 20px;
+                    z-index: 999999;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;">
+            
+            <!-- Botão Principal -->
+            <button id="pv-main-btn"
+                    style="background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+                           color: white;
+                           border: none;
+                           border-radius: 50%;
+                           width: 60px;
+                           height: 60px;
+                           font-size: 24px;
+                           cursor: pointer;
+                           box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+                           transition: all 0.3s ease;">
+                🔍
+            </button>
+            
+            <!-- Menu de Opções (inicialmente oculto) -->
+            <div id="pv-menu" 
+                 style="display: none;
+                        background: rgba(10, 10, 42, 0.95);
+                        border: 2px solid #ff6b6b;
+                        border-radius: 10px;
+                        padding: 15px;
+                        min-width: 200px;
+                        box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);">
+                
+                <div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ff6b6b; padding-bottom: 5px;">
+                    🎯 PÓS-VALIDAÇÃO
+                </div>
+                
+                <button id="pv-create-panel"
+                        style="background: rgba(0, 170, 255, 0.2);
+                               color: #00aaff;
+                               border: 1px solid #00aaff;
+                               border-radius: 5px;
+                               padding: 8px 12px;
+                               margin: 5px 0;
+                               width: 100%;
+                               cursor: pointer;
+                               text-align: left;
+                               display: flex;
+                               align-items: center;
+                               gap: 8px;">
+                    📊 Criar Painel
+                </button>
+                
+                <button id="pv-run-full"
+                        style="background: rgba(0, 255, 156, 0.2);
+                               color: #00ff9c;
+                               border: 1px solid #00ff9c;
+                               border-radius: 5px;
+                               padding: 8px 12px;
+                               margin: 5px 0;
+                               width: 100%;
+                               cursor: pointer;
+                               text-align: left;
+                               display: flex;
+                               align-items: center;
+                               gap: 8px;">
+                    ▶️ Executar Completo
+                </button>
+                
+                <button id="pv-test-files"
+                        style="background: rgba(255, 170, 0, 0.2);
+                               color: #ffaa00;
+                               border: 1px solid #ffaa00;
+                               border-radius: 5px;
+                               padding: 8px 12px;
+                               margin: 5px 0;
+                               width: 100%;
+                               cursor: pointer;
+                               text-align: left;
+                               display: flex;
+                               align-items: center;
+                               gap: 8px;">
+                    🗑️ Verificar Arquivos
+                </button>
+                
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 107, 107, 0.3);">
+                    <div style="font-size: 11px; color: #88aaff;">
+                        📋 Status: <span id="pv-status">Pronto</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(controlButton);
+    
+    // Eventos
+    const mainBtn = document.getElementById('pv-main-btn');
+    const menu = document.getElementById('pv-menu');
+    const statusSpan = document.getElementById('pv-status');
+    
+    // Toggle menu
+    mainBtn.addEventListener('click', () => {
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        mainBtn.style.transform = menu.style.display === 'block' ? 'rotate(45deg)' : 'rotate(0)';
+    });
+    
+    // Criar painel
+    document.getElementById('pv-create-panel').addEventListener('click', () => {
+        statusSpan.textContent = 'Criando painel...';
+        statusSpan.style.color = '#00aaff';
+        
+        setTimeout(() => {
+            const panel = diagnostics.postValidation.createValidationPanel();
+            if (panel) {
+                statusSpan.textContent = 'Painel criado!';
+                statusSpan.style.color = '#00ff9c';
+                menu.style.display = 'none';
+                mainBtn.style.transform = 'rotate(0)';
+            } else {
+                statusSpan.textContent = 'Erro ao criar painel';
+                statusSpan.style.color = '#ff5555';
+            }
+        }, 300);
+    });
+    
+    // Executar validação completa
+    document.getElementById('pv-run-full').addEventListener('click', async () => {
+        statusSpan.textContent = 'Executando...';
+        statusSpan.style.color = '#ffaa00';
+        
+        try {
+            const results = await diagnostics.postValidation.runCompleteValidation();
+            statusSpan.textContent = `✅ ${results.passed} passaram`;
+            statusSpan.style.color = '#00ff9c';
+        } catch (error) {
+            statusSpan.textContent = 'Erro na execução';
+            statusSpan.style.color = '#ff5555';
+        }
+    });
+    
+    // Testar arquivos específicos
+    document.getElementById('pv-test-files').addEventListener('click', async () => {
+        statusSpan.textContent = 'Verificando arquivos...';
+        statusSpan.style.color = '#ffaa00';
+        
+        const test = diagnostics.executeTest('post-validation-files-check');
+        if (test) {
+            statusSpan.textContent = 'Teste em execução';
+            setTimeout(() => {
+                statusSpan.textContent = 'Verificação concluída';
+                statusSpan.style.color = '#00aaff';
+            }, 2000);
+        }
+    });
+    
+    console.log('✅ Controle de Pós-Validação criado');
+}
+
+// Inicializar controle quando o sistema estiver pronto
+setTimeout(createPostValidationControl, 2000);
+
     // Exportar funções globais
     window.Diagnostics = {
         analyzeSystem,
