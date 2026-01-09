@@ -12061,6 +12061,668 @@ console.log('   • window.PV.run() - Executar validação completa');
 console.log('   • window.PV.test("files") - Testar arquivos removidos');
 console.log('   • Botão 🔍 no canto inferior direito');
 
+// ================== MÓDULO DE VERIFICAÇÃO DE INTEGRIDADE DO SISTEMA ==================
+const SystemIntegrityModule = (function() {
+    // Testes de integridade do sistema
+    const integrityTests = {
+        systemIntegrityCheck: {
+            id: 'system-integrity-final',
+            title: '🔍 TESTE FINAL DE INTEGRIDADE DO SISTEMA',
+            description: 'Verificação completa de todos os módulos e funcionalidades críticas após otimização',
+            type: 'validation',
+            icon: '🔍',
+            category: 'system',
+            critical: true,
+            version: '16.0',
+            execute: function() {
+                console.group('🔍 TESTE FINAL DE INTEGRIDADE - SISTEMA OTIMIZADO v16.0');
+                
+                const tests = [
+                    // MÓDULOS CRÍTICOS
+                    { 
+                        name: 'PdfSystem', 
+                        test: () => window.PdfSystem && typeof window.PdfSystem.showModal === 'function',
+                        importance: 'critical',
+                        details: () => window.PdfSystem ? 'Módulo PDF carregado' : 'Módulo PDF ausente'
+                    },
+                    { 
+                        name: 'MediaSystem', 
+                        test: () => window.MediaSystem && typeof window.MediaSystem.addPdfs === 'function',
+                        importance: 'critical',
+                        details: () => window.MediaSystem ? 'Sistema de mídia ativo' : 'Sistema de mídia inativo'
+                    },
+                    { 
+                        name: 'Supabase Client', 
+                        test: () => window.supabaseClient || window.SUPABASE_CONFIG,
+                        importance: 'high',
+                        details: () => window.supabaseClient ? 'Client Supabase conectado' : 
+                                window.SUPABASE_CONFIG ? 'Configuração Supabase presente' : 'Supabase não configurado'
+                    },
+                    { 
+                        name: 'Properties Array', 
+                        test: () => Array.isArray(window.properties),
+                        importance: 'high',
+                        details: () => Array.isArray(window.properties) ? 
+                                `${window.properties.length} propriedades carregadas` : 'Array de propriedades ausente'
+                    },
+                    { 
+                        name: 'Admin Functions', 
+                        test: () => typeof window.toggleAdminPanel === 'function' && typeof window.editProperty === 'function',
+                        importance: 'medium',
+                        details: () => {
+                            const hasToggle = typeof window.toggleAdminPanel === 'function';
+                            const hasEdit = typeof window.editProperty === 'function';
+                            return `Admin: ${hasToggle ? 'toggle OK' : 'toggle FALHOU'}, Edit: ${hasEdit ? 'OK' : 'FALHOU'}`;
+                        }
+                    },
+                    
+                    // FUNCIONALIDADES ESPECÍFICAS
+                    { 
+                        name: 'Upload de PDFs', 
+                        test: () => typeof window.handleNewPdfFiles === 'function' || (window.MediaSystem && typeof window.MediaSystem.addPdfs === 'function'),
+                        importance: 'high',
+                        details: () => {
+                            const hasHandle = typeof window.handleNewPdfFiles === 'function';
+                            const hasMediaAdd = window.MediaSystem && typeof window.MediaSystem.addPdfs === 'function';
+                            return `Handle PDF: ${hasHandle ? 'OK' : 'FALHOU'}, Media Add: ${hasMediaAdd ? 'OK' : 'FALHOU'}`;
+                        }
+                    },
+                    { 
+                        name: 'Modal de Galeria', 
+                        test: () => typeof window.openGallery === 'function',
+                        importance: 'medium',
+                        details: () => typeof window.openGallery === 'function' ? 
+                                'Função de galeria disponível' : 'Função de galeria ausente'
+                    },
+                    { 
+                        name: 'Filtros', 
+                        test: () => typeof window.setupFilters === 'function',
+                        importance: 'medium',
+                        details: () => typeof window.setupFilters === 'function' ? 
+                                'Sistema de filtros configurado' : 'Sistema de filtros ausente'
+                    },
+                    { 
+                        name: 'Sincronização', 
+                        test: () => typeof window.syncWithSupabase === 'function' || typeof window.forceSyncProperties === 'function',
+                        importance: 'high',
+                        details: () => {
+                            const hasSync = typeof window.syncWithSupabase === 'function';
+                            const hasForceSync = typeof window.forceSyncProperties === 'function';
+                            return `Sync: ${hasSync ? 'OK' : 'FALHOU'}, Force Sync: ${hasForceSync ? 'OK' : 'FALHOU'}`;
+                        }
+                    },
+                    
+                    // DIAGNÓSTICO E SUPORTE
+                    { 
+                        name: 'Modo Debug', 
+                        test: () => window.location.search.includes('debug=true') ? typeof window.runSupportChecks === 'function' : true,
+                        importance: 'low',
+                        details: () => window.location.search.includes('debug=true') ? 
+                                (typeof window.runSupportChecks === 'function' ? 'Debug ativo com checks' : 'Debug sem checks') : 
+                                'Debug não ativado na URL'
+                    },
+                    { 
+                        name: 'Fallbacks', 
+                        test: () => window.PdfLogger !== undefined && window.MediaLogger !== undefined,
+                        importance: 'medium',
+                        details: () => {
+                            const hasPdfLogger = window.PdfLogger !== undefined;
+                            const hasMediaLogger = window.MediaLogger !== undefined;
+                            return `PDF Logger: ${hasPdfLogger ? 'OK' : 'FALHOU'}, Media Logger: ${hasMediaLogger ? 'OK' : 'FALHOU'}`;
+                        }
+                    }
+                ];
+                
+                let passed = 0;
+                const total = tests.length;
+                const results = [];
+                const criticalTests = tests.filter(t => t.importance === 'critical');
+                const criticalPassed = [];
+                
+                console.log('🧪 Executando testes de integridade...');
+                
+                tests.forEach((test, index) => {
+                    try {
+                        const result = test.test();
+                        const details = typeof test.details === 'function' ? test.details() : '';
+                        
+                        console.log(`${result ? '✅' : '❌'} ${index + 1}. ${test.name}: ${result ? 'OK' : 'FALHOU'} ${details ? `(${details})` : ''}`);
+                        
+                        if (result) passed++;
+                        
+                        if (test.importance === 'critical') {
+                            criticalPassed.push(result);
+                        }
+                        
+                        results.push({
+                            name: test.name,
+                            passed: result,
+                            importance: test.importance,
+                            details: details,
+                            timestamp: new Date().toISOString()
+                        });
+                    } catch (error) {
+                        console.log(`❌ ${index + 1}. ${test.name}: ERRO - ${error.message}`);
+                        results.push({
+                            name: test.name,
+                            passed: false,
+                            importance: test.importance,
+                            details: `Erro: ${error.message}`,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                });
+                
+                const score = Math.round((passed / total) * 100);
+                const allCriticalPassed = criticalPassed.every(p => p === true);
+                
+                console.log(`\n📊 RESULTADO FINAL: ${passed}/${total} testes passaram`);
+                console.log(`🎯 SCORE: ${score}%`);
+                console.log(`🔐 CRÍTICOS: ${criticalPassed.filter(p => p).length}/${criticalTests.length} passaram`);
+                
+                let overallStatus = 'success';
+                let overallMessage = '';
+                
+                if (passed === total) {
+                    console.log('\n🎉 SISTEMA 100% INTEGRO E OTIMIZADO!');
+                    console.log('🚀 PRONTO PARA EXPANSÃO DO SISTEMA DE ALUGUEL');
+                    overallMessage = '✅ SISTEMA 100% INTEGRO E OTIMIZADO!';
+                } else if (allCriticalPassed && score >= 80) {
+                    console.log('\n⚠️  SISTEMA ESTÁVEL - Alguns testes não críticos falharam');
+                    overallStatus = 'warning';
+                    overallMessage = `⚠️ SISTEMA ESTÁVEL (${score}%) - Verificar testes não críticos`;
+                } else if (allCriticalPassed) {
+                    console.log('\n⚠️  PROBLEMAS DETECTADOS - Sistema funcional mas com falhas');
+                    overallStatus = 'warning';
+                    overallMessage = `⚠️ SISTEMA FUNCIONAL (${score}%) - Falhas detectadas`;
+                } else {
+                    console.log('\n❌ PROBLEMAS CRÍTICOS - Sistema com falhas graves');
+                    overallStatus = 'error';
+                    overallMessage = `❌ SISTEMA COM PROBLEMAS (${score}%) - Falhas críticas detectadas`;
+                }
+                
+                console.groupEnd();
+                
+                return {
+                    status: overallStatus,
+                    message: overallMessage,
+                    details: {
+                        totalTests: total,
+                        passed: passed,
+                        failed: total - passed,
+                        score: score,
+                        criticalPassed: allCriticalPassed,
+                        testResults: results,
+                        timestamp: new Date().toISOString(),
+                        version: '16.0'
+                    }
+                };
+            }
+        },
+        
+        performanceBenchmark: {
+            id: 'system-performance-benchmark',
+            title: '⚡ BENCHMARK DE PERFORMANCE DO SISTEMA',
+            description: 'Mede performance geral após otimizações',
+            type: 'performance',
+            icon: '⚡',
+            category: 'system',
+            execute: function() {
+                const startTime = performance.now();
+                const memoryBefore = performance.memory ? performance.memory.usedJSHeapSize : null;
+                
+                // Testes de performance
+                const benchmarks = [];
+                
+                // Benchmark 1: Operações matemáticas
+                let mathOps = 0;
+                const mathStart = performance.now();
+                for (let i = 0; i < 1000000; i++) {
+                    mathOps += Math.sqrt(i) * Math.random();
+                }
+                const mathTime = performance.now() - mathStart;
+                benchmarks.push({
+                    name: 'Operações Matemáticas',
+                    time: mathTime,
+                    ops: mathOps,
+                    score: Math.round(1000000 / mathTime)
+                });
+                
+                // Benchmark 2: Manipulação de arrays
+                const arrayStart = performance.now();
+                const testArray = Array.from({length: 10000}, (_, i) => i);
+                const filtered = testArray.filter(n => n % 2 === 0);
+                const mapped = filtered.map(n => n * 2);
+                const reduced = mapped.reduce((a, b) => a + b, 0);
+                const arrayTime = performance.now() - arrayStart;
+                benchmarks.push({
+                    name: 'Manipulação de Arrays',
+                    time: arrayTime,
+                    items: testArray.length,
+                    result: reduced,
+                    score: Math.round(10000 / arrayTime)
+                });
+                
+                // Benchmark 3: DOM operations
+                const domStart = performance.now();
+                const div = document.createElement('div');
+                for (let i = 0; i < 100; i++) {
+                    const span = document.createElement('span');
+                    span.textContent = `Test ${i}`;
+                    div.appendChild(span);
+                }
+                const domTime = performance.now() - domStart;
+                benchmarks.push({
+                    name: 'Operações DOM',
+                    time: domTime,
+                    elements: 100,
+                    score: Math.round(100 / domTime)
+                });
+                
+                const endTime = performance.now();
+                const totalTime = endTime - startTime;
+                const memoryAfter = performance.memory ? performance.memory.usedJSHeapSize : null;
+                
+                let memoryChange = null;
+                if (memoryBefore && memoryAfter) {
+                    memoryChange = ((memoryAfter - memoryBefore) / 1024 / 1024).toFixed(2); // MB
+                }
+                
+                // Calcular score geral
+                const avgScore = Math.round(benchmarks.reduce((sum, b) => sum + b.score, 0) / benchmarks.length);
+                
+                let performanceStatus = 'success';
+                if (totalTime > 1000) performanceStatus = 'warning';
+                if (totalTime > 2000) performanceStatus = 'error';
+                
+                return {
+                    status: performanceStatus,
+                    message: `⏱️ Performance: ${totalTime.toFixed(2)}ms | Score: ${avgScore} ${memoryChange ? `| Memória: ${memoryChange}MB` : ''}`,
+                    details: {
+                        totalTime: totalTime,
+                        benchmarks: benchmarks,
+                        avgScore: avgScore,
+                        memoryChange: memoryChange,
+                        timestamp: new Date().toISOString()
+                    }
+                };
+            }
+        },
+        
+        dependencyCheck: {
+            id: 'system-dependency-check',
+            title: '📦 VERIFICAÇÃO DE DEPENDÊNCIAS',
+            description: 'Analisa bibliotecas e dependências carregadas',
+            type: 'analysis',
+            icon: '📦',
+            category: 'system',
+            execute: function() {
+                const scripts = Array.from(document.scripts);
+                const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+                
+                // Categorizar scripts
+                const scriptCategories = {
+                    core: [],
+                    libs: [],
+                    modules: [],
+                    external: []
+                };
+                
+                scripts.forEach(script => {
+                    const src = script.src || 'inline';
+                    const name = src.split('/').pop().split('?')[0];
+                    
+                    // Categorizar
+                    if (src.includes('modules/')) {
+                        scriptCategories.modules.push({ name, src });
+                    } else if (src.includes('js/lib/') || src.includes('cdn.') || src.includes('unpkg.com')) {
+                        scriptCategories.libs.push({ name, src });
+                    } else if (src.includes(window.location.hostname) || src === 'inline') {
+                        scriptCategories.core.push({ name, src });
+                    } else {
+                        scriptCategories.external.push({ name, src });
+                    }
+                });
+                
+                // Verificar duplicações
+                const allScripts = scripts.map(s => s.src).filter(Boolean);
+                const duplicates = allScripts.filter((script, index) => allScripts.indexOf(script) !== index);
+                
+                return {
+                    status: duplicates.length > 0 ? 'warning' : 'success',
+                    message: duplicates.length > 0 ? 
+                        `⚠️ ${duplicates.length} script(s) duplicado(s) encontrado(s)` :
+                        `✅ ${scripts.length} scripts carregados corretamente`,
+                    details: {
+                        totalScripts: scripts.length,
+                        totalStyles: styles.length,
+                        scriptCategories: scriptCategories,
+                        duplicates: duplicates,
+                        timestamp: new Date().toISOString()
+                    }
+                };
+            }
+        }
+    };
+    
+    return {
+        // Registrar testes de integridade
+        registerTests: function() {
+            Object.values(integrityTests).forEach(testConfig => {
+                // Verificar duplicação
+                if (typeof TestManager !== 'undefined' && TestManager.getTest) {
+                    const existingTest = TestManager.getTest(testConfig.id);
+                    if (!existingTest) {
+                        TestManager.registerTest(testConfig);
+                    }
+                }
+            });
+            
+            console.log(`✅ Módulo de Integridade do Sistema: ${Object.keys(integrityTests).length} testes registrados`);
+        },
+        
+        // Executar verificação completa de integridade
+        runCompleteIntegrityCheck: async function() {
+            console.group('🔍 EXECUTANDO VERIFICAÇÃO COMPLETA DE INTEGRIDADE');
+            
+            const results = {
+                total: 0,
+                passed: 0,
+                failed: 0,
+                warnings: 0,
+                tests: []
+            };
+            
+            // Executar todos os testes de integridade
+            for (const [key, testConfig] of Object.entries(integrityTests)) {
+                try {
+                    console.log(`▶️ Executando: ${testConfig.title}`);
+                    
+                    const result = await Promise.resolve(testConfig.execute());
+                    
+                    results.total++;
+                    if (result.status === 'success') results.passed++;
+                    if (result.status === 'error') results.failed++;
+                    if (result.status === 'warning') results.warnings++;
+                    
+                    results.tests.push({
+                        name: testConfig.title,
+                        status: result.status,
+                        message: result.message,
+                        details: result.details
+                    });
+                    
+                    console.log(`${result.status === 'success' ? '✅' : result.status === 'warning' ? '⚠️' : '❌'} ${testConfig.title}: ${result.message}`);
+                    
+                    // Pequena pausa entre testes
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                } catch (error) {
+                    console.error(`❌ Erro no teste ${testConfig.title}:`, error);
+                    results.tests.push({
+                        name: testConfig.title,
+                        status: 'error',
+                        message: `Erro: ${error.message}`,
+                        details: null
+                    });
+                    results.total++;
+                    results.failed++;
+                }
+            }
+            
+            console.groupEnd();
+            
+            // Resumo final
+            const score = Math.round((results.passed / results.total) * 100);
+            
+            console.log(`📊 RESUMO DE INTEGRIDADE DO SISTEMA:`);
+            console.log(`   ✅ ${results.passed} passaram`);
+            console.log(`   ⚠️ ${results.warnings} com avisos`);
+            console.log(`   ❌ ${results.failed} falharam`);
+            console.log(`   🎯 SCORE: ${score}%`);
+            
+            if (score === 100) {
+                console.log('🎉 SISTEMA 100% INTEGRO - OTIMIZAÇÃO COMPLETA!');
+            } else if (score >= 80) {
+                console.log('⚠️ SISTEMA ESTÁVEL - Otimização bem-sucedida com pequenos problemas');
+            } else {
+                console.log('❌ SISTEMA COM PROBLEMAS - Verificar falhas críticas');
+            }
+            
+            return {
+                summary: results,
+                score: score,
+                passed: score === 100,
+                timestamp: new Date().toISOString(),
+                version: '16.0'
+            };
+        },
+        
+        // Criar painel especializado de integridade
+        createIntegrityPanel: function() {
+            if (!PanelManager || !PanelManager.checkSpaceAvailability) {
+                console.error('❌ Sistema de painéis não disponível');
+                return null;
+            }
+            
+            if (!PanelManager.checkSpaceAvailability()) {
+                console.warn('⚠️ Limite de painéis atingido');
+                return null;
+            }
+            
+            const panelConfig = {
+                title: '🔍 INTEGRIDADE DO SISTEMA',
+                category: 'system',
+                maxTests: 10,
+                position: { top: '150px', left: '600px' },
+                size: { width: '550px', height: '700px' }
+            };
+            
+            const panel = PanelManager.createPanel(panelConfig);
+            
+            // Usar o sistema de renderização existente
+            if (typeof SpecializedPanels !== 'undefined' && SpecializedPanels.renderPanel) {
+                panel.element = SpecializedPanels.renderPanel(panel);
+                
+                // Adicionar testes de integridade
+                Object.values(integrityTests).forEach(testConfig => {
+                    const test = TestManager.getTest(testConfig.id);
+                    if (test && panel.tests.length < panel.maxTests) {
+                        panel.tests.push(test.id);
+                        SpecializedPanels.addTestToPanel(panel, test);
+                    }
+                });
+                
+                // Adicionar botão de verificação completa
+                const testsContainer = panel.element.querySelector('.tests-container');
+                if (testsContainer) {
+                    const integrityButton = document.createElement('div');
+                    integrityButton.innerHTML = `
+                        <div style="background: linear-gradient(135deg, rgba(0, 170, 255, 0.2), rgba(0, 255, 156, 0.2)); 
+                                    padding: 15px; 
+                                    border-radius: 8px; 
+                                    border: 2px solid rgba(0, 170, 255, 0.4);
+                                    margin-top: 15px;
+                                    text-align: center;">
+                            <button id="run-integrity-check" 
+                                    style="background: linear-gradient(135deg, #00aaff, #00ff9c);
+                                           color: white;
+                                           border: none;
+                                           padding: 12px 24px;
+                                           border-radius: 6px;
+                                           font-weight: bold;
+                                           cursor: pointer;
+                                           width: 100%;
+                                           font-size: 14px;
+                                           transition: all 0.3s ease;">
+                                🔍 EXECUTAR VERIFICAÇÃO COMPLETA
+                            </button>
+                            <div style="font-size: 11px; color: #88aaff; margin-top: 8px;">
+                                Executa todos os testes de integridade em sequência
+                            </div>
+                        </div>
+                    `;
+                    
+                    testsContainer.appendChild(integrityButton);
+                    
+                    // Evento do botão
+                    document.getElementById('run-integrity-check').addEventListener('click', async () => {
+                        const button = document.getElementById('run-integrity-check');
+                        button.disabled = true;
+                        button.textContent = 'EXECUTANDO...';
+                        
+                        if (panel.addLog) {
+                            panel.addLog('Iniciando verificação completa de integridade...', 'info');
+                        }
+                        
+                        const results = await this.runCompleteIntegrityCheck();
+                        
+                        button.disabled = false;
+                        button.textContent = '🔍 EXECUTAR VERIFICAÇÃO COMPLETA';
+                        
+                        if (panel.addLog) {
+                            panel.addLog(`Verificação concluída: Score ${results.score}%`, 
+                                      results.score === 100 ? 'success' : results.score >= 80 ? 'warning' : 'error');
+                            
+                            if (results.score === 100) {
+                                panel.addLog('🎉 Sistema 100% íntegro!', 'success');
+                            }
+                        }
+                    });
+                }
+                
+                SpecializedPanels.initializePanelLogs(panel);
+                SpecializedPanels.makePanelDraggable(panel);
+                
+                if (panel.addLog) {
+                    panel.addLog('Painel de Integridade do Sistema inicializado', 'success');
+                    panel.addLog(`v16.0 - ${Object.keys(integrityTests).length} testes disponíveis`, 'info');
+                }
+                
+                return panel;
+            } else {
+                console.error('❌ Sistema de painéis especializados não disponível');
+                return null;
+            }
+        },
+        
+        // Getter para testes
+        get tests() {
+            return integrityTests;
+        }
+    };
+})();
+
+// ================== INTEGRAÇÃO COM O SISTEMA EXISTENTE ==================
+
+// Adicionar ao objeto diagnostics global
+if (window.diagnostics) {
+    window.diagnostics.integrity = {
+        registerTests: SystemIntegrityModule.registerTests,
+        runCompleteCheck: SystemIntegrityModule.runCompleteIntegrityCheck,
+        createPanel: SystemIntegrityModule.createIntegrityPanel,
+        tests: SystemIntegrityModule.tests
+    };
+}
+
+// Adicionar função global de compatibilidade
+if (!window.finalSystemIntegrityTest) {
+    window.finalSystemIntegrityTest = function() {
+        console.log('🔍 TESTE FINAL DE INTEGRIDADE - SISTEMA OTIMIZADO v16.0');
+        console.log('📋 Use diagnostics.integrity.runCompleteCheck() para versão completa');
+        
+        if (window.diagnostics && window.diagnostics.integrity) {
+            return window.diagnostics.integrity.runCompleteCheck();
+        } else {
+            console.warn('⚠️ Executando versão simplificada...');
+            
+            const tests = [
+                { name: 'PdfSystem', test: () => window.PdfSystem && typeof window.PdfSystem.showModal === 'function' },
+                { name: 'MediaSystem', test: () => window.MediaSystem && typeof window.MediaSystem.addPdfs === 'function' },
+                { name: 'Supabase Client', test: () => window.supabaseClient || window.SUPABASE_CONFIG },
+                { name: 'Properties Array', test: () => Array.isArray(window.properties) },
+                { name: 'Admin Functions', test: () => typeof window.toggleAdminPanel === 'function' && typeof window.editProperty === 'function' },
+                { name: 'Upload de PDFs', test: () => typeof window.handleNewPdfFiles === 'function' || window.MediaSystem?.addPdfs },
+                { name: 'Modal de Galeria', test: () => typeof window.openGallery === 'function' },
+                { name: 'Filtros', test: () => typeof window.setupFilters === 'function' },
+                { name: 'Sincronização', test: () => typeof window.syncWithSupabase === 'function' || typeof window.forceSyncProperties === 'function' },
+                { name: 'Modo Debug', test: () => window.location.search.includes('debug=true') ? typeof window.runSupportChecks === 'function' : true },
+                { name: 'Fallbacks', test: () => window.PdfLogger !== undefined && window.MediaLogger !== undefined },
+            ];
+            
+            let passed = 0;
+            const total = tests.length;
+            
+            tests.forEach((test, index) => {
+                const result = test.test();
+                console.log(`${result ? '✅' : '❌'} ${index + 1}. ${test.name}: ${result ? 'OK' : 'FALHOU'}`);
+                if (result) passed++;
+            });
+            
+            console.log(`\n📊 RESULTADO FINAL: ${passed}/${total} testes passaram`);
+            console.log(`🎯 SCORE: ${Math.round((passed/total)*100)}%`);
+            
+            const success = passed === total;
+            if (success) {
+                console.log('\n🎉 SISTEMA 100% INTEGRO E OTIMIZADO!');
+            } else {
+                console.log('\n⚠️ ALGUNS TESTES FALHARAM - VERIFICAR');
+            }
+            
+            return success;
+        }
+    };
+}
+
+// ================== INICIALIZAÇÃO AUTOMÁTICA ==================
+
+// Registrar testes quando o sistema carregar
+setTimeout(() => {
+    SystemIntegrityModule.registerTests();
+    
+    // Adicionar comandos ao console
+    console.group('🔍 COMANDOS DE INTEGRIDADE DO SISTEMA:');
+    console.log('%c• diagnostics.integrity.runCompleteCheck()', 'color: #00ff9c');
+    console.log('%c• diagnostics.integrity.createPanel()', 'color: #00ff9c');
+    console.log('%c• window.finalSystemIntegrityTest()', 'color: #00ff9c');
+    console.log('%c• diagnostics.executeTest("system-integrity-final")', 'color: #00aaff');
+    console.log('%c• diagnostics.executeTest("system-performance-benchmark")', 'color: #00aaff');
+    console.log('%c• diagnostics.executeTest("system-dependency-check")', 'color: #00aaff');
+    console.groupEnd();
+    
+    console.log('✅ Módulo de Integridade do Sistema v16.0 carregado');
+}, 2000);
+
+// ================== FUNÇÕES DE ATALHO GLOBAL ==================
+
+// Criar atalhos rápidos
+window.SystemIntegrity = SystemIntegrityModule;
+
+window.SI = {
+    check: () => SystemIntegrityModule.runCompleteIntegrityCheck(),
+    panel: () => SystemIntegrityModule.createIntegrityPanel(),
+    test: (testName) => {
+        const testId = Object.keys(SystemIntegrityModule.tests).find(key => 
+            SystemIntegrityModule.tests[key].id.includes(testName) || 
+            SystemIntegrityModule.tests[key].title.toLowerCase().includes(testName.toLowerCase())
+        );
+        
+        if (testId && window.diagnostics && window.diagnostics.executeTest) {
+            return window.diagnostics.executeTest(SystemIntegrityModule.tests[testId].id);
+        }
+        
+        return Promise.resolve({status: 'error', message: 'Teste não encontrado ou sistema não disponível'});
+    }
+};
+
+// ================== LOG DE CARREGAMENTO ==================
+console.log('%c🔍 MÓDULO DE INTEGRIDADE DO SISTEMA v16.0 INTEGRADO', 
+            'color: #00ff9c; font-weight: bold; font-size: 14px; background: #001a33; padding: 5px; border-radius: 4px;');
+console.log('✅ 3 novos testes de integridade adicionados:');
+console.log('   1. 🔍 Teste Final de Integridade do Sistema');
+console.log('   2. ⚡ Benchmark de Performance do Sistema');
+console.log('   3. 📦 Verificação de Dependências');
+console.log('📋 Use window.SI.check() para executar verificação completa');
+
     // Exportar funções globais
     window.Diagnostics = {
         analyzeSystem,
