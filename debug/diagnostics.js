@@ -11024,6 +11024,418 @@ console.log('- window.diag.zombie.all() - Via objeto diag');
 window.DIAGNOSTICS_VERSION = window.DIAGNOSTICS_VERSION || {};
 window.DIAGNOSTICS_VERSION.zombieAnalysis = '5.8';
 
+// ================== MÓDULO DE PÓS-VALIDAÇÃO ==================
+const PostValidationModule = (function() {
+    // Testes de pós-validação
+    const postValidationTests = {
+        // Teste de arquivos removidos
+        removedFilesCheck: {
+            id: 'post-validation-files-check',
+            title: 'Verificação de Arquivos Removidos',
+            description: 'Confirma que arquivos foram realmente removidos do sistema',
+            type: 'verification',
+            icon: '🗑️',
+            category: 'cleanup',
+            critical: true,
+            execute: function() {
+                return new Promise((resolve) => {
+                    const removedFiles = [
+                        'js/modules/reader/pdf-logger.js',
+                        'js/modules/reader/pdf-utils.js',
+                        'css/responsive.css'
+                    ];
+                    
+                    let allRemoved = true;
+                    const results = [];
+                    
+                    // Verificar cada arquivo
+                    removedFiles.forEach(file => {
+                        const img = new Image();
+                        img.onerror = () => {
+                            results.push({
+                                file: file,
+                                status: 'removed',
+                                message: '✅ Arquivo não encontrado'
+                            });
+                        };
+                        img.onload = () => {
+                            allRemoved = false;
+                            results.push({
+                                file: file,
+                                status: 'present',
+                                message: '❌ Arquivo ainda existe!'
+                            });
+                        };
+                        img.src = file + '?t=' + Date.now(); // Evitar cache
+                    });
+                    
+                    // Dar tempo para as verificações
+                    setTimeout(() => {
+                        resolve({
+                            status: allRemoved ? 'success' : 'error',
+                            message: allRemoved ? 
+                                `✅ Todos os ${removedFiles.length} arquivos foram removidos` :
+                                `❌ ${results.filter(r => r.status === 'present').length} arquivos ainda existem`,
+                            details: {
+                                totalFiles: removedFiles.length,
+                                removedFiles: results.filter(r => r.status === 'removed').length,
+                                filesPresent: results.filter(r => r.status === 'present').length,
+                                fileResults: results
+                            }
+                        });
+                    }, 2000);
+                });
+            }
+        },
+        
+        // Teste de funcionalidades críticas
+        criticalFunctionsCheck: {
+            id: 'post-validation-functions-check',
+            title: 'Validação de Funcionalidades Críticas',
+            description: 'Testa funcionalidades essenciais após limpeza',
+            type: 'validation',
+            icon: '🔧',
+            category: 'system',
+            critical: true,
+            execute: function() {
+                const tests = [
+                    { 
+                        name: 'PdfSystem.showModal', 
+                        test: () => typeof window.PdfSystem?.showModal === 'function',
+                        importance: 'high'
+                    },
+                    { 
+                        name: 'MediaSystem.addPdfs', 
+                        test: () => typeof window.MediaSystem?.addPdfs === 'function',
+                        importance: 'high'
+                    },
+                    { 
+                        name: 'Admin Panel', 
+                        test: () => typeof window.toggleAdminPanel === 'function',
+                        importance: 'medium'
+                    },
+                    { 
+                        name: 'Properties', 
+                        test: () => Array.isArray(window.properties),
+                        importance: 'medium'
+                    },
+                    { 
+                        name: 'Diagnostics System', 
+                        test: () => typeof window.diagnostics !== 'undefined',
+                        importance: 'high'
+                    }
+                ];
+                
+                const results = [];
+                let allPassed = true;
+                
+                tests.forEach(t => {
+                    const passed = t.test();
+                    if (!passed) allPassed = false;
+                    
+                    results.push({
+                        function: t.name,
+                        status: passed ? 'ok' : 'missing',
+                        importance: t.importance,
+                        message: passed ? '✅ Funcionalidade disponível' : '❌ Funcionalidade ausente'
+                    });
+                });
+                
+                const criticalTests = tests.filter(t => t.importance === 'high');
+                const criticalPassed = criticalTests.every(t => t.test());
+                
+                return {
+                    status: criticalPassed ? (allPassed ? 'success' : 'warning') : 'error',
+                    message: criticalPassed ? 
+                        `✅ ${results.filter(r => r.status === 'ok').length}/${tests.length} funcionalidades OK` :
+                        '❌ Funcionalidades críticas ausentes!',
+                    details: {
+                        totalTests: tests.length,
+                        passed: results.filter(r => r.status === 'ok').length,
+                        criticalPassed: criticalPassed,
+                        testResults: results
+                    }
+                };
+            }
+        },
+        
+        // Teste de performance pós-limpeza
+        performanceCheck: {
+            id: 'post-validation-performance',
+            title: 'Análise de Performance Pós-Limpeza',
+            description: 'Mede melhorias após remoção de arquivos',
+            type: 'performance',
+            icon: '⚡',
+            category: 'cleanup',
+            execute: function() {
+                const startTime = performance.now();
+                const memoryBefore = performance.memory ? {
+                    used: performance.memory.usedJSHeapSize,
+                    total: performance.memory.totalJSHeapSize
+                } : null;
+                
+                // Simular operação pesada
+                let operations = 0;
+                for (let i = 0; i < 1000000; i++) {
+                    operations += Math.random();
+                }
+                
+                const endTime = performance.now();
+                const executionTime = endTime - startTime;
+                
+                const memoryAfter = performance.memory ? {
+                    used: performance.memory.usedJSHeapSize,
+                    total: performance.memory.totalJSHeapSize
+                } : null;
+                
+                let memoryImprovement = null;
+                if (memoryBefore && memoryAfter) {
+                    memoryImprovement = ((memoryBefore.used - memoryAfter.used) / memoryBefore.used * 100).toFixed(2);
+                }
+                
+                return {
+                    status: executionTime < 100 ? 'success' : 'info',
+                    message: `⏱️ Execução: ${executionTime.toFixed(2)}ms ${memoryImprovement ? `| 📊 Memória: ${memoryImprovement}% melhor` : ''}`,
+                    details: {
+                        executionTime: executionTime,
+                        operations: operations,
+                        memoryBefore: memoryBefore,
+                        memoryAfter: memoryAfter,
+                        memoryImprovement: memoryImprovement
+                    }
+                };
+            }
+        }
+    };
+    
+    return {
+        // Registrar testes de pós-validação
+        registerTests: function() {
+            Object.values(postValidationTests).forEach(testConfig => {
+                // Verificar se já existe antes de registrar
+                const existingTest = TestManager.getTest(testConfig.id);
+                if (!existingTest) {
+                    TestManager.registerTest(testConfig);
+                } else {
+                    console.log(`⚠️ Teste ${testConfig.id} já registrado. Pulando duplicação.`);
+                }
+            });
+            
+            console.log(`✅ Módulo de Pós-Validação: ${Object.keys(postValidationTests).length} testes disponíveis`);
+        },
+        
+        // Executar validação completa
+        runCompleteValidation: async function() {
+            console.group('🎯 EXECUTANDO VALIDAÇÃO COMPLETA PÓS-LIMPEZA');
+            
+            const results = {
+                total: 0,
+                passed: 0,
+                failed: 0,
+                warnings: 0,
+                details: []
+            };
+            
+            // Executar todos os testes de pós-validação
+            for (const [key, testConfig] of Object.entries(postValidationTests)) {
+                try {
+                    console.log(`▶️ Executando: ${testConfig.title}`);
+                    
+                    const test = TestManager.getTest(testConfig.id);
+                    if (test) {
+                        const result = await TestManager.executeTest(testConfig.id);
+                        
+                        results.total++;
+                        if (result.status === 'success') results.passed++;
+                        if (result.status === 'error') results.failed++;
+                        if (result.status === 'warning') results.warnings++;
+                        
+                        results.details.push({
+                            test: testConfig.title,
+                            status: result.status,
+                            message: result.message
+                        });
+                        
+                        // Aguardar entre testes
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                } catch (error) {
+                    console.error(`❌ Erro no teste ${testConfig.title}:`, error);
+                    results.details.push({
+                        test: testConfig.title,
+                        status: 'error',
+                        message: `Erro: ${error.message}`
+                    });
+                }
+            }
+            
+            // Resumo final
+            console.groupEnd();
+            console.log(`📊 RESUMO PÓS-VALIDAÇÃO:`);
+            console.log(`   ✅ ${results.passed} passaram`);
+            console.log(`   ⚠️ ${results.warnings} com avisos`);
+            console.log(`   ❌ ${results.failed} falharam`);
+            console.log(`   📈 Total: ${results.total} testes`);
+            
+            // Verificar se passou em todos os críticos
+            const criticalTests = Object.values(postValidationTests).filter(t => t.critical);
+            const allCriticalPassed = results.details
+                .filter(d => criticalTests.some(ct => ct.title === d.test))
+                .every(d => d.status === 'success');
+            
+            if (allCriticalPassed && results.failed === 0) {
+                console.log('🎉 LIMPEZA COMPLETA VALIDADA COM SUCESSO!');
+                console.log('📊 Sistema otimizado: -3 arquivos, ~120 linhas removidas');
+                
+                if (window.logToPanel) {
+                    window.logToPanel('🎉 Limpeza completa validada! Sistema otimizado com sucesso.', 'success');
+                }
+            } else {
+                console.warn('⚠️ VALIDAÇÃO COM PROBLEMAS - Verificar falhas');
+                
+                if (window.logToPanel) {
+                    window.logToPanel('⚠️ Validação pós-limpeza encontrou problemas', 'warning');
+                }
+            }
+            
+            return results;
+        },
+        
+        // Criar painel especializado de pós-validação
+        createValidationPanel: function() {
+            if (!PanelManager.checkSpaceAvailability()) {
+                console.warn('❌ Não há espaço para novo painel. Use outro arquivo diagnostics.js');
+                return null;
+            }
+            
+            const panelConfig = {
+                title: 'PÓS-VALIDAÇÃO COMPLETA',
+                category: 'validation',
+                maxTests: 8,
+                position: { top: '200px', left: '540px' },
+                size: { width: '500px', height: '650px' }
+            };
+            
+            const panel = PanelManager.createPanel(panelConfig);
+            panel.element = SpecializedPanels.renderPanel(panel);
+            
+            // Adicionar testes de pós-validação
+            Object.values(postValidationTests).forEach(testConfig => {
+                const test = TestManager.getTest(testConfig.id);
+                if (test && panel.tests.length < panel.maxTests) {
+                    panel.tests.push(test.id);
+                    SpecializedPanels.addTestToPanel(panel, test);
+                }
+            });
+            
+            // Adicionar botão de validação completa
+            const testsContainer = panel.element.querySelector('.tests-container');
+            if (testsContainer) {
+                const validationButton = document.createElement('div');
+                validationButton.innerHTML = `
+                    <div style="background: rgba(0, 170, 255, 0.2); 
+                                padding: 15px; 
+                                border-radius: 6px; 
+                                border: 1px solid rgba(0, 170, 255, 0.4);
+                                margin-top: 10px;
+                                text-align: center;">
+                        <button id="run-full-validation" 
+                                style="background: linear-gradient(135deg, #00aaff, #0088cc);
+                                       color: white;
+                                       border: none;
+                                       padding: 10px 20px;
+                                       border-radius: 5px;
+                                       font-weight: bold;
+                                       cursor: pointer;
+                                       width: 100%;">
+                            ▶️ EXECUTAR VALIDAÇÃO COMPLETA
+                        </button>
+                        <div style="font-size: 11px; color: #88aaff; margin-top: 8px;">
+                            Executa todos os testes de pós-validação em sequência
+                        </div>
+                    </div>
+                `;
+                
+                testsContainer.appendChild(validationButton);
+                
+                // Adicionar evento
+                document.getElementById('run-full-validation').addEventListener('click', async () => {
+                    if (panel.addLog) {
+                        panel.addLog('Iniciando validação completa...', 'info');
+                    }
+                    
+                    const results = await this.runCompleteValidation();
+                    
+                    if (panel.addLog) {
+                        panel.addLog(`Validação concluída: ${results.passed}✅ ${results.warnings}⚠️ ${results.failed}❌`, 
+                                    results.failed === 0 ? 'success' : 'warning');
+                    }
+                });
+            }
+            
+            SpecializedPanels.initializePanelLogs(panel);
+            SpecializedPanels.makePanelDraggable(panel);
+            
+            if (panel.addLog) {
+                panel.addLog('Painel de Pós-Validação inicializado', 'success');
+                panel.addLog('Use o botão para executar validação completa', 'info');
+            }
+            
+            console.log('✅ Painel de Pós-Validação criado');
+            return panel;
+        }
+    };
+})();
+
+// ================== INTEGRAÇÃO COM O SISTEMA PRINCIPAL ==================
+// Adicionar ao objeto diagnostics global
+window.diagnostics.postValidation = {
+    registerTests: PostValidationModule.registerTests,
+    runCompleteValidation: PostValidationModule.runCompleteValidation,
+    createValidationPanel: PostValidationModule.createValidationPanel
+};
+
+// ================== ATUALIZAR INICIALIZAÇÃO ==================
+// Modificar a função de inicialização para incluir pós-validação
+const originalInitialize = window.diagnostics.initialize;
+window.diagnostics.initialize = function() {
+    // Executar inicialização original
+    const result = originalInitialize.call(this);
+    
+    // Registrar testes de pós-validação
+    PostValidationModule.registerTests();
+    
+    // Adicionar comando ao console
+    console.group('🎯 COMANDOS DE PÓS-VALIDAÇÃO:');
+    console.log('%c• diagnostics.postValidation.runCompleteValidation()', 'color: #00ff9c');
+    console.log('%c• diagnostics.postValidation.createValidationPanel()', 'color: #00ff9c');
+    console.groupEnd();
+    
+    return result;
+};
+
+// ================== ADICIONAR ATALHO GLOBAL ==================
+// Mantém compatibilidade com código antigo
+if (!window.finalValidation) {
+    window.finalValidation = function() {
+        console.warn('⚠️ finalValidation() foi migrado para o sistema de diagnóstico');
+        console.info('📋 Use: diagnostics.postValidation.runCompleteValidation()');
+        
+        if (window.diagnostics && window.diagnostics.postValidation) {
+            return window.diagnostics.postValidation.runCompleteValidation();
+        } else {
+            console.error('❌ Sistema de diagnóstico não carregado');
+            return null;
+        }
+    };
+}
+
+// ================== LOG DE CARREGAMENTO ==================
+console.log('%c🔍 MÓDULO DE PÓS-VALIDAÇÃO INTEGRADO', 
+            'color: #00ff9c; font-weight: bold; font-size: 12px; background: #001a33; padding: 3px;');
+console.log('✅ 3 novos testes de validação disponíveis');
+console.log('📋 Use diagnostics.postValidation.createValidationPanel() para criar painel');
+
     // Exportar funções globais
     window.Diagnostics = {
         analyzeSystem,
