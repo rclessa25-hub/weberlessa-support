@@ -15847,6 +15847,9 @@ setTimeout(() => {
                     errors: []
                 };
                 
+                // Variável para armazenar testes
+                let testResults = [];
+                
                 try {
                     // PASSO 1: Criar wrappers de compatibilidade
                     console.log('🔄 PASSO 1: Criando wrappers de compatibilidade...');
@@ -15932,7 +15935,7 @@ setTimeout(() => {
                     console.log('\n🧪 PASSO 4: Executando testes pós-migração...');
                     
                     // Teste básico de funcionalidade
-                    const testResults = [];
+                    testResults = [];
                     
                     try {
                         // Testar formatPrice
@@ -16040,7 +16043,7 @@ setTimeout(() => {
         registerTests: function() {
             Object.values(migrationTests).forEach(testConfig => {
                 if (typeof TestManager !== 'undefined' && TestManager.registerTest) {
-                    const existingTest = TestManager.getTest(testConfig.id);
+                    const existingTest = TestManager.getTest ? TestManager.getTest(testConfig.id) : null;
                     if (!existingTest) {
                         TestManager.registerTest(testConfig);
                         console.log(`✅ Teste de migração registrado: ${testConfig.title}`);
@@ -16076,10 +16079,12 @@ setTimeout(() => {
                     
                     // Adicionar testes
                     Object.values(migrationTests).forEach(testConfig => {
-                        const test = TestManager.getTest(testConfig.id);
+                        const test = TestManager.getTest ? TestManager.getTest(testConfig.id) : null;
                         if (test && migrationPanel.tests.length < migrationPanel.maxTests) {
                             migrationPanel.tests.push(test.id);
-                            SpecializedPanels.addTestToPanel(migrationPanel, test);
+                            if (SpecializedPanels.addTestToPanel) {
+                                SpecializedPanels.addTestToPanel(migrationPanel, test);
+                            }
                         }
                     });
                     
@@ -16262,9 +16267,25 @@ setTimeout(() => {
             return this.createStandalonePanel();
         },
         
-        // Criar painel independente
+        // Criar painel independente (CORRIGIDO)
         createStandalonePanel: function() {
-            // Implementação similar aos outros módulos, mas focada em migração
+            // Obter dados atuais de migração
+            let functionsUsingOldCount = '?';
+            let migrationScore = '67%';
+            
+            try {
+                // Executar verificação rápida para obter dados atuais
+                const checkResult = migrationTests.sharedCoreMigrationCheck.execute();
+                if (checkResult && checkResult.details && checkResult.details.summary) {
+                    functionsUsingOldCount = checkResult.details.summary.functionsUsingOld || '?';
+                    migrationScore = checkResult.details.functionScore ? 
+                        `${checkResult.details.functionScore}%` : '67%';
+                }
+            } catch (e) {
+                // Usar valores padrão se a verificação falhar
+                console.log('⚠️ Não foi possível obter dados de migração:', e.message);
+            }
+            
             const panelId = 'sharedcore-migration-panel-' + Date.now();
             const panel = document.createElement('div');
             
@@ -16350,13 +16371,13 @@ setTimeout(() => {
                                 margin-bottom: 25px;
                                 text-align: center;">
                         <div style="font-size: 32px; color: #ff6464; font-weight: bold; margin-bottom: 10px;">
-                            67%
+                            ${migrationScore}
                         </div>
                         <div style="color: #ffaaaa; font-size: 14px; margin-bottom: 5px;">
                             SCORE ATUAL DE MIGRAÇÃO
                         </div>
                         <div style="color: #ff8888; font-size: 12px;">
-                            0/3 módulos usam SharedCore | ${functionsUsingOld || '?'} referências antigas
+                            0/3 módulos usam SharedCore | ${functionsUsingOldCount} referências antigas
                         </div>
                     </div>
                     
@@ -16504,6 +16525,48 @@ setTimeout(() => {
                         this.updateStandalonePanel(panel, result);
                     });
                 }
+                
+                // Fechar e minimizar
+                panel.querySelector('.close-btn').addEventListener('click', () => {
+                    panel.remove();
+                    migrationPanel = null;
+                });
+                
+                panel.querySelector('.minimize-btn').addEventListener('click', function() {
+                    const content = panel.children[1];
+                    const isHidden = content.style.display === 'none';
+                    content.style.display = isHidden ? 'flex' : 'none';
+                    this.textContent = isHidden ? '−' : '+';
+                });
+                
+                // Arrastar
+                const header = panel.children[0];
+                let isDragging = false;
+                let offsetX, offsetY;
+                
+                header.addEventListener('mousedown', function(e) {
+                    if (e.target.tagName === 'BUTTON') return;
+                    
+                    isDragging = true;
+                    offsetX = e.clientX - panel.getBoundingClientRect().left;
+                    offsetY = e.clientY - panel.getBoundingClientRect().top;
+                    
+                    document.addEventListener('mousemove', drag);
+                    document.addEventListener('mouseup', stopDrag);
+                    e.preventDefault();
+                });
+                
+                function drag(e) {
+                    if (!isDragging) return;
+                    panel.style.left = (e.clientX - offsetX) + 'px';
+                    panel.style.top = (e.clientY - offsetY) + 'px';
+                }
+                
+                function stopDrag() {
+                    isDragging = false;
+                    document.removeEventListener('mousemove', drag);
+                    document.removeEventListener('mouseup', stopDrag);
+                }
             }, 100);
             
             return panel;
@@ -16559,9 +16622,9 @@ setTimeout(() => {
         // Atalhos globais
         window.SCMigration = SharedCoreMigration;
         window.SCM = {
-            check: () => migrationTests.sharedCoreMigrationCheck.execute(),
-            generate: () => migrationTests.sharedCoreMigrationScript.execute(),
-            execute: () => migrationTests.sharedCoreMigrationExecutor.execute(),
+            check: () => SharedCoreMigration.tests.sharedCoreMigrationCheck.execute(),
+            generate: () => SharedCoreMigration.tests.sharedCoreMigrationScript.execute(),
+            execute: () => SharedCoreMigration.tests.sharedCoreMigrationExecutor.execute(),
             panel: () => SharedCoreMigration.createMigrationPanel()
         };
         
