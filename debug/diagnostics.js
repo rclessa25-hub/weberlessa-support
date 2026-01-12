@@ -17036,6 +17036,1481 @@ setTimeout(() => {
     }
 }, 2000);
 
+// ================== MÓDULO DE VERIFICAÇÃO FINAL DA MIGRAÇÃO ==================
+const MigrationFinalVerifier = (function() {
+    // Testes de verificação final
+    const finalVerificationTests = {
+        migrationFinalCheck: {
+            id: 'migration-final-check',
+            title: '🎯 VERIFICAÇÃO FINAL DA MIGRAÇÃO',
+            description: 'Testa todas as funções críticas após migração para SharedCore',
+            type: 'verification',
+            icon: '🎯',
+            category: 'migration',
+            critical: true,
+            execute: async function() {
+                console.group('🎯 VERIFICAÇÃO FINAL DA MIGRAÇÃO SHAREDCORE');
+                
+                console.log('🔍 Testando funções críticas após migração...');
+                
+                // Testar cada função crítica
+                const testCases = [
+                    {
+                        name: 'stringSimilarity (exata)',
+                        test: () => window.SharedCore.stringSimilarity('hello', 'hello'),
+                        expected: 1,
+                        tolerance: 0.01
+                    },
+                    {
+                        name: 'stringSimilarity (parcial)',
+                        test: () => window.SharedCore.stringSimilarity('hello', 'hel'),
+                        expected: 0.6,
+                        tolerance: 0.2
+                    },
+                    {
+                        name: 'stringSimilarity (diferente)',
+                        test: () => window.SharedCore.stringSimilarity('hello', 'world'),
+                        expected: 0,
+                        tolerance: 0.1
+                    },
+                    {
+                        name: 'runLowPriority',
+                        test: () => {
+                            return new Promise(resolve => {
+                                let executed = false;
+                                window.SharedCore.runLowPriority(() => {
+                                    executed = true;
+                                    resolve('executado');
+                                });
+                                
+                                // Timeout fallback
+                                setTimeout(() => {
+                                    if (!executed) resolve('timeout mas função chamada');
+                                }, 100);
+                            });
+                        },
+                        expected: 'executado'
+                    },
+                    {
+                        name: 'formatPrice',
+                        test: () => window.SharedCore.formatPrice('450000'),
+                        expected: 'R$ 450.000,00',
+                        check: (result) => result.includes('R$') && result.includes('450')
+                    },
+                    {
+                        name: 'isMobileDevice',
+                        test: () => window.SharedCore.isMobileDevice(),
+                        expected: 'boolean',
+                        check: (result) => typeof result === 'boolean'
+                    },
+                    {
+                        name: 'elementExists (inexistente)',
+                        test: () => window.SharedCore.elementExists('test-id-' + Date.now()),
+                        expected: false,
+                        check: (result) => result === false
+                    },
+                    {
+                        name: 'debounce wrapper',
+                        test: () => typeof window.debounce === 'function',
+                        expected: true,
+                        check: (result) => result === true
+                    },
+                    {
+                        name: 'throttle wrapper',
+                        test: () => typeof window.throttle === 'function',
+                        expected: true,
+                        check: (result) => result === true
+                    }
+                ];
+                
+                const results = {
+                    total: testCases.length,
+                    passed: 0,
+                    failed: 0,
+                    warnings: 0,
+                    tests: []
+                };
+                
+                // Executar testes sequencialmente
+                for (let i = 0; i < testCases.length; i++) {
+                    const testCase = testCases[i];
+                    
+                    console.log(`\n🧪 Teste ${i + 1}/${testCases.length}: ${testCase.name}`);
+                    
+                    try {
+                        const startTime = performance.now();
+                        const result = await Promise.resolve(testCase.test());
+                        const endTime = performance.now();
+                        const executionTime = endTime - startTime;
+                        
+                        let passed = false;
+                        let message = '';
+                        
+                        // Verificar resultado
+                        if (testCase.check) {
+                            passed = testCase.check(result);
+                            message = passed ? 'PASS' : `FAIL - Resultado: ${result}`;
+                        } else if (typeof testCase.expected === 'number' && testCase.tolerance) {
+                            const diff = Math.abs(result - testCase.expected);
+                            passed = diff <= testCase.tolerance;
+                            message = passed ? `PASS (${result} ≈ ${testCase.expected})` : 
+                                            `FAIL (${result}, esperado ${testCase.expected} ± ${testCase.tolerance})`;
+                        } else if (typeof testCase.expected === 'string' && testCase.expected === 'boolean') {
+                            passed = typeof result === 'boolean';
+                            message = passed ? `PASS (${result})` : `FAIL (tipo ${typeof result})`;
+                        } else {
+                            passed = result === testCase.expected;
+                            message = passed ? `PASS (${result})` : `FAIL (${result} ≠ ${testCase.expected})`;
+                        }
+                        
+                        // Verificar tempo de execução
+                        const timeWarning = executionTime > 100 ? ' ⏱️ LENTO' : '';
+                        
+                        if (passed) {
+                            console.log(`✅ ${testCase.name}: ${message}${timeWarning}`);
+                            results.passed++;
+                        } else {
+                            console.warn(`⚠️  ${testCase.name}: ${message}${timeWarning}`);
+                            results.warnings++;
+                        }
+                        
+                        results.tests.push({
+                            name: testCase.name,
+                            status: passed ? 'success' : 'warning',
+                            result: result,
+                            expected: testCase.expected,
+                            executionTime: executionTime,
+                            message: message
+                        });
+                        
+                        // Pequena pausa entre testes
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                        
+                    } catch (error) {
+                        console.error(`❌ ${testCase.name}: ERRO - ${error.message}`);
+                        results.failed++;
+                        results.tests.push({
+                            name: testCase.name,
+                            status: 'error',
+                            result: null,
+                            expected: testCase.expected,
+                            error: error.message,
+                            message: `ERRO: ${error.message}`
+                        });
+                    }
+                }
+                
+                // Verificar se há chamadas diretas obsoletas
+                console.log('\n🔍 Verificando chamadas obsoletas...');
+                
+                const obsoleteCalls = [];
+                const modulesToCheck = ['MediaSystem', 'PdfSystem', 'properties'];
+                
+                modulesToCheck.forEach(moduleName => {
+                    if (window[moduleName]) {
+                        try {
+                            const code = window[moduleName].toString ? 
+                                        window[moduleName].toString().substring(0, 1000) : '';
+                            
+                            // Verificar referências obsoletas
+                            const checks = [
+                                { pattern: 'window\\.stringSimilarity', found: code.includes('window.stringSimilarity') },
+                                { pattern: 'window\\.runLowPriority', found: code.includes('window.runLowPriority') },
+                                { pattern: 'stringSimilarity\\(', found: code.includes('stringSimilarity(') && !code.includes('SharedCore.stringSimilarity') },
+                                { pattern: 'runLowPriority\\(', found: code.includes('runLowPriority(') && !code.includes('SharedCore.runLowPriority') }
+                            ];
+                            
+                            checks.forEach(check => {
+                                if (check.found) {
+                                    obsoleteCalls.push(`${moduleName}: ${check.pattern}`);
+                                }
+                            });
+                        } catch (e) {
+                            console.log(`   ⚠️ ${moduleName}: Não foi possível verificar código`);
+                        }
+                    }
+                });
+                
+                if (obsoleteCalls.length > 0) {
+                    console.warn(`⚠️  ${obsoleteCalls.length} chamadas obsoletas detectadas:`);
+                    obsoleteCalls.forEach(call => console.log(`   ❌ ${call}`));
+                    results.warnings += obsoleteCalls.length;
+                } else {
+                    console.log('✅ Nenhuma chamada obsoleta detectada');
+                }
+                
+                // Calcular score
+                const score = Math.round((results.passed / results.total) * 100);
+                const warningScore = Math.round((results.warnings / results.total) * 100);
+                
+                console.log(`\n📊 RESULTADO FINAL:`);
+                console.log(`   ✅ ${results.passed} passaram`);
+                console.log(`   ⚠️  ${results.warnings} com avisos`);
+                console.log(`   ❌ ${results.failed} falharam`);
+                console.log(`   🎯 SCORE: ${score}%`);
+                
+                let status = 'success';
+                let message = '';
+                
+                if (results.failed === 0 && results.warnings === 0) {
+                    console.log('🎉 MIGRAÇÃO 100% CONCLUÍDA COM SUCESSO!');
+                    message = '✅ MIGRAÇÃO COMPLETA!';
+                    status = 'success';
+                    
+                    // Notificar Support System se disponível
+                    try {
+                        if (window.ValidationSystem && typeof window.ValidationSystem.reportSharedCoreMigration === 'function') {
+                            window.ValidationSystem.reportSharedCoreMigration({
+                                status: 'complete',
+                                migratedFunctions: results.passed,
+                                modulesUsing: modulesToCheck.filter(m => window[m]),
+                                score: score,
+                                timestamp: new Date().toISOString()
+                            });
+                            console.log('📢 Notificação enviada para ValidationSystem');
+                        }
+                    } catch (e) {
+                        console.log('ℹ️ ValidationSystem não disponível para notificação');
+                    }
+                    
+                } else if (results.failed === 0 && results.warnings > 0) {
+                    console.log(`⚠️  MIGRAÇÃO PARCIAL: ${results.warnings} avisos`);
+                    status = 'warning';
+                    message = `⚠️ MIGRAÇÃO ${score}% COMPLETA`;
+                } else {
+                    console.log(`❌ MIGRAÇÃO COM PROBLEMAS: ${results.failed} erros`);
+                    status = 'error';
+                    message = `❌ MIGRAÇÃO APENAS ${score}%`;
+                }
+                
+                // Verificar arquivos que precisam de atualização
+                console.log('\n📁 VERIFICAÇÃO DE ARQUIVOS:');
+                const filesToCheck = [
+                    { name: 'admin.js', path: 'js/modules/admin.js' },
+                    { name: 'gallery.js', path: 'js/modules/gallery.js' },
+                    { name: 'media-unified.js', path: 'js/modules/media/media-unified.js' },
+                    { name: 'pdf-unified.js', path: 'js/modules/reader/pdf-unified.js' },
+                    { name: 'properties.js', path: 'js/modules/properties.js' }
+                ];
+                
+                filesToCheck.forEach(file => {
+                    // Simulação - em produção poderia fazer fetch para verificar
+                    console.log(`   📄 ${file.name}: Verificação manual necessária`);
+                });
+                
+                console.log('\n🔧 RECOMENDAÇÕES FINAIS:');
+                if (obsoleteCalls.length > 0) {
+                    console.log('   1. Substitua chamadas obsoletas por SharedCore.*');
+                }
+                if (results.failed > 0) {
+                    console.log('   2. Corrija funções que falharam nos testes');
+                }
+                if (score < 100) {
+                    console.log(`   3. Complete migração para atingir 100% (atual: ${score}%)`);
+                }
+                
+                console.groupEnd();
+                
+                return {
+                    status: status,
+                    message: message,
+                    details: {
+                        results: results,
+                        score: score,
+                        warningScore: warningScore,
+                        obsoleteCalls: obsoleteCalls,
+                        filesToCheck: filesToCheck.map(f => f.name),
+                        recommendations: obsoleteCalls.length > 0 || results.failed > 0 ? [
+                            'Substituir chamadas obsoletas por SharedCore.*',
+                            'Verificar funções que falharam nos testes',
+                            'Completar migração de todos os módulos'
+                        ] : [
+                            'Migração concluída com sucesso!',
+                            'Monitorar performance do SharedCore',
+                            'Considerar adicionar mais funções ao SharedCore'
+                        ],
+                        timestamp: new Date().toISOString()
+                    }
+                };
+            }
+        },
+        
+        fileUsageChecker: {
+            id: 'file-usage-checker',
+            title: '📁 VERIFICAÇÃO DE USO EM ARQUIVOS',
+            description: 'Verifica quais arquivos usam funções que devem ser migradas',
+            type: 'analysis',
+            icon: '📁',
+            category: 'migration',
+            execute: function() {
+                console.group('📁 VERIFICAÇÃO DE USO EM ARQUIVOS');
+                
+                const filesToCheck = [
+                    { name: 'admin.js', path: 'js/modules/admin.js', loaded: !!window.admin },
+                    { name: 'gallery.js', path: 'js/modules/gallery.js', loaded: !!window.gallery },
+                    { name: 'media-unified.js', path: 'js/modules/media/media-unified.js', loaded: !!window.MediaSystem },
+                    { name: 'pdf-unified.js', path: 'js/modules/reader/pdf-unified.js', loaded: !!window.PdfSystem },
+                    { name: 'properties.js', path: 'js/modules/properties.js', loaded: !!window.properties },
+                    { name: 'SharedCore.js', path: 'js/core/SharedCore.js', loaded: !!window.SharedCore }
+                ];
+                
+                const functionsToCheck = [
+                    'stringSimilarity',
+                    'runLowPriority',
+                    'debounce',
+                    'throttle',
+                    'formatPrice',
+                    'isMobileDevice',
+                    'elementExists',
+                    'supabaseFetch',
+                    'logModule'
+                ];
+                
+                const results = {
+                    totalFiles: filesToCheck.length,
+                    checkedFiles: 0,
+                    filesUsingOldPatterns: 0,
+                    fileDetails: []
+                };
+                
+                console.log('🔍 Analisando arquivos carregados...');
+                
+                filesToCheck.forEach(file => {
+                    const fileDetails = {
+                        name: file.name,
+                        loaded: file.loaded,
+                        usesSharedCore: false,
+                        usesOldPatterns: false,
+                        functionsFound: [],
+                        oldPatterns: [],
+                        needsMigration: false
+                    };
+                    
+                    console.log(`\n📄 ${file.name}: ${file.loaded ? '✅ Carregado' : '🚫 Não carregado'}`);
+                    
+                    if (file.loaded) {
+                        results.checkedFiles++;
+                        
+                        // Tentar analisar o objeto correspondente
+                        const moduleName = file.name.replace('.js', '').replace('-unified', '');
+                        const moduleObj = window[moduleName] || 
+                                        (moduleName === 'media' ? window.MediaSystem : 
+                                         moduleName === 'pdf' ? window.PdfSystem : 
+                                         moduleName === 'properties' ? window.properties : null);
+                        
+                        if (moduleObj) {
+                            try {
+                                // Obter código como string (limitado)
+                                const code = moduleObj.toString ? 
+                                           moduleObj.toString().substring(0, 2000) : 
+                                           JSON.stringify(moduleObj).substring(0, 1000);
+                                
+                                // Verificar padrões
+                                functionsToCheck.forEach(funcName => {
+                                    const usesSharedCore = code.includes(`SharedCore.${funcName}`) || 
+                                                          code.includes(`SC.${funcName}`);
+                                    const usesOld = code.includes(`window.${funcName}`) || 
+                                                   (code.includes(`${funcName}(`) && !code.includes(`SharedCore.${funcName}`));
+                                    
+                                    if (usesSharedCore) {
+                                        fileDetails.functionsFound.push(`${funcName} (via SharedCore)`);
+                                        fileDetails.usesSharedCore = true;
+                                    } else if (usesOld) {
+                                        fileDetails.oldPatterns.push(funcName);
+                                        fileDetails.usesOldPatterns = true;
+                                        fileDetails.needsMigration = true;
+                                    }
+                                });
+                                
+                                // Mostrar resultados
+                                if (fileDetails.functionsFound.length > 0) {
+                                    console.log(`   ✅ Usa SharedCore: ${fileDetails.functionsFound.join(', ')}`);
+                                }
+                                
+                                if (fileDetails.oldPatterns.length > 0) {
+                                    console.log(`   ❌ Padrões antigos: ${fileDetails.oldPatterns.join(', ')}`);
+                                    results.filesUsingOldPatterns++;
+                                }
+                                
+                                if (fileDetails.functionsFound.length === 0 && fileDetails.oldPatterns.length === 0) {
+                                    console.log(`   ℹ️ Nenhuma função verificada encontrada`);
+                                }
+                                
+                            } catch (error) {
+                                console.log(`   ⚠️ Erro na análise: ${error.message}`);
+                            }
+                        } else {
+                            console.log(`   ℹ️ Módulo não encontrado para análise`);
+                        }
+                    }
+                    
+                    results.fileDetails.push(fileDetails);
+                });
+                
+                console.log(`\n📊 RESUMO DE ARQUIVOS:`);
+                console.log(`   📄 Arquivos carregados: ${results.checkedFiles}/${results.totalFiles}`);
+                console.log(`   🔧 Precisa de migração: ${results.filesUsingOldPatterns}`);
+                
+                // Gerar recomendações
+                const filesNeedingMigration = results.fileDetails.filter(f => f.needsMigration);
+                
+                if (filesNeedingMigration.length > 0) {
+                    console.log('\n🔧 ARQUIVOS QUE PRECISAM DE ATENÇÃO:');
+                    filesNeedingMigration.forEach(file => {
+                        console.log(`   📝 ${file.name}: ${file.oldPatterns.length} funções para migrar`);
+                        file.oldPatterns.forEach(func => {
+                            console.log(`      • ${func}() → SharedCore.${func}()`);
+                        });
+                    });
+                } else {
+                    console.log('\n✅ TODOS OS ARQUIVOS ESTÃO ATUALIZADOS!');
+                }
+                
+                console.groupEnd();
+                
+                return {
+                    status: filesNeedingMigration.length === 0 ? 'success' : 
+                           filesNeedingMigration.length <= 2 ? 'warning' : 'error',
+                    message: filesNeedingMigration.length === 0 ? 
+                            '✅ TODOS OS ARQUIVOS ATUALIZADOS' :
+                            `⚠️ ${filesNeedingMigration.length} ARQUIVOS PRECISAM DE MIGRAÇÃO`,
+                    details: {
+                        summary: results,
+                        filesNeedingMigration: filesNeedingMigration.map(f => ({
+                            name: f.name,
+                            functions: f.oldPatterns,
+                            count: f.oldPatterns.length
+                        })),
+                        timestamp: new Date().toISOString()
+                    }
+                };
+            }
+        },
+        
+        migrationAutoVerifier: {
+            id: 'migration-auto-verifier',
+            title: '🔄 VERIFICAÇÃO AUTOMÁTICA FINAL',
+            description: 'Executa verificação completa a cada 5 minutos',
+            type: 'monitoring',
+            icon: '🔄',
+            category: 'migration',
+            execute: async function() {
+                console.group('🔄 VERIFICAÇÃO AUTOMÁTICA FINAL DA MIGRAÇÃO');
+                console.log('⏰ Executando verificação agendada...');
+                
+                // Executar todos os outros testes
+                const tests = [
+                    this.migrationFinalCheck,
+                    this.fileUsageChecker
+                ];
+                
+                const results = {
+                    total: 0,
+                    passed: 0,
+                    failed: 0,
+                    warnings: 0,
+                    tests: []
+                };
+                
+                for (const test of tests) {
+                    try {
+                        const result = await Promise.resolve(test.execute());
+                        
+                        results.total++;
+                        if (result.status === 'success') results.passed++;
+                        if (result.status === 'error') results.failed++;
+                        if (result.status === 'warning') results.warnings++;
+                        
+                        results.tests.push({
+                            name: test.title,
+                            status: result.status,
+                            message: result.message,
+                            score: result.details?.score || 0
+                        });
+                        
+                        console.log(`${result.status === 'success' ? '✅' : result.status === 'warning' ? '⚠️' : '❌'} ${test.title}: ${result.message}`);
+                        
+                        // Pequena pausa entre testes
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    } catch (error) {
+                        console.error(`❌ Erro no teste ${test.title}:`, error);
+                        results.tests.push({
+                            name: test.title,
+                            status: 'error',
+                            message: `Erro: ${error.message}`
+                        });
+                        results.total++;
+                        results.failed++;
+                    }
+                }
+                
+                const score = results.total > 0 ? Math.round((results.passed / results.total) * 100) : 0;
+                
+                console.log(`\n📊 RESUMO DA VERIFICAÇÃO AUTOMÁTICA:`);
+                console.log(`   ✅ ${results.passed} passaram`);
+                console.log(`   ⚠️ ${results.warnings} com avisos`);
+                console.log(`   ❌ ${results.failed} falharam`);
+                console.log(`   🎯 SCORE: ${score}%`);
+                
+                // Registrar no localStorage para histórico
+                try {
+                    const history = JSON.parse(localStorage.getItem('migration_final_verification_history') || '[]');
+                    history.push({
+                        timestamp: new Date().toISOString(),
+                        score: score,
+                        results: results.tests,
+                        passed: results.passed,
+                        total: results.total
+                    });
+                    
+                    // Manter apenas últimos 50 registros
+                    if (history.length > 50) {
+                        history.splice(0, history.length - 50);
+                    }
+                    
+                    localStorage.setItem('migration_final_verification_history', JSON.stringify(history));
+                    console.log(`📝 Histórico salvo (${history.length} verificações)`);
+                } catch (e) {
+                    console.log('⚠️ Não foi possível salvar histórico:', e.message);
+                }
+                
+                console.groupEnd();
+                
+                return {
+                    status: score === 100 ? 'success' : score >= 70 ? 'warning' : 'error',
+                    message: `🔄 VERIFICAÇÃO FINAL: Score ${score}%`,
+                    details: {
+                        summary: results,
+                        score: score,
+                        timestamp: new Date().toISOString(),
+                        nextVerification: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 minutos
+                    }
+                };
+            }
+        }
+    };
+    
+    // Controle do painel e monitoramento
+    let finalVerificationPanel = null;
+    let autoVerificationInterval = null;
+    
+    return {
+        // Registrar testes
+        registerTests: function() {
+            Object.values(finalVerificationTests).forEach(testConfig => {
+                // Usar TestManager se disponível
+                if (typeof TestManager !== 'undefined' && TestManager.registerTest) {
+                    const existingTest = TestManager.getTest ? TestManager.getTest(testConfig.id) : null;
+                    if (!existingTest) {
+                        TestManager.registerTest(testConfig);
+                        console.log(`✅ Teste de verificação final registrado: ${testConfig.title}`);
+                    }
+                }
+            });
+            
+            console.log('✅ Módulo de Verificação Final da Migração: Testes registrados');
+        },
+        
+        // Executar verificação completa
+        runCompleteVerification: async function() {
+            console.group('🎯 VERIFICAÇÃO COMPLETA FINAL DA MIGRAÇÃO');
+            
+            const results = {
+                total: 0,
+                passed: 0,
+                failed: 0,
+                warnings: 0,
+                tests: []
+            };
+            
+            // Executar todos os testes exceto o automático
+            const testsToRun = Object.values(finalVerificationTests).filter(t => t.id !== 'migration-auto-verifier');
+            
+            for (const testConfig of testsToRun) {
+                try {
+                    console.log(`▶️ Executando: ${testConfig.title}`);
+                    
+                    const result = await Promise.resolve(testConfig.execute());
+                    
+                    results.total++;
+                    if (result.status === 'success') results.passed++;
+                    if (result.status === 'error') results.failed++;
+                    if (result.status === 'warning') results.warnings++;
+                    
+                    results.tests.push({
+                        name: testConfig.title,
+                        status: result.status,
+                        message: result.message,
+                        details: result.details
+                    });
+                    
+                    console.log(`${result.status === 'success' ? '✅' : result.status === 'warning' ? '⚠️' : '❌'} ${testConfig.title}`);
+                    
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                } catch (error) {
+                    console.error(`❌ Erro no teste ${testConfig.title}:`, error);
+                    results.tests.push({
+                        name: testConfig.title,
+                        status: 'error',
+                        message: `Erro: ${error.message}`,
+                        details: null
+                    });
+                    results.total++;
+                    results.failed++;
+                }
+            }
+            
+            console.groupEnd();
+            
+            const score = Math.round((results.passed / results.total) * 100);
+            
+            console.log(`📊 RESUMO FINAL DA MIGRAÇÃO:`);
+            console.log(`   ✅ ${results.passed} passaram`);
+            console.log(`   ⚠️ ${results.warnings} com avisos`);
+            console.log(`   ❌ ${results.failed} falharam`);
+            console.log(`   🎯 SCORE GERAL: ${score}%`);
+            
+            if (score === 100) {
+                console.log('🎯 MIGRAÇÃO 100% VERIFICADA E CONCLUÍDA!');
+            } else if (score >= 80) {
+                console.log('⚠️ MIGRAÇÃO PARCIALMENTE CONCLUÍDA - Alguns ajustes necessários');
+            } else {
+                console.log('❌ MIGRAÇÃO COM PROBLEMAS CRÍTICOS!');
+            }
+            
+            return {
+                summary: results,
+                score: score,
+                overallStatus: score === 100 ? 'success' : score >= 70 ? 'warning' : 'error',
+                timestamp: new Date().toISOString()
+            };
+        },
+        
+        // Iniciar monitoramento automático (a cada 5 minutos)
+        startAutoVerification: function(intervalMinutes = 5) {
+            if (autoVerificationInterval) {
+                console.log('⚠️ Verificação automática já está ativa');
+                return false;
+            }
+            
+            console.log(`🔄 INICIANDO VERIFICAÇÃO AUTOMÁTICA FINAL (a cada ${intervalMinutes} minutos)`);
+            
+            // Executar primeira verificação imediatamente
+            finalVerificationTests.migrationAutoVerifier.execute();
+            
+            // Configurar intervalo
+            autoVerificationInterval = setInterval(() => {
+                console.log(`⏰ EXECUTANDO VERIFICAÇÃO AGENDADA DA MIGRAÇÃO (${new Date().toLocaleTimeString()})`);
+                finalVerificationTests.migrationAutoVerifier.execute();
+            }, intervalMinutes * 60 * 1000);
+            
+            return true;
+        },
+        
+        // Parar monitoramento automático
+        stopAutoVerification: function() {
+            if (autoVerificationInterval) {
+                clearInterval(autoVerificationInterval);
+                autoVerificationInterval = null;
+                console.log('🛑 VERIFICAÇÃO AUTOMÁTICA FINAL PARADA');
+                return true;
+            }
+            return false;
+        },
+        
+        // Criar painel visual de verificação final
+        createVerificationPanel: function() {
+            // Se já existe, apenas mostrar
+            if (finalVerificationPanel && document.body.contains(finalVerificationPanel)) {
+                finalVerificationPanel.style.display = 'flex';
+                return finalVerificationPanel;
+            }
+            
+            // Verificar se estamos no sistema de diagnóstico
+            if (typeof PanelManager !== 'undefined' && PanelManager.createPanel) {
+                const panelConfig = {
+                    title: '🎯 VERIFICAÇÃO FINAL MIGRAÇÃO',
+                    category: 'migration',
+                    maxTests: 8,
+                    position: { top: '250px', left: '850px' },
+                    size: { width: '550px', height: '700px' }
+                };
+                
+                finalVerificationPanel = PanelManager.createPanel(panelConfig);
+                
+                if (typeof SpecializedPanels !== 'undefined' && SpecializedPanels.renderPanel) {
+                    finalVerificationPanel.element = SpecializedPanels.renderPanel(finalVerificationPanel);
+                    
+                    // Adicionar testes
+                    Object.values(finalVerificationTests).forEach(testConfig => {
+                        const test = TestManager.getTest(testConfig.id);
+                        if (test && finalVerificationPanel.tests.length < finalVerificationPanel.maxTests) {
+                            finalVerificationPanel.tests.push(test.id);
+                            SpecializedPanels.addTestToPanel(finalVerificationPanel, test);
+                        }
+                    });
+                    
+                    // Adicionar controles extras
+                    if (finalVerificationPanel.element) {
+                        const testsContainer = finalVerificationPanel.element.querySelector('.tests-container');
+                        if (testsContainer) {
+                            const controlsHTML = `
+                                <div style="background: linear-gradient(135deg, rgba(255, 200, 0, 0.1), rgba(255, 220, 0, 0.05));
+                                            padding: 20px;
+                                            border-radius: 10px;
+                                            border: 2px solid rgba(255, 200, 0, 0.3);
+                                            margin: 20px 0;
+                                            text-align: center;">
+                                    <div style="color: #ffcc00; font-weight: bold; margin-bottom: 15px; font-size: 16px;">
+                                        🎯 CONTROLES DA VERIFICAÇÃO FINAL
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
+                                        <button id="final-verify-now" 
+                                                style="background: rgba(255, 200, 0, 0.3);
+                                                       color: #ffcc00;
+                                                       border: 2px solid #ffcc00;
+                                                       padding: 10px;
+                                                       border-radius: 8px;
+                                                       cursor: pointer;
+                                                       font-size: 13px;
+                                                       font-weight: bold;">
+                                            🔍 Verificar Agora
+                                        </button>
+                                        <button id="final-toggle-auto" 
+                                                style="background: rgba(255, 200, 0, 0.3);
+                                                       color: #ffcc00;
+                                                       border: 2px solid #ffcc00;
+                                                       padding: 10px;
+                                                       border-radius: 8px;
+                                                       cursor: pointer;
+                                                       font-size: 13px;
+                                                       font-weight: bold;">
+                                            🔄 Auto: DESLIGADO
+                                        </button>
+                                    </div>
+                                    <div style="font-size: 11px; color: #ffdd77; margin-top: 10px;">
+                                        Verificação automática a cada 5 minutos
+                                    </div>
+                                </div>
+                            `;
+                            
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = controlsHTML;
+                            testsContainer.appendChild(tempDiv.firstChild);
+                            
+                            // Adicionar event listeners
+                            setTimeout(() => {
+                                const verifyBtn = document.getElementById('final-verify-now');
+                                const autoBtn = document.getElementById('final-toggle-auto');
+                                
+                                if (verifyBtn) {
+                                    verifyBtn.addEventListener('click', async () => {
+                                        verifyBtn.disabled = true;
+                                        verifyBtn.textContent = 'VERIFICANDO...';
+                                        
+                                        if (finalVerificationPanel.addLog) {
+                                            finalVerificationPanel.addLog('Iniciando verificação final da migração...', 'info');
+                                        }
+                                        
+                                        const results = await this.runCompleteVerification();
+                                        
+                                        verifyBtn.disabled = false;
+                                        verifyBtn.textContent = '🔍 Verificar Agora';
+                                        
+                                        if (finalVerificationPanel.addLog) {
+                                            finalVerificationPanel.addLog(`Verificação concluída: Score ${results.score}%`, results.overallStatus);
+                                        }
+                                    });
+                                }
+                                
+                                if (autoBtn) {
+                                    autoBtn.addEventListener('click', () => {
+                                        if (autoVerificationInterval) {
+                                            this.stopAutoVerification();
+                                            autoBtn.textContent = '🔄 Auto: DESLIGADO';
+                                            autoBtn.style.background = 'rgba(255, 200, 0, 0.3)';
+                                            if (finalVerificationPanel.addLog) {
+                                                finalVerificationPanel.addLog('Verificação automática desligada', 'info');
+                                            }
+                                        } else {
+                                            this.startAutoVerification(5);
+                                            autoBtn.textContent = '🔄 Auto: LIGADO';
+                                            autoBtn.style.background = 'rgba(0, 255, 0, 0.3)';
+                                            if (finalVerificationPanel.addLog) {
+                                                finalVerificationPanel.addLog('Verificação automática ligada (5 minutos)', 'success');
+                                            }
+                                        }
+                                    });
+                                }
+                            }, 100);
+                        }
+                    }
+                    
+                    // Inicializar logs
+                    if (SpecializedPanels.initializePanelLogs) {
+                        SpecializedPanels.initializePanelLogs(finalVerificationPanel);
+                    }
+                    
+                    // Tornar arrastável
+                    if (SpecializedPanels.makePanelDraggable) {
+                        SpecializedPanels.makePanelDraggable(finalVerificationPanel);
+                    }
+                    
+                    if (finalVerificationPanel.addLog) {
+                        finalVerificationPanel.addLog('Painel de Verificação Final inicializado', 'success');
+                        finalVerificationPanel.addLog(`${Object.keys(finalVerificationTests).length} testes disponíveis`, 'info');
+                    }
+                    
+                    return finalVerificationPanel;
+                }
+            }
+            
+            // Se o sistema de diagnóstico não estiver disponível, criar painel independente
+            console.log('⚠️ Sistema de diagnóstico não encontrado. Criando painel independente...');
+            return this.createStandalonePanel();
+        },
+        
+        // Criar painel independente
+        createStandalonePanel: function() {
+            const panelId = 'final-verification-panel-' + Date.now();
+            const panel = document.createElement('div');
+            
+            panel.id = panelId;
+            panel.style.cssText = `
+                position: fixed;
+                top: 200px;
+                left: 200px;
+                width: 500px;
+                height: 650px;
+                background: linear-gradient(135deg, #2a2a00, #444400);
+                border: 2px solid #ffcc00;
+                border-radius: 12px;
+                z-index: 10000;
+                box-shadow: 0 0 25px rgba(255, 204, 0, 0.3);
+                font-family: 'Segoe UI', monospace;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                resize: both;
+            `;
+            
+            panel.innerHTML = `
+                <!-- Cabeçalho -->
+                <div style="background: linear-gradient(90deg, rgba(255, 204, 0, 0.2), rgba(255, 221, 0, 0.1));
+                            padding: 15px 20px;
+                            border-bottom: 1px solid rgba(255, 204, 0, 0.3);
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            cursor: move;
+                            user-select: none;">
+                    
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="color: #ffcc00; font-weight: bold; font-size: 15px;">🎯 VERIFICAÇÃO FINAL MIGRAÇÃO</span>
+                        <span style="background: #ffcc00;
+                                    color: #2a2a00;
+                                    padding: 3px 10px;
+                                    border-radius: 10px;
+                                    font-size: 11px;
+                                    font-weight: bold;">
+                            v1.0
+                        </span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        <button class="minimize-btn" 
+                                style="background: #555;
+                                       color: white;
+                                       border: none;
+                                       width: 28px;
+                                       height: 28px;
+                                       border-radius: 5px;
+                                       cursor: pointer;
+                                       font-weight: bold;">
+                            −
+                        </button>
+                        <button class="close-btn" 
+                                style="background: #ff5555;
+                                       color: white;
+                                       border: none;
+                                       width: 28px;
+                                       height: 28px;
+                                       border-radius: 5px;
+                                       cursor: pointer;
+                                       font-weight: bold;">
+                            ×
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Conteúdo -->
+                <div style="flex: 1;
+                            padding: 20px;
+                            overflow-y: auto;
+                            overflow-x: hidden;">
+                    
+                    <!-- Status da Migração -->
+                    <div style="background: rgba(255, 204, 0, 0.1);
+                                padding: 15px;
+                                border-radius: 8px;
+                                border-left: 4px solid #ffcc00;
+                                margin-bottom: 20px;">
+                        <div style="color: #ffcc00; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
+                            <span>📊 STATUS FINAL DA MIGRAÇÃO</span>
+                            <span id="final-status-indicator" style="background: #ffcc00; color: #2a2a00; padding: 2px 8px; border-radius: 10px; font-size: 10px;">
+                                TESTANDO...
+                            </span>
+                        </div>
+                        <div style="color: #ffdd77; font-size: 13px;">
+                            <div>Funções testadas: <span id="final-functions">9</span></div>
+                            <div>Arquivos verificados: <span id="final-files">6</span></div>
+                            <div>Score atual: <span id="final-score">Verificando...</span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Controles -->
+                    <div style="margin-bottom: 25px;">
+                        <div style="color: #ffcc00; font-weight: bold; margin-bottom: 12px; font-size: 14px;">
+                            🎮 CONTROLES:
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 15px;">
+                            <button id="final-run-complete" class="final-control-btn" style="background: linear-gradient(135deg, #ffcc00, #ffaa00); color: #2a2a00;">
+                                🎯 VERIFICAÇÃO COMPLETA FINAL
+                            </button>
+                            <button id="final-check-files" class="final-control-btn">
+                                📁 VERIFICAR ARQUIVOS
+                            </button>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <button id="final-run-auto" class="final-control-btn">
+                                    🔄 VERIFICAÇÃO AUTOMÁTICA
+                                </button>
+                                <button id="final-check-now" class="final-control-btn">
+                                    🔍 TESTE RÁPIDO
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Verificação Automática -->
+                    <div style="background: rgba(255, 204, 0, 0.05); padding: 15px; border-radius: 8px; border: 2px dashed rgba(255, 204, 0, 0.3); margin-bottom: 20px;">
+                        <div style="color: #ffcc00; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                            ⏰ VERIFICAÇÃO AUTOMÁTICA (5 MIN)
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="color: #ffdd77; font-size: 12px;">
+                                Monitora migração continuamente
+                            </div>
+                            <button id="final-toggle-monitoring" 
+                                    style="background: rgba(255, 200, 0, 0.3);
+                                           color: #ffcc00;
+                                           border: 1px solid #ffcc00;
+                                           padding: 6px 12px;
+                                           border-radius: 5px;
+                                           cursor: pointer;
+                                           font-size: 11px;
+                                           font-weight: bold;">
+                                🔄 LIGAR
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Resultados -->
+                    <div style="margin-bottom: 20px;">
+                        <div style="color: #ffcc00; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                            📊 RESULTADOS:
+                        </div>
+                        <div id="final-results" style="min-height: 150px; background: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 15px;">
+                            <div style="color: #ffdd77; text-align: center; padding: 20px;">
+                                Aguardando execução...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Rodapé -->
+                <div style="background: rgba(255, 204, 0, 0.1);
+                            padding: 12px 20px;
+                            border-top: 1px solid rgba(255, 204, 0, 0.3);
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            font-size: 11px;">
+                    
+                    <div style="color: #ffdd77;">
+                        <span>Verificação Final v1.0 | 9 funções críticas | 6 arquivos</span>
+                    </div>
+                    
+                    <div style="color: #ffcc00; font-weight: bold;">
+                        Status: <span id="final-overall-status">Pronto</span>
+                    </div>
+                </div>
+            `;
+            
+            // Adicionar estilos
+            const style = document.createElement('style');
+            style.textContent = `
+                .final-control-btn {
+                    background: rgba(255, 204, 0, 0.2);
+                    color: #ffcc00;
+                    border: 1px solid #ffcc00;
+                    padding: 12px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 13px;
+                    transition: all 0.3s ease;
+                    font-weight: bold;
+                }
+                .final-control-btn:hover {
+                    background: rgba(255, 204, 0, 0.4);
+                    transform: translateY(-2px);
+                }
+                .final-control-btn:active {
+                    transform: translateY(0);
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(panel);
+            finalVerificationPanel = panel;
+            
+            // Inicializar controles
+            setTimeout(() => this.initializeStandalonePanel(panel), 100);
+            
+            return panel;
+        },
+        
+        // Inicializar painel independente
+        initializeStandalonePanel: function(panel) {
+            if (!panel) return;
+            
+            // Atualizar status inicial
+            const updateInitialStatus = () => {
+                if (panel.querySelector('#final-status-indicator')) {
+                    panel.querySelector('#final-status-indicator').textContent = '✅ PRONTO';
+                }
+                
+                if (panel.querySelector('#final-overall-status')) {
+                    panel.querySelector('#final-overall-status').textContent = 'PRONTO';
+                    panel.querySelector('#final-overall-status').style.color = '#ffcc00';
+                }
+            };
+            
+            updateInitialStatus();
+            
+            // Configurar botões
+            const setupButton = (id, testFunction, isAsync = true) => {
+                const btn = panel.querySelector(id);
+                if (btn) {
+                    btn.addEventListener('click', async () => {
+                        btn.disabled = true;
+                        const originalText = btn.textContent;
+                        btn.textContent = 'EXECUTANDO...';
+                        
+                        // Atualizar status para "executando"
+                        if (panel.querySelector('#final-status-indicator')) {
+                            panel.querySelector('#final-status-indicator').textContent = '🔄 EXECUTANDO';
+                            panel.querySelector('#final-status-indicator').style.background = '#ffaa00';
+                        }
+                        
+                        try {
+                            const result = isAsync ? 
+                                await Promise.resolve(testFunction.execute()) : 
+                                testFunction.execute();
+                            
+                            // Mostrar resultados
+                            const resultsDiv = panel.querySelector('#final-results');
+                            if (resultsDiv) {
+                                resultsDiv.innerHTML = `
+                                    <div style="text-align: center; margin-bottom: 15px;">
+                                        <div style="font-size: 28px; color: ${result.status === 'success' ? '#00ff9c' : result.status === 'warning' ? '#ffaa00' : '#ff5555'}; font-weight: bold;">
+                                            ${result.details?.score || result.details?.summary?.score || 'N/A'}%
+                                        </div>
+                                        <div style="color: #ffdd77; font-size: 14px; margin-top: 10px;">
+                                            ${result.message}
+                                        </div>
+                                    </div>
+                                `;
+                                
+                                // Adicionar detalhes se disponíveis
+                                if (result.details?.tests) {
+                                    const detailsDiv = document.createElement('div');
+                                    detailsDiv.style.marginTop = '15px';
+                                    
+                                    result.details.tests.forEach(test => {
+                                        const testDiv = document.createElement('div');
+                                        testDiv.style.cssText = `
+                                            padding: 8px;
+                                            margin: 5px 0;
+                                            background: rgba(0, 0, 0, 0.3);
+                                            border-radius: 5px;
+                                            border-left: 3px solid ${test.status === 'success' ? '#00ff9c' : test.status === 'warning' ? '#ffaa00' : '#ff5555'};
+                                            font-size: 12px;
+                                        `;
+                                        testDiv.innerHTML = `
+                                            <div style="color: #ffdd77;">
+                                                ${test.name}: ${test.message}
+                                            </div>
+                                        `;
+                                        detailsDiv.appendChild(testDiv);
+                                    });
+                                    
+                                    resultsDiv.appendChild(detailsDiv);
+                                }
+                            }
+                            
+                            // Atualizar status geral
+                            const overallStatus = panel.querySelector('#final-overall-status');
+                            if (overallStatus) {
+                                overallStatus.textContent = result.status === 'success' ? '✅ OK' : 
+                                                          result.status === 'warning' ? '⚠️ AVISOS' : '❌ PROBLEMAS';
+                                overallStatus.style.color = result.status === 'success' ? '#00ff9c' : 
+                                                          result.status === 'warning' ? '#ffaa00' : '#ff5555';
+                            }
+                            
+                            // Atualizar score
+                            const scoreSpan = panel.querySelector('#final-score');
+                            if (scoreSpan && result.details?.score) {
+                                scoreSpan.textContent = `${result.details.score}%`;
+                                scoreSpan.style.color = result.details.score >= 80 ? '#00ff9c' : 
+                                                      result.details.score >= 60 ? '#ffaa00' : '#ff5555';
+                            }
+                            
+                        } catch (error) {
+                            const resultsDiv = panel.querySelector('#final-results');
+                            if (resultsDiv) {
+                                resultsDiv.innerHTML = `
+                                    <div style="text-align: center; color: #ff5555;">
+                                        ❌ Erro: ${error.message}
+                                    </div>
+                                `;
+                            }
+                        } finally {
+                            btn.disabled = false;
+                            btn.textContent = originalText;
+                            
+                            // Restaurar status
+                            if (panel.querySelector('#final-status-indicator')) {
+                                panel.querySelector('#final-status-indicator').textContent = '✅ PRONTO';
+                                panel.querySelector('#final-status-indicator').style.background = '#ffcc00';
+                            }
+                        }
+                    });
+                }
+            };
+            
+            // Configurar todos os botões
+            setupButton('#final-check-now', finalVerificationTests.migrationFinalCheck);
+            setupButton('#final-check-files', finalVerificationTests.fileUsageChecker);
+            setupButton('#final-run-auto', finalVerificationTests.migrationAutoVerifier);
+            
+            // Botão de verificação completa final
+            const completeBtn = panel.querySelector('#final-run-complete');
+            if (completeBtn) {
+                completeBtn.addEventListener('click', async () => {
+                    completeBtn.disabled = true;
+                    completeBtn.textContent = 'VERIFICANDO...';
+                    
+                    // Atualizar status para "executando"
+                    if (panel.querySelector('#final-status-indicator')) {
+                        panel.querySelector('#final-status-indicator').textContent = '🔄 EXECUTANDO';
+                        panel.querySelector('#final-status-indicator').style.background = '#ffaa00';
+                    }
+                    
+                    const results = await this.runCompleteVerification();
+                    
+                    completeBtn.disabled = false;
+                    completeBtn.textContent = '🎯 VERIFICAÇÃO COMPLETA FINAL';
+                    
+                    // Mostrar resultados detalhados
+                    const resultsDiv = panel.querySelector('#final-results');
+                    if (resultsDiv) {
+                        resultsDiv.innerHTML = '';
+                        
+                        // Score geral
+                        const scoreDiv = document.createElement('div');
+                        scoreDiv.style.cssText = `
+                            text-align: center;
+                            margin-bottom: 15px;
+                            padding: 15px;
+                            background: rgba(0, 0, 0, 0.3);
+                            border-radius: 10px;
+                        `;
+                        
+                        scoreDiv.innerHTML = `
+                            <div style="font-size: 36px; color: ${results.score >= 80 ? '#00ff9c' : results.score >= 60 ? '#ffaa00' : '#ff5555'}; font-weight: bold;">
+                                ${results.score}%
+                            </div>
+                            <div style="color: #ffdd77; font-size: 14px; margin-top: 5px;">
+                                Score Final da Migração
+                            </div>
+                            <div style="color: #ffdd77; font-size: 12px; margin-top: 10px;">
+                                ${results.summary.passed}/${results.summary.total} testes passaram
+                            </div>
+                        `;
+                        
+                        resultsDiv.appendChild(scoreDiv);
+                        
+                        // Detalhes dos testes
+                        results.summary.tests.forEach(test => {
+                            const testDiv = document.createElement('div');
+                            testDiv.style.cssText = `
+                                padding: 10px;
+                                margin: 8px 0;
+                                background: rgba(0, 0, 0, 0.2);
+                                border-radius: 6px;
+                                border-left: 4px solid ${test.status === 'success' ? '#00ff9c' : test.status === 'warning' ? '#ffaa00' : '#ff5555'};
+                            `;
+                            
+                            testDiv.innerHTML = `
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="color: ${test.status === 'success' ? '#88ffaa' : test.status === 'warning' ? '#ffcc88' : '#ffaaaa'}; font-size: 13px;">
+                                        ${test.name}
+                                    </div>
+                                    <div style="color: ${test.status === 'success' ? '#00ff9c' : test.status === 'warning' ? '#ffaa00' : '#ff5555'}; font-size: 20px;">
+                                        ${test.status === 'success' ? '✅' : test.status === 'warning' ? '⚠️' : '❌'}
+                                    </div>
+                                </div>
+                                <div style="color: #ffdd77; font-size: 11px; margin-top: 5px;">
+                                    ${test.message}
+                                </div>
+                            `;
+                            
+                            resultsDiv.appendChild(testDiv);
+                        });
+                        
+                        // Recomendações
+                        if (results.score < 100) {
+                            const recDiv = document.createElement('div');
+                            recDiv.style.cssText = `
+                                margin-top: 20px;
+                                padding: 15px;
+                                background: rgba(255, 100, 100, 0.1);
+                                border-radius: 8px;
+                                border: 1px solid rgba(255, 100, 100, 0.3);
+                            `;
+                            
+                            recDiv.innerHTML = `
+                                <div style="color: #ff6464; font-weight: bold; margin-bottom: 8px; font-size: 14px;">
+                                    🔧 RECOMENDAÇÕES:
+                                </div>
+                                <div style="color: #ffaaaa; font-size: 12px;">
+                                    <div>• Complete a migração de todas as funções</div>
+                                    <div>• Verifique arquivos com padrões antigos</div>
+                                    <div>• Execute testes de performance</div>
+                                </div>
+                            `;
+                            
+                            resultsDiv.appendChild(recDiv);
+                        }
+                    }
+                    
+                    // Atualizar status geral
+                    const overallStatus = panel.querySelector('#final-overall-status');
+                    if (overallStatus) {
+                        overallStatus.textContent = results.overallStatus === 'success' ? '✅ OTIMIZADO' : 
+                                                  results.overallStatus === 'warning' ? '⚠️ PARCIAL' : '❌ PROBLEMAS';
+                        overallStatus.style.color = results.overallStatus === 'success' ? '#00ff9c' : 
+                                                  results.overallStatus === 'warning' ? '#ffaa00' : '#ff5555';
+                    }
+                    
+                    // Atualizar score
+                    const scoreSpan = panel.querySelector('#final-score');
+                    if (scoreSpan) {
+                        scoreSpan.textContent = `${results.score}%`;
+                        scoreSpan.style.color = results.score >= 80 ? '#00ff9c' : 
+                                              results.score >= 60 ? '#ffaa00' : '#ff5555';
+                    }
+                    
+                    // Restaurar status
+                    if (panel.querySelector('#final-status-indicator')) {
+                        panel.querySelector('#final-status-indicator').textContent = '✅ PRONTO';
+                        panel.querySelector('#final-status-indicator').style.background = '#ffcc00';
+                    }
+                });
+            }
+            
+            // Monitoramento automático
+            const monitorBtn = panel.querySelector('#final-toggle-monitoring');
+            if (monitorBtn) {
+                monitorBtn.addEventListener('click', () => {
+                    if (autoVerificationInterval) {
+                        this.stopAutoVerification();
+                        monitorBtn.textContent = '🔄 LIGAR';
+                        monitorBtn.style.background = 'rgba(255, 200, 0, 0.3)';
+                    } else {
+                        this.startAutoVerification(5);
+                        monitorBtn.textContent = '⏸️ PARAR';
+                        monitorBtn.style.background = 'rgba(0, 255, 0, 0.3)';
+                    }
+                });
+            }
+            
+            // Fechar e minimizar
+            panel.querySelector('.close-btn').addEventListener('click', () => {
+                panel.remove();
+                finalVerificationPanel = null;
+                if (autoVerificationInterval) {
+                    this.stopAutoVerification();
+                }
+            });
+            
+            panel.querySelector('.minimize-btn').addEventListener('click', function() {
+                const content = panel.children[1];
+                const isHidden = content.style.display === 'none';
+                content.style.display = isHidden ? 'flex' : 'none';
+                this.textContent = isHidden ? '−' : '+';
+            });
+            
+            // Arrastar
+            const header = panel.children[0];
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            header.addEventListener('mousedown', function(e) {
+                if (e.target.tagName === 'BUTTON') return;
+                
+                isDragging = true;
+                offsetX = e.clientX - panel.getBoundingClientRect().left;
+                offsetY = e.clientY - panel.getBoundingClientRect().top;
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+                e.preventDefault();
+            });
+            
+            function drag(e) {
+                if (!isDragging) return;
+                panel.style.left = (e.clientX - offsetX) + 'px';
+                panel.style.top = (e.clientY - offsetY) + 'px';
+            }
+            
+            function stopDrag() {
+                isDragging = false;
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+        },
+        
+        // Getter para testes
+        get tests() {
+            return finalVerificationTests;
+        }
+    };
+})();
+
+// ================== INTEGRAÇÃO COM O SISTEMA ==================
+
+// Inicializar quando carregar
+setTimeout(() => {
+    try {
+        MigrationFinalVerifier.registerTests();
+        
+        // Adicionar ao sistema de diagnóstico se existir
+        if (window.diagnostics) {
+            window.diagnostics.finalVerifier = MigrationFinalVerifier;
+            console.log('✅ Módulo de Verificação Final integrado ao sistema de diagnóstico');
+        }
+        
+        // Atalhos globais
+        window.MFV = MigrationFinalVerifier;
+        window.MigrationFinal = {
+            verify: () => MigrationFinalVerifier.runCompleteVerification(),
+            panel: () => MigrationFinalVerifier.createVerificationPanel(),
+            startMonitoring: () => MigrationFinalVerifier.startAutoVerification(),
+            stopMonitoring: () => MigrationFinalVerifier.stopAutoVerification(),
+            test: (testName) => {
+                const test = Object.values(MigrationFinalVerifier.tests).find(t => 
+                    t.id.includes(testName) || t.title.toLowerCase().includes(testName.toLowerCase())
+                );
+                if (test) return Promise.resolve(test.execute());
+                return Promise.resolve({status: 'error', message: 'Teste não encontrado'});
+            }
+        };
+        
+        // Botão flutuante amarelo
+        if (!document.getElementById('mfv-float-button')) {
+            const floatBtn = document.createElement('button');
+            floatBtn.id = 'mfv-float-button';
+            floatBtn.innerHTML = '🎯';
+            floatBtn.title = 'Verificação Final da Migração';
+            floatBtn.style.cssText = `
+                position: fixed;
+                bottom: 400px;
+                right: 20px;
+                z-index: 99995;
+                background: linear-gradient(135deg, #ffcc00, #ffaa00);
+                color: #2a2a00;
+                border: none;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+                cursor: pointer;
+                box-shadow: 0 4px 15px rgba(255, 204, 0, 0.4);
+                transition: all 0.3s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            
+            floatBtn.addEventListener('click', () => {
+                MigrationFinalVerifier.createVerificationPanel();
+            });
+            
+            document.body.appendChild(floatBtn);
+            console.log('✅ Botão flutuante de verificação final criado');
+        }
+        
+        // Executar verificação automática inicial (após 3 segundos como solicitado)
+        setTimeout(() => {
+            if (typeof SharedCore !== 'undefined') {
+                console.group('🎯 VERIFICAÇÃO FINAL DA MIGRAÇÃO (3s)');
+                console.log('🔍 Testando funções críticas após migração...');
+                
+                // Teste rápido das funções mais críticas
+                const quickTests = [
+                    { name: 'SharedCore disponível', test: () => typeof SharedCore !== 'undefined', expected: true },
+                    { name: 'stringSimilarity', test: () => typeof SharedCore.stringSimilarity === 'function', expected: true },
+                    { name: 'runLowPriority', test: () => typeof SharedCore.runLowPriority === 'function', expected: true },
+                    { name: 'formatPrice', test: () => typeof SharedCore.formatPrice === 'function', expected: true }
+                ];
+                
+                let passed = 0;
+                quickTests.forEach(test => {
+                    const result = test.test();
+                    const status = result === test.expected;
+                    console.log(`${status ? '✅' : '❌'} ${test.name}: ${status ? 'OK' : 'FALHOU'}`);
+                    if (status) passed++;
+                });
+                
+                console.log(`📊 ${passed}/${quickTests.length} funções críticas disponíveis`);
+                
+                if (passed === quickTests.length) {
+                    console.log('✅ Migração aparentemente bem-sucedida!');
+                } else {
+                    console.warn('⚠️  Algumas funções críticas não estão disponíveis');
+                }
+                
+                console.groupEnd();
+            } else {
+                console.warn('⚠️ SharedCore não disponível para verificação final');
+            }
+        }, 3000);
+        
+        console.log('%c🎯 MÓDULO DE VERIFICAÇÃO FINAL DA MIGRAÇÃO PRONTO', 
+                    'color: #ffcc00; font-weight: bold; font-size: 14px; background: #2a2a00; padding: 5px;');
+        console.log('📋 Comandos disponíveis:');
+        console.log('• MigrationFinal.verify() - Executar verificação completa');
+        console.log('• MigrationFinal.panel() - Criar painel de verificação');
+        console.log('• MigrationFinal.startMonitoring() - Iniciar monitoramento (5 min)');
+        console.log('• MFV.panel() - Atalho rápido');
+        console.log('• Botão 🎯 amarelo no canto inferior direito');
+        
+    } catch (error) {
+        console.error('❌ Erro ao inicializar módulo de verificação final:', error);
+    }
+}, 1500);
+
     // Exportar funções globais
     window.Diagnostics = {
         analyzeSystem,
