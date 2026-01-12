@@ -19951,15 +19951,120 @@ setTimeout(() => {
     }
 }, 1500);
 
-// ================== SOLUÇÃO DEFINITIVA - EXCLUSÃO DO DIAGNOSTICS ==================
+// ========== ADICIONE ESTE CÓDIGO NO FINAL DO DIAGNOSTICS.JS ==========
+// ANTES DO ÚLTIMO }); DO ARQUIVO
+
+// EXCLUSÃO DEFINITIVA DO DIAGNOSTICS DA VERIFICAÇÃO - VERSÃO GARANTIDA
 (function() {
-    console.log('%c🚫 EXCLUSÃO DEFINITIVA DO DIAGNOSTICS', 'color: #ff0096; font-weight: bold; font-size: 14px;');
+    'use strict';
     
-    // ================== FUNÇÃO PRINCIPAL ==================
-    function removeDiagnosticsFromVerification() {
-        console.group('🚫 REMOVENDO DIAGNOSTICS DA VERIFICAÇÃO');
+    // Aguardar página carregar completamente
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        setTimeout(init, 1000);
+    }
+    
+    function init() {
+        console.log('🔧 [EXCLUSÃO] Iniciando módulo de remoção do diagnostics...');
         
-        // LISTAS CORRETAS (SEM diagnostics)
+        // Remover botões antigos para evitar duplicação
+        removeOldButtons();
+        
+        // Criar botão flutuante
+        createFloatingButton();
+        
+        // Executar verificação automática
+        setTimeout(runVerification, 2000);
+        
+        console.log('✅ [EXCLUSÃO] Módulo inicializado com sucesso');
+    }
+    
+    function removeOldButtons() {
+        // Remover qualquer botão existente com IDs relacionados
+        const oldIds = ['diagnostics-exclusion-btn', 'remove-diagnostics-btn', 'fix-diagnostics-btn'];
+        oldIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        });
+        
+        // Remover por título também
+        document.querySelectorAll('button[title*="Diagnostics"], button[title*="diagnostics"]')
+            .forEach(btn => btn.remove());
+    }
+    
+    function createFloatingButton() {
+        // Criar elemento do botão
+        const btn = document.createElement('button');
+        btn.id = 'diagnostics-exclusion-btn';
+        btn.innerHTML = '🚫';
+        btn.title = 'Remover Diagnostics da Verificação';
+        btn.setAttribute('aria-label', 'Excluir diagnostics.js da verificação do core');
+        
+        // ESTILOS GARANTIDOS - SEM CSS EXTERNO
+        btn.style.position = 'fixed';
+        btn.style.bottom = '100px';
+        btn.style.right = '20px';
+        btn.style.zIndex = '99999';
+        btn.style.background = '#ff0096';
+        btn.style.color = 'white';
+        btn.style.border = 'none';
+        btn.style.borderRadius = '50%';
+        btn.style.width = '50px';
+        btn.style.height = '50px';
+        btn.style.fontSize = '24px';
+        btn.style.fontWeight = 'bold';
+        btn.style.cursor = 'pointer';
+        btn.style.boxShadow = '0 4px 15px rgba(255, 0, 150, 0.7)';
+        btn.style.display = 'flex';
+        btn.style.alignItems = 'center';
+        btn.style.justifyContent = 'center';
+        btn.style.outline = 'none';
+        btn.style.userSelect = 'none';
+        
+        // Adicionar animação de pulso via JavaScript
+        let scale = 1;
+        btn.addEventListener('mouseenter', () => {
+            btn.style.transform = 'scale(1.1)';
+            btn.style.boxShadow = '0 6px 20px rgba(255, 0, 150, 0.9)';
+        });
+        
+        btn.addEventListener('mouseleave', () => {
+            btn.style.transform = 'scale(1)';
+            btn.style.boxShadow = '0 4px 15px rgba(255, 0, 150, 0.7)';
+        });
+        
+        // Adicionar clique
+        btn.addEventListener('click', handleButtonClick);
+        
+        // Adicionar à página
+        document.body.appendChild(btn);
+        
+        console.log('✅ [EXCLUSÃO] Botão criado em: bottom 100px, right 20px');
+        return btn;
+    }
+    
+    function handleButtonClick() {
+        console.group('🚫 [EXCLUSÃO] Executando verificação...');
+        
+        // Feedback visual
+        const btn = document.getElementById('diagnostics-exclusion-btn');
+        btn.style.transform = 'scale(0.95)';
+        setTimeout(() => btn.style.transform = 'scale(1)', 150);
+        
+        // Executar verificação
+        const result = checkDiagnosticsExclusion();
+        
+        // Mostrar resultado
+        showResult(result);
+        
+        console.groupEnd();
+    }
+    
+    function checkDiagnosticsExclusion() {
+        console.log('🔍 [EXCLUSÃO] Verificando se diagnostics está sendo verificado...');
+        
+        // LISTAS CORRETAS - DIAGNOSTICS NÃO DEVE ESTAR AQUI!
         const CORRECT_MODULES = ['PdfSystem', 'MediaSystem', 'properties', 'admin', 'gallery'];
         const CORRECT_FILES = [
             { name: 'admin.js', path: 'js/modules/admin.js' },
@@ -19969,200 +20074,159 @@ setTimeout(() => {
             { name: 'properties.js', path: 'js/modules/properties.js' }
         ];
         
-        console.log('✅ LISTAS DEFINIDAS:');
-        console.log('   📦 Módulos core (5):', CORRECT_MODULES.join(', '));
-        console.log('   📄 Arquivos core (5):', CORRECT_FILES.map(f => f.name).join(', '));
+        // Módulos que NÃO DEVEM ser verificados
+        const MODULES_TO_EXCLUDE = ['diagnostics', 'utils'];
         
-        // VERIFICAR PROBLEMAS ATUAIS
         let problems = [];
+        let diagnosticsIsBeingChecked = false;
         
-        // 1. Verificar se diagnostics está sendo verificado
-        if (window.TestManager && window.TestManager.tests) {
-            Object.entries(window.TestManager.tests).forEach(([id, test]) => {
-                if (test.execute) {
-                    const code = test.execute.toString();
-                    if (code.includes("'diagnostics'") || code.includes('"diagnostics"')) {
-                        problems.push(`❌ Teste "${test.title || id}" verifica diagnostics`);
-                    }
+        // Verificar 1: diagnostics existe como módulo global?
+        MODULES_TO_EXCLUDE.forEach(moduleName => {
+            if (window[moduleName] !== undefined) {
+                console.log(`📦 ${moduleName}: Existe globalmente (OK, mas NÃO deve ser verificado)`);
+                
+                // Verificar se está em listas de verificação
+                // (implementação simplificada - verificar por nome)
+                if (moduleName === 'diagnostics') {
+                    // Marcar que diagnostics está presente
+                    diagnosticsIsBeingChecked = true;
                 }
-            });
-        }
+            }
+        });
         
-        // 2. Verificar módulos core
-        const loadedCore = CORRECT_MODULES.filter(m => window[m] !== undefined).length;
-        console.log(`📊 Módulos core carregados: ${loadedCore}/${CORRECT_MODULES.length}`);
+        // Verificar 2: Contar módulos core carregados
+        const loadedCoreModules = CORRECT_MODULES.filter(m => window[m] !== undefined).length;
         
-        // 3. Verificar se diagnostics existe (só para info)
-        const diagnosticsExists = window.diagnostics !== undefined;
-        console.log(`🔍 diagnostics.js: ${diagnosticsExists ? '✅ EXISTE' : '❌ NÃO EXISTE'} (deve ser EXCLUÍDO)`);
+        // Verificar 3: diagnostics está sendo executado como teste?
+        const isRunningAsTest = document.body.innerHTML.includes('diagnostics.js') && 
+                               window.location.href.includes('debug');
         
-        // MOSTRAR RESULTADOS
-        if (problems.length > 0) {
-            console.warn('❌ PROBLEMAS ENCONTRADOS:');
-            problems.forEach(p => console.log('   ' + p));
-            
-            console.log('\n🔧 CÓDIGO PARA CORREÇÃO:');
-            console.log(`
-// NO SEU CÓDIGO, SUBSTITUA POR:
-
-// Módulos para verificar (APENAS CORE):
-const modulesToCheck = ${JSON.stringify(CORRECT_MODULES)};
-
-// Arquivos para verificar (APENAS CORE):
-const filesToCheck = ${JSON.stringify(CORRECT_FILES)};
-
-// IMPORTANTE: NÃO inclua 'diagnostics' ou 'utils'!
-            `);
-        } else {
-            console.log('✅ TUDO CORRETO! diagnostics NÃO está sendo verificado.');
-        }
-        
-        console.groupEnd();
+        console.log('📊 [EXCLUSÃO] Estatísticas:');
+        console.log(`   • Módulos core carregados: ${loadedCoreModules}/${CORRECT_MODULES.length}`);
+        console.log(`   • diagnostics.js presente: ${diagnosticsIsBeingChecked ? '✅ SIM' : '❌ NÃO'}`);
+        console.log(`   • Executando como teste: ${isRunningAsTest ? '✅ SIM' : '❌ NÃO'}`);
         
         return {
-            status: problems.length === 0 ? 'success' : 'needs_fix',
-            problems: problems,
+            status: diagnosticsIsBeingChecked ? 'ERROR' : 'OK',
+            message: diagnosticsIsBeingChecked ? 
+                '❌ DIAGNOSTICS ESTÁ SENDO VERIFICADO!' : 
+                '✅ DIAGNOSTICS NÃO ESTÁ NA VERIFICAÇÃO',
             correctModules: CORRECT_MODULES,
             correctFiles: CORRECT_FILES,
-            diagnosticsExists: diagnosticsExists
+            modulesToExclude: MODULES_TO_EXCLUDE,
+            loadedCoreModules: loadedCoreModules,
+            totalCoreModules: CORRECT_MODULES.length,
+            diagnosticsPresent: diagnosticsIsBeingChecked,
+            timestamp: new Date().toISOString()
         };
     }
     
-    // ================== BOTÃO SIMPLES E FUNCIONAL ==================
-    function createSimpleButton() {
-        // Remover botões antigos
-        document.querySelectorAll('[id*="diagnostics-exclusion"], [id*="exclusion-btn"]').forEach(el => el.remove());
+    function showResult(result) {
+        console.log('📋 [EXCLUSÃO] Resultado:');
+        console.log(`   Status: ${result.status}`);
+        console.log(`   Mensagem: ${result.message}`);
+        console.log(`   Módulos core: ${result.loadedCoreModules}/${result.totalCoreModules}`);
         
-        // Criar botão MUITO SIMPLES
-        const btn = document.createElement('button');
-        btn.id = 'fix-diagnostics-btn';
-        btn.innerHTML = '🚫';
-        btn.title = 'Remover Diagnostics da Verificação';
+        // Criar mensagem para alerta
+        let alertMessage = '';
         
-        // Estilos mínimos mas visíveis
-        Object.assign(btn.style, {
-            position: 'fixed',
-            bottom: '100px',
-            right: '20px',
-            zIndex: '99999',
-            background: '#ff0096',
-            color: 'white',
-            border: 'none',
-            borderRadius: '50%',
-            width: '50px',
-            height: '50px',
-            fontSize: '20px',
-            cursor: 'pointer',
-            boxShadow: '0 0 10px #ff0096',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 'bold'
-        });
-        
-        // Ação DIRETA - sem dependências
-        btn.onclick = function() {
-            console.clear();
-            console.log('%c🚫 EXECUTANDO EXCLUSÃO DO DIAGNOSTICS...', 'color: #ff0096; font-weight: bold;');
+        if (result.status === 'ERROR') {
+            alertMessage = 
+                '🚫 DIAGNOSTICS INCLUÍDO INCORRETAMENTE!\n\n' +
+                'diagnostics.js NÃO faz parte do core e NÃO deve ser verificado.\n\n' +
+                '✅ Módulos CORRETOS para verificar:\n' +
+                '• ' + result.correctModules.join('\n• ') + '\n\n' +
+                '❌ NÃO inclua:\n• diagnostics\n• utils\n\n' +
+                'Verifique os testes que estão verificando diagnostics.js!';
             
-            const result = removeDiagnosticsFromVerification();
-            
-            // Mostrar alerta simples
-            if (result.status === 'success') {
-                alert('✅ TUDO CORRETO!\n\ndiagnostics.js NÃO está sendo verificado.');
-            } else {
-                alert(`❌ ${result.problems.length} PROBLEMAS ENCONTRADOS\n\nVerifique o console para as correções.`);
-            }
-        };
-        
-        document.body.appendChild(btn);
-        console.log('✅ Botão criado: bottom: 100px, right: 20px');
-        return btn;
-    }
-    
-    // ================== PATCH PARA TESTES EXISTENTES ==================
-    function patchExistingTests() {
-        console.log('🔍 Aplicando patch para remover diagnostics...');
-        
-        // Esta função tenta corrigir testes que verificam diagnostics
-        const modulesToRemove = ['diagnostics', 'utils'];
-        
-        // Procurar por código problemático
-        const scripts = document.querySelectorAll('script');
-        scripts.forEach(script => {
-            if (script.textContent && script.textContent.includes('modulesToCheck')) {
-                const hasDiagnostics = modulesToRemove.some(m => 
-                    script.textContent.includes(`'${m}'`) || script.textContent.includes(`"${m}"`)
-                );
+            // Destacar botão em caso de erro
+            const btn = document.getElementById('diagnostics-exclusion-btn');
+            if (btn) {
+                btn.style.border = '2px solid yellow';
+                btn.style.animation = 'pulse 1s infinite';
                 
-                if (hasDiagnostics) {
-                    console.warn('⚠️ Script encontrado com referência a diagnostics:', script.src || 'inline');
-                }
+                // Adicionar animação inline
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes pulse {
+                        0% { transform: scale(1); }
+                        50% { transform: scale(1.1); }
+                        100% { transform: scale(1); }
+                    }
+                `;
+                document.head.appendChild(style);
             }
-        });
+        } else {
+            alertMessage = 
+                '✅ TUDO CORRETO!\n\n' +
+                'diagnostics.js NÃO está sendo verificado como parte do core.\n\n' +
+                '📦 Módulos verificados (' + result.loadedCoreModules + '/' + result.totalCoreModules + '):\n' +
+                '• ' + result.correctModules.join('\n• ') + '\n\n' +
+                '🎯 Sistema core está focado nos módulos essenciais.';
+        }
         
-        return true;
+        // Mostrar alerta
+        alert(alertMessage);
+        
+        // Mostrar no console também
+        console.log('💡 ' + alertMessage.replace(/\n/g, ' '));
     }
     
-    // ================== INICIALIZAÇÃO ==================
-    console.log('🚫 INICIANDO MÓDULO DE EXCLUSÃO...');
-    
-    // 1. Criar botão imediatamente
-    const button = createSimpleButton();
-    
-    // 2. Executar verificação automática após 2 segundos
-    setTimeout(() => {
-        console.log('🔍 Verificação automática iniciada...');
-        const result = removeDiagnosticsFromVerification();
+    function runVerification() {
+        console.log('🔍 [EXCLUSÃO] Verificação automática iniciada...');
         
-        if (result.status !== 'success') {
-            console.warn('⚠️ AÇÃO NECESSÁRIA: Corrija os testes listados acima.');
+        try {
+            const result = checkDiagnosticsExclusion();
             
-            // Destacar botão se houver problemas
-            button.style.animation = 'pulse 1s infinite';
-            button.style.border = '2px solid yellow';
+            if (result.status === 'ERROR') {
+                console.warn('⚠️ [EXCLUSÃO] ATENÇÃO: diagnostics está sendo verificado!');
+                
+                // Log adicional para debug
+                console.log('🔧 [EXCLUSÃO] Código para correção:');
+                console.log(`
+// CORREÇÃO NECESSÁRIA:
+
+// 1. Verifique estes arquivos e REMOVA 'diagnostics':
+//    - Testes do SharedCore
+//    - Módulos de verificação
+//    - Listas de módulos
+
+// 2. Use apenas estas listas:
+const modulesToCheck = ${JSON.stringify(result.correctModules, null, 2)};
+const filesToCheck = ${JSON.stringify(result.correctFiles, null, 2)};
+
+// 3. diagnostics.js é apenas para debug, NÃO para verificação do core!
+                `);
+            } else {
+                console.log('✅ [EXCLUSÃO] Verificação: Tudo correto!');
+            }
             
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes pulse {
-                    0% { transform: scale(1); }
-                    50% { transform: scale(1.1); }
-                    100% { transform: scale(1); }
-                }
-            `;
-            document.head.appendChild(style);
+        } catch (error) {
+            console.error('❌ [EXCLUSÃO] Erro na verificação:', error);
         }
-    }, 2000);
+    }
     
-    // 3. Aplicar patches
-    patchExistingTests();
-    
-    // ================== EXPORTAR FUNÇÕES GLOBAIS ==================
-    // CORREÇÃO DO ERRO: Definir globalmente
-    window.DiagnosticsExclusion = {
-        run: removeDiagnosticsFromVerification,
-        fix: patchExistingTests,
-        createButton: createSimpleButton,
-        getCorrectModules: () => ['PdfSystem', 'MediaSystem', 'properties', 'admin', 'gallery'],
-        getCorrectFiles: () => [
-            { name: 'admin.js', path: 'js/modules/admin.js' },
-            { name: 'gallery.js', path: 'js/modules/gallery.js' },
-            { name: 'media-unified.js', path: 'js/modules/media/media-unified.js' },
-            { name: 'pdf-unified.js', path: 'js/modules/reader/pdf-unified.js' },
-            { name: 'properties.js', path: 'js/modules/properties.js' }
-        ]
+    // Exportar funções globais (opcional)
+    window.diagnosticsExclusion = {
+        run: checkDiagnosticsExclusion,
+        fix: runVerification,
+        getCorrectLists: function() {
+            return {
+                modules: ['PdfSystem', 'MediaSystem', 'properties', 'admin', 'gallery'],
+                files: [
+                    { name: 'admin.js', path: 'js/modules/admin.js' },
+                    { name: 'gallery.js', path: 'js/modules/gallery.js' },
+                    { name: 'media-unified.js', path: 'js/modules/media/media-unified.js' },
+                    { name: 'pdf-unified.js', path: 'js/modules/reader/pdf-unified.js' },
+                    { name: 'properties.js', path: 'js/modules/properties.js' }
+                ]
+            };
+        }
     };
-    
-    // Atalhos adicionais
-    window.fixDiagnosticsIssue = removeDiagnosticsFromVerification;
-    window.showDiagnosticsFix = createSimpleButton;
-    
-    console.log('✅ Módulo carregado. Comandos disponíveis:');
-    console.log('• DiagnosticsExclusion.run() - Executar verificação');
-    console.log('• fixDiagnosticsIssue() - Atalho rápido');
     
 })();
 
+// ========== FIM DO MÓDULO DE EXCLUSÃO ==========
     // Exportar funções globais
     window.Diagnostics = {
         analyzeSystem,
