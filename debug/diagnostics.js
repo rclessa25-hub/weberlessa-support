@@ -19951,341 +19951,168 @@ setTimeout(() => {
     }
 }, 1500);
 
-// ================== CORREÇÃO ESPECÍFICA: REMOVER DIAGNOSTICS.JS ==================
-const DiagnosticsExclusionCorrector = (function() {
-    // Teste único e específico
-    const exclusionTest = {
-        id: 'diagnostics-exclusion-fix',
-        title: '🚫 REMOVER DIAGNOSTICS DA VERIFICAÇÃO',
-        description: 'Remove diagnostics.js da lista de módulos verificados',
-        type: 'correction',
-        icon: '🚫',
-        category: 'cleanup',
-        critical: true,
-        execute: function() {
-            console.group('🚫 CORREÇÃO: REMOVENDO DIAGNOSTICS.JS DA VERIFICAÇÃO');
-            
-            console.log('🔍 Procurando por referências a diagnostics.js nos testes...');
-            
-            // Lista de módulos que DEVEM ser verificados (SEM diagnostics)
-            const correctModules = [
-                'PdfSystem',
-                'MediaSystem', 
-                'properties',
-                'admin',
-                'gallery'
-            ];
-            
-            // Lista de arquivos que DEVEM ser verificados (SEM diagnostics.js)
-            const correctFiles = [
-                { name: 'admin.js', path: 'js/modules/admin.js' },
-                { name: 'gallery.js', path: 'js/modules/gallery.js' },
-                { name: 'media-unified.js', path: 'js/modules/media/media-unified.js' },
-                { name: 'pdf-unified.js', path: 'js/modules/reader/pdf-unified.js' },
-                { name: 'properties.js', path: 'js/modules/properties.js' }
-            ];
-            
-            console.log('✅ LISTAS CORRETAS DEFINIDAS:');
-            console.log(`   📦 Módulos principais: ${correctModules.length}`);
-            console.log(`   📄 Arquivos principais: ${correctFiles.length}`);
-            
-            // Verificar se há referências incorretas
-            let foundDiagnosticsReferences = false;
-            
-            // Verificar módulos globais
-            const incorrectModules = ['diagnostics', 'utils'].filter(m => correctModules.includes(m));
-            
-            // Verificar nos testes existentes
-            if (window.TestManager && window.TestManager.tests) {
-                const tests = Object.values(window.TestManager.tests);
-                
-                tests.forEach(test => {
-                    try {
-                        const testCode = test.execute ? test.execute.toString() : '';
-                        if (testCode.includes('diagnostics') || testCode.includes("'diagnostics'")) {
-                            console.warn(`⚠️  Teste "${test.title}" contém referência a diagnostics`);
-                            foundDiagnosticsReferences = true;
-                        }
-                    } catch (e) {
-                        // Ignorar erros na análise
-                    }
-                });
-            }
-            
-            // Verificar no módulo de migração SharedCore
-            if (window.SCMigration && window.SCMigration.tests) {
-                const migrationTests = window.SCMigration.tests;
-                Object.values(migrationTests).forEach(test => {
-                    try {
-                        const testCode = test.execute ? test.execute.toString() : '';
-                        if (testCode.includes("'diagnostics'") || testCode.includes('"diagnostics"')) {
-                            console.warn(`⚠️  Teste de migração contém referência a diagnostics`);
-                            foundDiagnosticsReferences = true;
-                        }
-                    } catch (e) {
-                        // Ignorar
-                    }
-                });
-            }
-            
-            console.log('\n📊 RESULTADO DA ANÁLISE:');
-            
-            if (foundDiagnosticsReferences || incorrectModules.length > 0) {
-                console.log('❌ PROBLEMAS ENCONTRADOS:');
-                
-                if (incorrectModules.length > 0) {
-                    console.log(`   • diagnostics está na lista de módulos verificados`);
-                }
-                
-                if (foundDiagnosticsReferences) {
-                    console.log(`   • Referências a diagnostics encontradas em testes`);
-                }
-                
-                console.log('\n🔧 CORREÇÕES APLICADAS:');
-                console.log(`   1. Removido 'diagnostics' da lista de módulos principais`);
-                console.log(`   2. Removido 'diagnostics.js' da lista de arquivos`);
-                console.log(`   3. Mantidos apenas ${correctModules.length} módulos do core`);
-                
-                // Criar patch para correção
-                const patchCode = `
-// ========== PATCH: REMOVER DIAGNOSTICS DA VERIFICAÇÃO ==========
-// Adicionar este código ao início do seu módulo de verificação
+// ================== CORREÇÃO DO ÍCONE FLUTUANTE ==================
 
-// CORREÇÃO 1: Atualizar lista de módulos
-const modulesToCheck = ${JSON.stringify(correctModules, null, 2)};
+// 1. PRIMEIRO, REMOVA QUALQUER BOTÃO EXISTENTE (se houver)
+const existingFloatBtn = document.getElementById('exclusion-float-button');
+if (existingFloatBtn) {
+    existingFloatBtn.remove();
+}
 
-// CORREÇÃO 2: Atualizar lista de arquivos  
-const filesToCheck = ${JSON.stringify(correctFiles, null, 2)};
-
-console.log('✅ diagnostics.js removido da verificação do SharedCore');
-console.log('🎯 Agora verificando apenas módulos do core:');
-modulesToCheck.forEach((module, i) => console.log(\`   \${i+1}. \${module}\`));
+// 2. CRIAR BOTÃO FLUTUANTE VISÍVEL
+const floatBtn = document.createElement('button');
+floatBtn.id = 'exclusion-float-button';
+floatBtn.innerHTML = '🚫';
+floatBtn.title = 'Excluir Diagnostics da Verificação';
+floatBtn.style.cssText = `
+    position: fixed;
+    bottom: 520px;  // ABAIXO dos outros botões
+    right: 20px;
+    z-index: 99993;
+    background: linear-gradient(135deg, #ff0096, #cc0066);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(255, 0, 150, 0.5);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1 !important;
+    visibility: visible !important;
 `;
-                
-                console.log('\n📝 PATCH PARA APLICAÇÃO MANUAL:');
-                console.log(patchCode);
-                
-            } else {
-                console.log('✅ NENHUMA REFERÊNCIA INCORRETA ENCONTRADA!');
-                console.log('   • diagnostics.js não está sendo verificado');
-                console.log('   • Apenas módulos do core estão na lista');
-            }
-            
-            // Verificar estado atual
-            console.log('\n🔍 VERIFICAÇÃO ATUAL DOS MÓDULOS:');
-            
-            let loadedCoreModules = 0;
-            correctModules.forEach(moduleName => {
-                const isLoaded = window[moduleName] !== undefined;
-                console.log(`   ${isLoaded ? '✅' : '🚫'} ${moduleName}: ${isLoaded ? 'Carregado' : 'Não carregado'}`);
-                if (isLoaded) loadedCoreModules++;
-            });
-            
-            // Verificar diagnostics separadamente
-            const diagnosticsLoaded = window.diagnostics !== undefined;
-            console.log(`\n📊 diagnostics.js: ${diagnosticsLoaded ? '✅ Carregado (mas NÃO deve ser verificado)' : '🚫 Não carregado'}`);
-            
-            console.log(`\n📈 ESTATÍSTICAS:`);
-            console.log(`   📦 Módulos core carregados: ${loadedCoreModules}/${correctModules.length}`);
-            console.log(`   🚫 diagnostics.js: ${diagnosticsLoaded ? 'PRESENTE' : 'AUSENTE'} (excluído da verificação)`);
-            console.log(`   🎯 Foco correto: ${loadedCoreModules > 0 ? '✅' : '❌'} (apenas módulos do core)`);
-            
-            console.groupEnd();
-            
-            return {
-                status: foundDiagnosticsReferences ? 'warning' : 'success',
-                message: foundDiagnosticsReferences ? 
-                    '⚠️  REFERÊNCIAS A DIAGNOSTICS ENCONTRADAS' : 
-                    '✅ DIAGNOSTICS EXCLUÍDO DA VERIFICAÇÃO',
-                details: {
-                    correctModules: correctModules,
-                    correctFiles: correctFiles,
-                    foundDiagnosticsReferences: foundDiagnosticsReferences,
-                    loadedCoreModules: loadedCoreModules,
-                    totalCoreModules: correctModules.length,
-                    diagnosticsLoaded: diagnosticsLoaded,
-                    patchCode: foundDiagnosticsReferences ? patchCode : null,
-                    timestamp: new Date().toISOString()
-                }
-            };
-        }
-    };
+
+// 3. ADICIONAR ANIMAÇÃO DE PULSO
+const pulseStyle = document.createElement('style');
+pulseStyle.textContent = `
+    @keyframes pulse-exclusion {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 150, 0.7); }
+        70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 0, 150, 0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 150, 0); }
+    }
+    #exclusion-float-button {
+        animation: pulse-exclusion 2s infinite;
+    }
+`;
+document.head.appendChild(pulseStyle);
+
+// 4. FUNÇÃO PARA EXECUTAR A CORREÇÃO
+floatBtn.addEventListener('click', function() {
+    console.group('🚫 EXECUTANDO CORREÇÃO DO DIAGNOSTICS');
     
-    // Painel simples
-    let exclusionPanel = null;
+    // Listas CORRETAS (SEM diagnostics)
+    const CORRECT_MODULES = ['PdfSystem', 'MediaSystem', 'properties', 'admin', 'gallery'];
+    const CORRECT_FILES = [
+        { name: 'admin.js', path: 'js/modules/admin.js' },
+        { name: 'gallery.js', path: 'js/modules/gallery.js' },
+        { name: 'media-unified.js', path: 'js/modules/media/media-unified.js' },
+        { name: 'pdf-unified.js', path: 'js/modules/reader/pdf-unified.js' },
+        { name: 'properties.js', path: 'js/modules/properties.js' }
+    ];
     
-    return {
-        // Registrar teste
-        registerTest: function() {
-            if (typeof TestManager !== 'undefined' && TestManager.registerTest) {
-                const existingTest = TestManager.getTest ? TestManager.getTest(exclusionTest.id) : null;
-                if (!existingTest) {
-                    TestManager.registerTest(exclusionTest);
-                    console.log('✅ Teste de exclusão do diagnostics registrado');
+    console.log('✅ DEFININDO LISTAS CORRETAS (SEM diagnostics):');
+    console.log('   📦 Módulos core:', CORRECT_MODULES);
+    console.log('   📄 Arquivos core:', CORRECT_FILES.map(f => f.name));
+    
+    // Verificar se há referências a diagnostics
+    let foundProblems = false;
+    const problemTests = [];
+    
+    // Verificar no TestManager
+    if (window.TestManager && window.TestManager.tests) {
+        Object.values(window.TestManager.tests).forEach(test => {
+            if (test.execute) {
+                const code = test.execute.toString();
+                if (code.includes("'diagnostics'") || code.includes('"diagnostics"')) {
+                    problemTests.push(test.title || test.id);
+                    foundProblems = true;
                 }
             }
-        },
-        
-        // Executar correção
-        runExclusionFix: function() {
-            return exclusionTest.execute();
-        },
-        
-        // Criar painel simples
-        createExclusionPanel: function() {
-            if (exclusionPanel && document.body.contains(exclusionPanel)) {
-                exclusionPanel.style.display = 'flex';
-                return exclusionPanel;
-            }
-            
-            const panel = document.createElement('div');
-            panel.id = 'exclusion-panel-' + Date.now();
-            panel.style.cssText = `
-                position: fixed;
-                top: 300px;
-                left: 950px;
-                width: 450px;
-                height: 500px;
-                background: linear-gradient(135deg, #4d002a, #660044);
-                border: 2px solid #ff0096;
-                border-radius: 10px;
-                z-index: 10000;
-                box-shadow: 0 0 20px rgba(255, 0, 150, 0.3);
-                font-family: 'Segoe UI', monospace;
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-            `;
-            
-            panel.innerHTML = `
-                <div style="background: linear-gradient(90deg, rgba(255, 0, 150, 0.2), rgba(255, 100, 200, 0.1));
-                            padding: 15px;
-                            border-bottom: 1px solid rgba(255, 0, 150, 0.3);
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;">
-                    <span style="color: #ff0096; font-weight: bold; font-size: 14px;">🚫 EXCLUIR DIAGNOSTICS</span>
-                    <button class="close-btn" style="background: #ff5555; color: white; border: none; width: 24px; height: 24px; border-radius: 4px; cursor: pointer;">×</button>
-                </div>
-                
-                <div style="flex: 1; padding: 20px; overflow-y: auto;">
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <div style="font-size: 32px; color: #ff0096;">🚫</div>
-                        <div style="color: #ff0096; font-weight: bold; font-size: 16px; margin: 10px 0;">
-                            EXCLUIR DIAGNOSTICS.JS
-                        </div>
-                        <div style="color: #ff88cc; font-size: 12px;">
-                            Remove módulo auxiliar da verificação do core
-                        </div>
-                    </div>
-                    
-                    <div style="background: rgba(255, 0, 150, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                        <div style="color: #ff0096; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
-                            📋 PROBLEMA IDENTIFICADO:
-                        </div>
-                        <div style="color: #ff88cc; font-size: 12px;">
-                            O módulo <strong>diagnostics.js</strong> está sendo verificado como parte do core,<br>
-                            mas ele é apenas uma ferramenta auxiliar de desenvolvimento.
-                        </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 20px;">
-                        <div style="color: #ff0096; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
-                            🎯 SOLUÇÃO:
-                        </div>
-                        <div style="color: #ff88cc; font-size: 12px; margin-bottom: 15px;">
-                            Remover 'diagnostics' da lista de módulos verificados,<br>
-                            mantendo apenas os módulos reais do sistema.
-                        </div>
-                        <button id="run-exclusion-fix" style="width: 100%; background: linear-gradient(135deg, #ff0096, #cc0066); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold;">
-                            🔧 EXECUTAR CORREÇÃO
-                        </button>
-                    </div>
-                    
-                    <div id="exclusion-results" style="min-height: 100px; background: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 15px;">
-                        <div style="color: #ff88cc; text-align: center; padding: 20px;">
-                            Clique no botão para executar a correção
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="background: rgba(255, 0, 150, 0.1); padding: 10px; border-top: 1px solid rgba(255, 0, 150, 0.3); font-size: 10px; color: #ff88cc; text-align: center;">
-                    Módulos core: PdfSystem, MediaSystem, properties, admin, gallery
-                </div>
-            `;
-            
-            document.body.appendChild(panel);
-            exclusionPanel = panel;
-            
-            // Event listeners
-            panel.querySelector('.close-btn').addEventListener('click', () => {
-                panel.remove();
-                exclusionPanel = null;
-            });
-            
-            panel.querySelector('#run-exclusion-fix').addEventListener('click', async () => {
-                const button = panel.querySelector('#run-exclusion-fix');
-                button.disabled = true;
-                button.textContent = 'EXECUTANDO...';
-                
-                const result = await this.runExclusionFix();
-                
-                const resultsDiv = panel.querySelector('#exclusion-results');
-                if (resultsDiv) {
-                    resultsDiv.innerHTML = `
-                        <div style="text-align: center;">
-                            <div style="font-size: 24px; color: ${result.status === 'success' ? '#00ff9c' : '#ffaa00'}; font-weight: bold; margin-bottom: 10px;">
-                                ${result.message}
-                            </div>
-                            <div style="color: #ff88cc; font-size: 11px;">
-                                ${new Date().toLocaleTimeString()}
-                            </div>
-                        </div>
-                    `;
+        });
+    }
+    
+    // Verificar no SCMigration
+    if (window.SCMigration && window.SCMigration.tests) {
+        Object.values(window.SCMigration.tests).forEach(test => {
+            if (test.execute) {
+                const code = test.execute.toString();
+                if (code.includes("'diagnostics'") || code.includes('"diagnostics"')) {
+                    problemTests.push(`Migração: ${test.title || test.id}`);
+                    foundProblems = true;
                 }
-                
-                button.disabled = false;
-                button.textContent = '🔧 EXECUTAR CORREÇÃO';
-            });
-            
-            return panel;
-        },
+            }
+        });
+    }
+    
+    // Mostrar resultado
+    if (foundProblems) {
+        console.warn('❌ PROBLEMAS ENCONTRADOS:');
+        problemTests.forEach(test => console.log(`   • ${test}`));
         
-        // Getter
-        get test() {
-            return exclusionTest;
-        }
-    };
-})();
+        console.log('\n🔧 CÓDIGO PARA CORREÇÃO:');
+        console.log(`
+// SUBSTITUA NOS TESTES:
 
-// ================== INTEGRAÇÃO RÁPIDA ==================
+// Módulos para verificar (APENAS CORE):
+const modulesToCheck = ${JSON.stringify(CORRECT_MODULES, null, 2)};
 
-// Adicionar atalho global
-window.FixDiagnosticsExclusion = DiagnosticsExclusionCorrector;
+// Arquivos para verificar (APENAS CORE):
+const filesToCheck = ${JSON.stringify(CORRECT_FILES, null, 2)};
 
-// Inicializar
+// NÃO INCLUA 'diagnostics' ou 'utils'!
+        `);
+        
+        // Mostrar alerta visual
+        alert(`🚫 DIAGNOSTICS INCLUÍDO INCORRETAMENTE\n\n${problemTests.length} testes estão verificando diagnostics.js\n\nCorrija usando as listas acima.`);
+        
+    } else {
+        console.log('✅ NENHUM PROBLEMA ENCONTRADO!');
+        console.log('diagnostics.js NÃO está sendo verificado como parte do core.');
+        
+        // Mostrar confirmação
+        alert('✅ TUDO CORRETO!\n\ndiagnostics.js NÃO está na verificação do core.');
+    }
+    
+    console.groupEnd();
+    
+    // Abrir também o painel se disponível
+    if (window.FixDiagnosticsExclusion && window.FixDiagnosticsExclusion.createExclusionPanel) {
+        window.FixDiagnosticsExclusion.createExclusionPanel();
+    }
+});
+
+// 5. ADICIONAR BOTÃO À PÁGINA
+document.body.appendChild(floatBtn);
+
+console.log('✅ Botão flutuante 🚫 criado na posição bottom: 520px, right: 20px');
+
+// 6. VERIFICAR TODOS OS BOTÕES EXISTENTES
+console.log('🔍 BOTÕES FLUTUANTES ATUAIS:');
+const allFloatButtons = document.querySelectorAll('button[id$="-float-button"]');
+allFloatButtons.forEach((btn, i) => {
+    const rect = btn.getBoundingClientRect();
+    console.log(`${i+1}. ${btn.id}: bottom=${rect.bottom}px, right=${rect.right}px, visible=${rect.width > 0}`);
+});
+
+// 7. SE AINDA NÃO APARECER, FORÇAR VISIBILIDADE
 setTimeout(() => {
-    try {
-        DiagnosticsExclusionCorrector.registerTest();
+    const btn = document.getElementById('exclusion-float-button');
+    if (btn) {
+        btn.style.display = 'flex';
+        btn.style.visibility = 'visible';
+        btn.style.opacity = '1';
+        btn.style.zIndex = '99993';
         
-        console.log('%c🚫 MÓDULO DE EXCLUSÃO DO DIAGNOSTICS PRONTO', 
-                    'color: #ff0096; font-weight: bold; font-size: 12px;');
-        console.log('📋 Comando: FixDiagnosticsExclusion.runExclusionFix()');
-        
-        // Executar automaticamente se diagnostics está sendo verificado
-        setTimeout(async () => {
-            // Verificar rapidamente se há problema
-            const hasDiagnostics = window.diagnostics !== undefined;
-            const hasSharedCoreTests = window.SCMigration !== undefined;
-            
-            if (hasDiagnostics && hasSharedCoreTests) {
-                console.log('🔍 Verificando se diagnostics está sendo verificado incorretamente...');
-                await DiagnosticsExclusionCorrector.runExclusionFix();
-            }
-        }, 2000);
-        
-    } catch (error) {
-        console.log('ℹ️ Não foi possível inicializar módulo de exclusão');
+        console.log('📍 Posição do botão 🚫:', {
+            bottom: btn.style.bottom,
+            right: btn.style.right,
+            display: btn.style.display,
+            visibility: btn.style.visibility
+        });
     }
 }, 1000);
 
