@@ -13973,6 +13973,1345 @@ setTimeout(() => {
     }
 }, 1500);
 
+// ================== MÓDULO DE VERIFICAÇÃO DO SHAREDCORE ==================
+const SharedCoreVerifier = (function() {
+    // Testes de verificação do SharedCore
+    const sharedCoreTests = {
+        sharedCoreBasicCheck: {
+            id: 'sharedcore-basic-check',
+            title: '🔍 VERIFICAÇÃO BÁSICA DO SHAREDCORE',
+            description: 'Verifica disponibilidade das funções essenciais do SharedCore',
+            type: 'verification',
+            icon: '📦',
+            category: 'core',
+            critical: true,
+            execute: function() {
+                console.group('🧪 VERIFICAÇÃO DO SHAREDCORE');
+                
+                const requiredFunctions = [
+                    'debounce', 'throttle', 'formatPrice', 'isMobileDevice',
+                    'elementExists', 'logModule', 'supabaseFetch'
+                ];
+                
+                let passed = 0;
+                const total = requiredFunctions.length;
+                const results = [];
+                const missing = [];
+                
+                console.log('📦 Verificando funções do SharedCore...');
+                
+                requiredFunctions.forEach((func, index) => {
+                    const isAvailable = typeof SharedCore !== 'undefined' && 
+                                       typeof SharedCore[func] === 'function';
+                    
+                    console.log(`${isAvailable ? '✅' : '❌'} ${index + 1}. ${func}: ${isAvailable ? 'OK' : 'FALHOU'}`);
+                    
+                    if (isAvailable) {
+                        passed++;
+                        results.push({
+                            name: func,
+                            passed: true,
+                            type: 'function'
+                        });
+                    } else {
+                        missing.push(func);
+                        results.push({
+                            name: func,
+                            passed: false,
+                            type: 'function',
+                            error: 'Função não disponível'
+                        });
+                    }
+                });
+                
+                // Verificar também propriedades importantes
+                const requiredProperties = ['version', 'config', 'modules'];
+                const propertiesResults = [];
+                
+                console.log('\n📊 Verificando propriedades do SharedCore...');
+                
+                requiredProperties.forEach((prop, index) => {
+                    const isAvailable = typeof SharedCore !== 'undefined' && 
+                                       SharedCore[prop] !== undefined;
+                    
+                    console.log(`${isAvailable ? '✅' : '⚠️'} Propriedade ${prop}: ${isAvailable ? 'OK' : 'NÃO DEFINIDA'}`);
+                    
+                    propertiesResults.push({
+                        name: prop,
+                        available: isAvailable,
+                        value: isAvailable ? SharedCore[prop] : 'undefined'
+                    });
+                });
+                
+                const score = Math.round((passed / total) * 100);
+                
+                console.log(`\n📊 RESULTADO: ${passed}/${total} funções disponíveis`);
+                console.log(`🎯 SCORE: ${score}%`);
+                
+                let status = 'success';
+                let message = '';
+                
+                if (missing.length === 0) {
+                    console.log('🎯 TODAS AS FUNÇÕES ESSENCIAIS DISPONÍVEIS!');
+                    message = '✅ SHAREDCORE COMPLETO!';
+                    status = 'success';
+                } else if (passed >= Math.ceil(total * 0.7)) { // Pelo menos 70%
+                    console.log(`⚠️  ${missing.length} FUNÇÕES FALTANDO: ${missing.join(', ')}`);
+                    status = 'warning';
+                    message = `⚠️ SHAREDCORE ${score}% COMPLETO`;
+                } else {
+                    console.log(`❌ ${missing.length} FUNÇÕES FALTANDO: ${missing.join(', ')}`);
+                    status = 'error';
+                    message = `❌ SHAREDCORE APENAS ${score}% COMPLETO`;
+                }
+                
+                console.groupEnd();
+                
+                return {
+                    status: status,
+                    message: message,
+                    details: {
+                        totalFunctions: total,
+                        availableFunctions: passed,
+                        score: score,
+                        missingFunctions: missing,
+                        functionResults: results,
+                        propertyResults: propertiesResults,
+                        sharedCoreAvailable: typeof SharedCore !== 'undefined',
+                        timestamp: new Date().toISOString()
+                    }
+                };
+            }
+        },
+        
+        sharedCorePerformanceCheck: {
+            id: 'sharedcore-performance-check',
+            title: '⚡ TESTE DE PERFORMANCE DO SHAREDCORE',
+            description: 'Mede performance das funções principais do SharedCore',
+            type: 'performance',
+            icon: '⚡',
+            category: 'core',
+            execute: function() {
+                console.group('⚡ TESTE DE PERFORMANCE DO SHAREDCORE');
+                
+                if (typeof SharedCore === 'undefined') {
+                    console.log('❌ SharedCore não disponível para teste de performance');
+                    console.groupEnd();
+                    return {
+                        status: 'error',
+                        message: '❌ SHAREDCORE NÃO DISPONÍVEL',
+                        details: null
+                    };
+                }
+                
+                const performanceTests = [];
+                const startTime = performance.now();
+                
+                // Teste 1: debounce
+                try {
+                    if (typeof SharedCore.debounce === 'function') {
+                        const debounceStart = performance.now();
+                        const debouncedFn = SharedCore.debounce(() => {}, 100);
+                        debouncedFn();
+                        const debounceTime = performance.now() - debounceStart;
+                        performanceTests.push({
+                            name: 'debounce()',
+                            time: debounceTime,
+                            status: debounceTime < 1 ? 'excellent' : debounceTime < 5 ? 'good' : 'slow'
+                        });
+                        console.log(`⏱️ debounce: ${debounceTime.toFixed(3)}ms`);
+                    }
+                } catch (error) {
+                    performanceTests.push({
+                        name: 'debounce()',
+                        time: null,
+                        status: 'error',
+                        error: error.message
+                    });
+                }
+                
+                // Teste 2: throttle
+                try {
+                    if (typeof SharedCore.throttle === 'function') {
+                        const throttleStart = performance.now();
+                        const throttledFn = SharedCore.throttle(() => {}, 100);
+                        throttledFn();
+                        const throttleTime = performance.now() - throttleStart;
+                        performanceTests.push({
+                            name: 'throttle()',
+                            time: throttleTime,
+                            status: throttleTime < 1 ? 'excellent' : throttleTime < 5 ? 'good' : 'slow'
+                        });
+                        console.log(`⏱️ throttle: ${throttleTime.toFixed(3)}ms`);
+                    }
+                } catch (error) {
+                    performanceTests.push({
+                        name: 'throttle()',
+                        time: null,
+                        status: 'error',
+                        error: error.message
+                    });
+                }
+                
+                // Teste 3: formatPrice
+                try {
+                    if (typeof SharedCore.formatPrice === 'function') {
+                        const formatStart = performance.now();
+                        for (let i = 0; i < 1000; i++) {
+                            SharedCore.formatPrice(1234.56);
+                        }
+                        const formatTime = performance.now() - formatStart;
+                        performanceTests.push({
+                            name: 'formatPrice() 1000x',
+                            time: formatTime,
+                            avgTime: formatTime / 1000,
+                            status: (formatTime / 1000) < 0.01 ? 'excellent' : (formatTime / 1000) < 0.05 ? 'good' : 'slow'
+                        });
+                        console.log(`⏱️ formatPrice 1000x: ${formatTime.toFixed(2)}ms (${(formatTime/1000).toFixed(4)}ms/call)`);
+                    }
+                } catch (error) {
+                    performanceTests.push({
+                        name: 'formatPrice()',
+                        time: null,
+                        status: 'error',
+                        error: error.message
+                    });
+                }
+                
+                // Teste 4: isMobileDevice
+                try {
+                    if (typeof SharedCore.isMobileDevice === 'function') {
+                        const mobileStart = performance.now();
+                        for (let i = 0; i < 1000; i++) {
+                            SharedCore.isMobileDevice();
+                        }
+                        const mobileTime = performance.now() - mobileStart;
+                        performanceTests.push({
+                            name: 'isMobileDevice() 1000x',
+                            time: mobileTime,
+                            avgTime: mobileTime / 1000,
+                            status: (mobileTime / 1000) < 0.005 ? 'excellent' : (mobileTime / 1000) < 0.02 ? 'good' : 'slow'
+                        });
+                        console.log(`⏱️ isMobileDevice 1000x: ${mobileTime.toFixed(2)}ms (${(mobileTime/1000).toFixed(4)}ms/call)`);
+                    }
+                } catch (error) {
+                    performanceTests.push({
+                        name: 'isMobileDevice()',
+                        time: null,
+                        status: 'error',
+                        error: error.message
+                    });
+                }
+                
+                // Teste 5: elementExists
+                try {
+                    if (typeof SharedCore.elementExists === 'function') {
+                        // Criar elemento para teste
+                        const testElement = document.createElement('div');
+                        testElement.id = 'sharedcore-test-element';
+                        document.body.appendChild(testElement);
+                        
+                        const existsStart = performance.now();
+                        for (let i = 0; i < 500; i++) {
+                            SharedCore.elementExists('#sharedcore-test-element');
+                        }
+                        const existsTime = performance.now() - existsStart;
+                        
+                        // Limpar
+                        testElement.remove();
+                        
+                        performanceTests.push({
+                            name: 'elementExists() 500x',
+                            time: existsTime,
+                            avgTime: existsTime / 500,
+                            status: (existsTime / 500) < 0.02 ? 'excellent' : (existsTime / 500) < 0.05 ? 'good' : 'slow'
+                        });
+                        console.log(`⏱️ elementExists 500x: ${existsTime.toFixed(2)}ms (${(existsTime/500).toFixed(4)}ms/call)`);
+                    }
+                } catch (error) {
+                    performanceTests.push({
+                        name: 'elementExists()',
+                        time: null,
+                        status: 'error',
+                        error: error.message
+                    });
+                }
+                
+                const endTime = performance.now();
+                const totalTime = endTime - startTime;
+                
+                // Calcular score de performance
+                const validTests = performanceTests.filter(t => t.time !== null);
+                const avgTime = validTests.length > 0 ? 
+                    validTests.reduce((sum, t) => sum + (t.avgTime || t.time), 0) / validTests.length : 
+                    0;
+                
+                const performanceScore = avgTime < 0.01 ? 100 : 
+                                       avgTime < 0.05 ? 90 : 
+                                       avgTime < 0.1 ? 80 : 
+                                       avgTime < 0.5 ? 70 : 50;
+                
+                console.log(`\n📊 PERFORMANCE TOTAL: ${totalTime.toFixed(2)}ms`);
+                console.log(`⏱️  TEMPO MÉDIO: ${avgTime.toFixed(4)}ms/operação`);
+                console.log(`🎯 SCORE: ${performanceScore}/100`);
+                
+                console.groupEnd();
+                
+                return {
+                    status: performanceScore >= 80 ? 'success' : 
+                           performanceScore >= 60 ? 'warning' : 'error',
+                    message: `⚡ PERFORMANCE: ${avgTime.toFixed(4)}ms médio | Score: ${performanceScore}/100`,
+                    details: {
+                        totalTime: totalTime,
+                        averageTime: avgTime,
+                        performanceScore: performanceScore,
+                        testResults: performanceTests,
+                        functionsTested: validTests.length
+                    }
+                };
+            }
+        },
+        
+        sharedCoreIntegrationCheck: {
+            id: 'sharedcore-integration-check',
+            title: '🔗 VERIFICAÇÃO DE INTEGRAÇÃO DO SHAREDCORE',
+            description: 'Verifica se o SharedCore está sendo usado por outros módulos',
+            type: 'integration',
+            icon: '🔗',
+            category: 'core',
+            execute: function() {
+                console.group('🔗 VERIFICAÇÃO DE INTEGRAÇÃO DO SHAREDCORE');
+                
+                // Verificar módulos que devem usar SharedCore
+                const modulesToCheck = [
+                    { name: 'PdfSystem', check: () => typeof window.PdfSystem !== 'undefined' },
+                    { name: 'MediaSystem', check: () => typeof window.MediaSystem !== 'undefined' },
+                    { name: 'admin', check: () => typeof window.admin !== 'undefined' },
+                    { name: 'Properties', check: () => Array.isArray(window.properties) },
+                    { name: 'Diagnostics', check: () => typeof window.diagnostics !== 'undefined' }
+                ];
+                
+                const integrationResults = [];
+                let modulesUsingSharedCore = 0;
+                
+                console.log('🔗 Verificando integração com outros módulos...');
+                
+                modulesToCheck.forEach(module => {
+                    const isModuleLoaded = module.check();
+                    let usesSharedCore = false;
+                    let details = '';
+                    
+                    if (isModuleLoaded) {
+                        // Verificar se o módulo está usando SharedCore
+                        // Analisando propriedades e métodos
+                        const moduleObj = window[module.name] || 
+                                         (module.name === 'Properties' ? window.properties : 
+                                          module.name === 'admin' ? window.admin : null);
+                        
+                        if (moduleObj) {
+                            // Verificar se há referências a SharedCore no código do módulo
+                            try {
+                                // Técnica 1: Verificar se há chamadas a funções do SharedCore
+                                const hasDebounce = moduleObj.toString().includes('debounce');
+                                const hasThrottle = moduleObj.toString().includes('throttle');
+                                const hasFormatPrice = moduleObj.toString().includes('formatPrice');
+                                
+                                usesSharedCore = hasDebounce || hasThrottle || hasFormatPrice;
+                                details = `Debounce: ${hasDebounce ? '✅' : '❌'}, Throttle: ${hasThrottle ? '✅' : '❌'}, FormatPrice: ${hasFormatPrice ? '✅' : '❌'}`;
+                                
+                                if (usesSharedCore) modulesUsingSharedCore++;
+                            } catch (e) {
+                                details = 'Não foi possível analisar o módulo';
+                            }
+                        }
+                    }
+                    
+                    integrationResults.push({
+                        module: module.name,
+                        loaded: isModuleLoaded,
+                        usesSharedCore: usesSharedCore,
+                        details: details
+                    });
+                    
+                    console.log(`${isModuleLoaded ? '📦' : '🚫'} ${module.name}: ${isModuleLoaded ? 'Carregado' : 'Não carregado'} | Usa SharedCore: ${usesSharedCore ? '✅' : '❌'}`);
+                });
+                
+                // Verificar tempo de carregamento
+                const resources = performance.getEntriesByType('resource') || [];
+                const sharedCoreScript = resources.find(r => 
+                    r.name.includes('sharedcore') || 
+                    r.name.includes('SharedCore') ||
+                    r.name.includes('shared-core')
+                );
+                
+                let loadTime = sharedCoreScript ? sharedCoreScript.duration : null;
+                let loadTimeStatus = loadTime ? (loadTime < 1000 ? 'good' : loadTime < 2000 ? 'acceptable' : 'slow') : 'unknown';
+                
+                if (sharedCoreScript) {
+                    console.log(`⏱️ Tempo de carregamento do SharedCore: ${loadTime.toFixed(2)}ms`);
+                } else {
+                    console.log('⏱️ Script do SharedCore não encontrado nos recursos');
+                }
+                
+                // Calcular score de integração
+                const loadedModules = integrationResults.filter(m => m.loaded).length;
+                const integrationScore = loadedModules > 0 ? 
+                    Math.round((modulesUsingSharedCore / loadedModules) * 100) : 0;
+                
+                console.log(`\n📊 INTEGRAÇÃO: ${modulesUsingSharedCore}/${loadedModules} módulos usam SharedCore`);
+                console.log(`🎯 SCORE: ${integrationScore}%`);
+                
+                console.groupEnd();
+                
+                return {
+                    status: integrationScore >= 70 ? 'success' : 
+                           integrationScore >= 40 ? 'warning' : 'error',
+                    message: `🔗 INTEGRAÇÃO: ${modulesUsingSharedCore}/${loadedModules} módulos usam SharedCore (${integrationScore}%)`,
+                    details: {
+                        totalModules: modulesToCheck.length,
+                        loadedModules: loadedModules,
+                        modulesUsingSharedCore: modulesUsingSharedCore,
+                        integrationScore: integrationScore,
+                        moduleResults: integrationResults,
+                        loadTime: loadTime,
+                        loadTimeStatus: loadTimeStatus,
+                        sharedCoreScript: sharedCoreScript ? sharedCoreScript.name : 'Não encontrado'
+                    }
+                };
+            }
+        },
+        
+        sharedCoreAutomaticVerification: {
+            id: 'sharedcore-automatic-verification',
+            title: '🔄 VERIFICAÇÃO AUTOMÁTICA DO SHAREDCORE',
+            description: 'Executa verificação completa a cada 15 minutos',
+            type: 'monitoring',
+            icon: '🔄',
+            category: 'core',
+            execute: async function() {
+                console.group('🔄 VERIFICAÇÃO AUTOMÁTICA DO SHAREDCORE');
+                console.log('⏰ Executando verificação agendada...');
+                
+                // Executar todos os outros testes
+                const tests = [
+                    this.sharedCoreBasicCheck,
+                    this.sharedCorePerformanceCheck,
+                    this.sharedCoreIntegrationCheck
+                ];
+                
+                const results = {
+                    total: 0,
+                    passed: 0,
+                    failed: 0,
+                    warnings: 0,
+                    tests: []
+                };
+                
+                for (const test of tests) {
+                    try {
+                        const result = await Promise.resolve(test.execute());
+                        
+                        results.total++;
+                        if (result.status === 'success') results.passed++;
+                        if (result.status === 'error') results.failed++;
+                        if (result.status === 'warning') results.warnings++;
+                        
+                        results.tests.push({
+                            name: test.title,
+                            status: result.status,
+                            message: result.message
+                        });
+                        
+                        console.log(`${result.status === 'success' ? '✅' : result.status === 'warning' ? '⚠️' : '❌'} ${test.title}: ${result.message}`);
+                        
+                        // Pequena pausa entre testes
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    } catch (error) {
+                        console.error(`❌ Erro no teste ${test.title}:`, error);
+                        results.tests.push({
+                            name: test.title,
+                            status: 'error',
+                            message: `Erro: ${error.message}`
+                        });
+                        results.total++;
+                        results.failed++;
+                    }
+                }
+                
+                const score = Math.round((results.passed / results.total) * 100);
+                
+                console.log(`\n📊 RESUMO DA VERIFICAÇÃO AUTOMÁTICA:`);
+                console.log(`   ✅ ${results.passed} passaram`);
+                console.log(`   ⚠️ ${results.warnings} com avisos`);
+                console.log(`   ❌ ${results.failed} falharam`);
+                console.log(`   🎯 SCORE: ${score}%`);
+                
+                // Registrar no localStorage para histórico
+                try {
+                    const history = JSON.parse(localStorage.getItem('sharedcore_verification_history') || '[]');
+                    history.push({
+                        timestamp: new Date().toISOString(),
+                        score: score,
+                        results: results.tests,
+                        passed: results.passed,
+                        total: results.total
+                    });
+                    
+                    // Manter apenas últimos 100 registros
+                    if (history.length > 100) {
+                        history.splice(0, history.length - 100);
+                    }
+                    
+                    localStorage.setItem('sharedcore_verification_history', JSON.stringify(history));
+                    console.log(`📝 Histórico salvo (${history.length} verificações)`);
+                } catch (e) {
+                    console.log('⚠️ Não foi possível salvar histórico:', e.message);
+                }
+                
+                console.groupEnd();
+                
+                return {
+                    status: score === 100 ? 'success' : score >= 70 ? 'warning' : 'error',
+                    message: `🔄 VERIFICAÇÃO AUTOMÁTICA: Score ${score}%`,
+                    details: {
+                        summary: results,
+                        score: score,
+                        timestamp: new Date().toISOString(),
+                        nextVerification: new Date(Date.now() + 15 * 60 * 1000).toISOString() // 15 minutos
+                    }
+                };
+            }
+        }
+    };
+    
+    // Controle do painel e monitoramento
+    let sharedCorePanel = null;
+    let monitoringInterval = null;
+    
+    return {
+        // Registrar testes
+        registerTests: function() {
+            Object.values(sharedCoreTests).forEach(testConfig => {
+                // Usar TestManager se disponível
+                if (typeof TestManager !== 'undefined' && TestManager.registerTest) {
+                    const existingTest = TestManager.getTest ? TestManager.getTest(testConfig.id) : null;
+                    if (!existingTest) {
+                        TestManager.registerTest(testConfig);
+                        console.log(`✅ Teste registrado: ${testConfig.title}`);
+                    }
+                }
+            });
+            
+            console.log('✅ Módulo de Verificação do SharedCore: Testes registrados');
+        },
+        
+        // Executar verificação completa
+        runCompleteVerification: async function() {
+            console.group('🔍 VERIFICAÇÃO COMPLETA DO SHAREDCORE');
+            
+            const results = {
+                total: 0,
+                passed: 0,
+                failed: 0,
+                warnings: 0,
+                tests: []
+            };
+            
+            // Executar todos os testes exceto o automático
+            const testsToRun = Object.values(sharedCoreTests).filter(t => t.id !== 'sharedcore-automatic-verification');
+            
+            for (const testConfig of testsToRun) {
+                try {
+                    console.log(`▶️ Executando: ${testConfig.title}`);
+                    
+                    const result = await Promise.resolve(testConfig.execute());
+                    
+                    results.total++;
+                    if (result.status === 'success') results.passed++;
+                    if (result.status === 'error') results.failed++;
+                    if (result.status === 'warning') results.warnings++;
+                    
+                    results.tests.push({
+                        name: testConfig.title,
+                        status: result.status,
+                        message: result.message,
+                        details: result.details
+                    });
+                    
+                    console.log(`${result.status === 'success' ? '✅' : result.status === 'warning' ? '⚠️' : '❌'} ${testConfig.title}`);
+                    
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                } catch (error) {
+                    console.error(`❌ Erro no teste ${testConfig.title}:`, error);
+                    results.tests.push({
+                        name: testConfig.title,
+                        status: 'error',
+                        message: `Erro: ${error.message}`,
+                        details: null
+                    });
+                    results.total++;
+                    results.failed++;
+                }
+            }
+            
+            console.groupEnd();
+            
+            const score = Math.round((results.passed / results.total) * 100);
+            
+            console.log(`📊 RESUMO DO SHAREDCORE:`);
+            console.log(`   ✅ ${results.passed} passaram`);
+            console.log(`   ⚠️ ${results.warnings} com avisos`);
+            console.log(`   ❌ ${results.failed} falharam`);
+            console.log(`   🎯 SCORE GERAL: ${score}%`);
+            
+            if (score === 100) {
+                console.log('🎯 SHAREDCORE 100% VERIFICADO E OTIMIZADO!');
+            } else if (score >= 80) {
+                console.log('⚠️ SHAREDCORE FUNCIONAL - Alguns problemas detectados');
+            } else {
+                console.log('❌ SHAREDCORE COM PROBLEMAS CRÍTICOS!');
+            }
+            
+            return {
+                summary: results,
+                score: score,
+                overallStatus: score === 100 ? 'success' : score >= 70 ? 'warning' : 'error',
+                timestamp: new Date().toISOString()
+            };
+        },
+        
+        // Iniciar monitoramento automático (a cada 15 minutos)
+        startAutomaticMonitoring: function(intervalMinutes = 15) {
+            if (monitoringInterval) {
+                console.log('⚠️ Monitoramento automático já está ativo');
+                return false;
+            }
+            
+            console.log(`🔄 INICIANDO MONITORAMENTO AUTOMÁTICO (a cada ${intervalMinutes} minutos)`);
+            
+            // Executar primeira verificação imediatamente
+            sharedCoreTests.sharedCoreAutomaticVerification.execute();
+            
+            // Configurar intervalo
+            monitoringInterval = setInterval(() => {
+                console.log(`⏰ EXECUTANDO VERIFICAÇÃO AGENDADA DO SHAREDCORE (${new Date().toLocaleTimeString()})`);
+                sharedCoreTests.sharedCoreAutomaticVerification.execute();
+            }, intervalMinutes * 60 * 1000);
+            
+            return true;
+        },
+        
+        // Parar monitoramento automático
+        stopAutomaticMonitoring: function() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                console.log('🛑 MONITORAMENTO AUTOMÁTICO PARADO');
+                return true;
+            }
+            return false;
+        },
+        
+        // Criar painel visual de verificação
+        createVerificationPanel: function() {
+            // Se já existe, apenas mostrar
+            if (sharedCorePanel && document.body.contains(sharedCorePanel)) {
+                sharedCorePanel.style.display = 'flex';
+                return sharedCorePanel;
+            }
+            
+            // Verificar se estamos no sistema de diagnóstico
+            if (typeof PanelManager !== 'undefined' && PanelManager.createPanel) {
+                const panelConfig = {
+                    title: '📦 SHAREDCORE VERIFIER',
+                    category: 'core',
+                    maxTests: 12,
+                    position: { top: '200px', left: '750px' },
+                    size: { width: '550px', height: '700px' }
+                };
+                
+                sharedCorePanel = PanelManager.createPanel(panelConfig);
+                
+                if (typeof SpecializedPanels !== 'undefined' && SpecializedPanels.renderPanel) {
+                    sharedCorePanel.element = SpecializedPanels.renderPanel(sharedCorePanel);
+                    
+                    // Adicionar testes
+                    Object.values(sharedCoreTests).forEach(testConfig => {
+                        const test = TestManager.getTest(testConfig.id);
+                        if (test && sharedCorePanel.tests.length < sharedCorePanel.maxTests) {
+                            sharedCorePanel.tests.push(test.id);
+                            SpecializedPanels.addTestToPanel(sharedCorePanel, test);
+                        }
+                    });
+                    
+                    // Adicionar controles extras
+                    if (sharedCorePanel.element) {
+                        const testsContainer = sharedCorePanel.element.querySelector('.tests-container');
+                        if (testsContainer) {
+                            const controlsHTML = `
+                                <div style="background: linear-gradient(135deg, rgba(100, 100, 255, 0.1), rgba(150, 150, 255, 0.1));
+                                            padding: 15px;
+                                            border-radius: 8px;
+                                            border: 2px solid rgba(100, 100, 255, 0.3);
+                                            margin: 20px 0;
+                                            text-align: center;">
+                                    <div style="color: #8888ff; font-weight: bold; margin-bottom: 10px;">
+                                        🎮 CONTROLES DO SHAREDCORE
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                        <button id="sc-verify-now" 
+                                                style="background: rgba(100, 100, 255, 0.3);
+                                                       color: #8888ff;
+                                                       border: 1px solid #8888ff;
+                                                       padding: 8px;
+                                                       border-radius: 5px;
+                                                       cursor: pointer;
+                                                       font-size: 12px;">
+                                            Verificar Agora
+                                        </button>
+                                        <button id="sc-toggle-monitoring" 
+                                                style="background: rgba(100, 100, 255, 0.3);
+                                                       color: #8888ff;
+                                                       border: 1px solid #8888ff;
+                                                       padding: 8px;
+                                                       border-radius: 5px;
+                                                       cursor: pointer;
+                                                       font-size: 12px;">
+                                            Monitoramento: DESLIGADO
+                                        </button>
+                                    </div>
+                                    <div style="font-size: 11px; color: #aaaaff; margin-top: 10px;">
+                                        Verificação automática a cada 15 minutos
+                                    </div>
+                                </div>
+                            `;
+                            
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = controlsHTML;
+                            testsContainer.appendChild(tempDiv.firstChild);
+                            
+                            // Adicionar event listeners
+                            setTimeout(() => {
+                                const verifyBtn = document.getElementById('sc-verify-now');
+                                const monitorBtn = document.getElementById('sc-toggle-monitoring');
+                                
+                                if (verifyBtn) {
+                                    verifyBtn.addEventListener('click', async () => {
+                                        verifyBtn.disabled = true;
+                                        verifyBtn.textContent = 'VERIFICANDO...';
+                                        
+                                        if (sharedCorePanel.addLog) {
+                                            sharedCorePanel.addLog('Iniciando verificação completa do SharedCore...', 'info');
+                                        }
+                                        
+                                        const results = await this.runCompleteVerification();
+                                        
+                                        verifyBtn.disabled = false;
+                                        verifyBtn.textContent = 'Verificar Agora';
+                                        
+                                        if (sharedCorePanel.addLog) {
+                                            sharedCorePanel.addLog(`Verificação concluída: Score ${results.score}%`, results.overallStatus);
+                                        }
+                                    });
+                                }
+                                
+                                if (monitorBtn) {
+                                    monitorBtn.addEventListener('click', () => {
+                                        if (monitoringInterval) {
+                                            this.stopAutomaticMonitoring();
+                                            monitorBtn.textContent = 'Monitoramento: DESLIGADO';
+                                            monitorBtn.style.background = 'rgba(100, 100, 255, 0.3)';
+                                            if (sharedCorePanel.addLog) {
+                                                sharedCorePanel.addLog('Monitoramento automático desligado', 'info');
+                                            }
+                                        } else {
+                                            this.startAutomaticMonitoring();
+                                            monitorBtn.textContent = 'Monitoramento: LIGADO';
+                                            monitorBtn.style.background = 'rgba(0, 255, 0, 0.3)';
+                                            if (sharedCorePanel.addLog) {
+                                                sharedCorePanel.addLog('Monitoramento automático ligado (15 minutos)', 'success');
+                                            }
+                                        }
+                                    });
+                                }
+                            }, 100);
+                        }
+                    }
+                    
+                    // Inicializar logs
+                    if (SpecializedPanels.initializePanelLogs) {
+                        SpecializedPanels.initializePanelLogs(sharedCorePanel);
+                    }
+                    
+                    // Tornar arrastável
+                    if (SpecializedPanels.makePanelDraggable) {
+                        SpecializedPanels.makePanelDraggable(sharedCorePanel);
+                    }
+                    
+                    if (sharedCorePanel.addLog) {
+                        sharedCorePanel.addLog('Painel de Verificação do SharedCore inicializado', 'success');
+                        sharedCorePanel.addLog(`${Object.keys(sharedCoreTests).length} testes disponíveis`, 'info');
+                    }
+                    
+                    return sharedCorePanel;
+                }
+            }
+            
+            // Se o sistema de diagnóstico não estiver disponível, criar painel independente
+            console.log('⚠️ Sistema de diagnóstico não encontrado. Criando painel independente...');
+            return this.createStandalonePanel();
+        },
+        
+        // Criar painel independente
+        createStandalonePanel: function() {
+            const panelId = 'sharedcore-panel-' + Date.now();
+            const panel = document.createElement('div');
+            
+            panel.id = panelId;
+            panel.style.cssText = `
+                position: fixed;
+                top: 160px;
+                left: 160px;
+                width: 520px;
+                height: 650px;
+                background: linear-gradient(135deg, #0a0a2a, #220044);
+                border: 2px solid #8888ff;
+                border-radius: 12px;
+                z-index: 10000;
+                box-shadow: 0 0 25px rgba(136, 136, 255, 0.3);
+                font-family: 'Segoe UI', monospace;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                resize: both;
+            `;
+            
+            panel.innerHTML = `
+                <!-- Cabeçalho -->
+                <div style="background: linear-gradient(90deg, rgba(136, 136, 255, 0.2), rgba(170, 170, 255, 0.1));
+                            padding: 15px 20px;
+                            border-bottom: 1px solid rgba(136, 136, 255, 0.3);
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            cursor: move;
+                            user-select: none;">
+                    
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="color: #8888ff; font-weight: bold; font-size: 15px;">📦 SHAREDCORE VERIFIER</span>
+                        <span style="background: #8888ff;
+                                    color: #0a0a2a;
+                                    padding: 3px 10px;
+                                    border-radius: 10px;
+                                    font-size: 11px;
+                                    font-weight: bold;">
+                            v1.0
+                        </span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        <button class="minimize-btn" 
+                                style="background: #555;
+                                       color: white;
+                                       border: none;
+                                       width: 28px;
+                                       height: 28px;
+                                       border-radius: 5px;
+                                       cursor: pointer;
+                                       font-weight: bold;">
+                            −
+                        </button>
+                        <button class="close-btn" 
+                                style="background: #ff5555;
+                                       color: white;
+                                       border: none;
+                                       width: 28px;
+                                       height: 28px;
+                                       border-radius: 5px;
+                                       cursor: pointer;
+                                       font-weight: bold;">
+                            ×
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Conteúdo -->
+                <div style="flex: 1;
+                            padding: 20px;
+                            overflow-y: auto;
+                            overflow-x: hidden;">
+                    
+                    <!-- Status do SharedCore -->
+                    <div id="sharedcore-status" style="background: rgba(136, 136, 255, 0.1);
+                                padding: 15px;
+                                border-radius: 8px;
+                                border-left: 4px solid #8888ff;
+                                margin-bottom: 20px;">
+                        <div style="color: #8888ff; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
+                            <span>📊 STATUS DO SHAREDCORE</span>
+                            <span id="sc-status-indicator" style="background: #8888ff; color: #0a0a2a; padding: 2px 8px; border-radius: 10px; font-size: 10px;">
+                                TESTANDO...
+                            </span>
+                        </div>
+                        <div style="color: #aaaaff; font-size: 13px;">
+                            <div>Disponível: <span id="sc-available">Verificando...</span></div>
+                            <div>Funções: <span id="sc-functions">Verificando...</span></div>
+                            <div>Performance: <span id="sc-performance">Verificando...</span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Controles -->
+                    <div style="margin-bottom: 25px;">
+                        <div style="color: #8888ff; font-weight: bold; margin-bottom: 12px; font-size: 14px;">
+                            🎮 CONTROLES:
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 15px;">
+                            <button id="sc-run-basic" class="sc-control-btn">
+                                Teste Básico
+                            </button>
+                            <button id="sc-run-perf" class="sc-control-btn">
+                                Teste Performance
+                            </button>
+                            <button id="sc-run-integration" class="sc-control-btn">
+                                Teste Integração
+                            </button>
+                            <button id="sc-run-complete" class="sc-control-btn" style="background: linear-gradient(135deg, #8888ff, #6666cc); color: white;">
+                                🔍 Verificação Completa
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Monitoramento Automático -->
+                    <div style="background: rgba(136, 136, 255, 0.05); padding: 15px; border-radius: 8px; border: 2px dashed rgba(136, 136, 255, 0.3); margin-bottom: 20px;">
+                        <div style="color: #8888ff; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                            ⏰ MONITORAMENTO AUTOMÁTICO
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="color: #aaaaff; font-size: 12px;">
+                                Verifica a cada 15 minutos
+                            </div>
+                            <button id="sc-toggle-auto" 
+                                    style="background: rgba(100, 100, 255, 0.3);
+                                           color: #8888ff;
+                                           border: 1px solid #8888ff;
+                                           padding: 6px 12px;
+                                           border-radius: 5px;
+                                           cursor: pointer;
+                                           font-size: 11px;
+                                           font-weight: bold;">
+                                🔄 LIGAR
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Resultados -->
+                    <div style="margin-bottom: 20px;">
+                        <div style="color: #8888ff; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                            📊 RESULTADOS:
+                        </div>
+                        <div id="sc-results" style="min-height: 150px; background: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 15px;">
+                            <div style="color: #aaaaff; text-align: center; padding: 20px;">
+                                Aguardando execução...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Rodapé -->
+                <div style="background: rgba(136, 136, 255, 0.1);
+                            padding: 12px 20px;
+                            border-top: 1px solid rgba(136, 136, 255, 0.3);
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            font-size: 11px;">
+                    
+                    <div style="color: #aaaaff;">
+                        <span>SharedCore Verifier v1.0 | 7 funções essenciais</span>
+                    </div>
+                    
+                    <div style="color: #8888ff; font-weight: bold;">
+                        Status: <span id="sc-overall-status">Pronto</span>
+                    </div>
+                </div>
+            `;
+            
+            // Adicionar estilos
+            const style = document.createElement('style');
+            style.textContent = `
+                .sc-control-btn {
+                    background: rgba(136, 136, 255, 0.2);
+                    color: #8888ff;
+                    border: 1px solid #8888ff;
+                    padding: 10px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 13px;
+                    transition: all 0.3s ease;
+                    font-weight: bold;
+                }
+                .sc-control-btn:hover {
+                    background: rgba(136, 136, 255, 0.4);
+                    transform: translateY(-2px);
+                }
+                .sc-control-btn:active {
+                    transform: translateY(0);
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(panel);
+            sharedCorePanel = panel;
+            
+            // Inicializar controles
+            setTimeout(() => this.initializeStandalonePanel(panel), 100);
+            
+            return panel;
+        },
+        
+        // Inicializar painel independente
+        initializeStandalonePanel: function(panel) {
+            if (!panel) return;
+            
+            // Funções auxiliares
+            const updateStatus = () => {
+                const available = typeof SharedCore !== 'undefined';
+                const functions = available ? 
+                    Object.keys(SharedCore).filter(key => typeof SharedCore[key] === 'function').length : 0;
+                
+                if (panel.querySelector('#sc-available')) {
+                    panel.querySelector('#sc-available').textContent = available ? '✅ DISPONÍVEL' : '❌ NÃO DISPONÍVEL';
+                    panel.querySelector('#sc-available').style.color = available ? '#00ff9c' : '#ff5555';
+                }
+                
+                if (panel.querySelector('#sc-functions')) {
+                    panel.querySelector('#sc-functions').textContent = `${functions} funções`;
+                    panel.querySelector('#sc-functions').style.color = functions >= 7 ? '#00ff9c' : functions >= 4 ? '#ffaa00' : '#ff5555';
+                }
+                
+                if (panel.querySelector('#sc-status-indicator')) {
+                    panel.querySelector('#sc-status-indicator').textContent = available ? '✅ ATIVO' : '❌ INATIVO';
+                    panel.querySelector('#sc-status-indicator').style.background = available ? '#00ff9c' : '#ff5555';
+                }
+            };
+            
+            // Atualizar status inicial
+            updateStatus();
+            
+            // Configurar botões
+            const setupButton = (id, testFunction) => {
+                const btn = panel.querySelector(id);
+                if (btn) {
+                    btn.addEventListener('click', async () => {
+                        btn.disabled = true;
+                        const originalText = btn.textContent;
+                        btn.textContent = 'EXECUTANDO...';
+                        
+                        try {
+                            const result = await Promise.resolve(testFunction.execute());
+                            
+                            // Mostrar resultados
+                            const resultsDiv = panel.querySelector('#sc-results');
+                            if (resultsDiv) {
+                                resultsDiv.innerHTML = `
+                                    <div style="text-align: center; margin-bottom: 15px;">
+                                        <div style="font-size: 24px; color: ${result.status === 'success' ? '#00ff9c' : result.status === 'warning' ? '#ffaa00' : '#ff5555'}; font-weight: bold;">
+                                            ${result.details?.score || 'N/A'}%
+                                        </div>
+                                        <div style="color: #aaaaff; font-size: 14px; margin-top: 10px;">
+                                            ${result.message}
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                            
+                            // Atualizar status geral
+                            const overallStatus = panel.querySelector('#sc-overall-status');
+                            if (overallStatus) {
+                                overallStatus.textContent = result.status === 'success' ? '✅ OK' : 
+                                                          result.status === 'warning' ? '⚠️ AVISOS' : '❌ PROBLEMAS';
+                                overallStatus.style.color = result.status === 'success' ? '#00ff9c' : 
+                                                          result.status === 'warning' ? '#ffaa00' : '#ff5555';
+                            }
+                            
+                        } catch (error) {
+                            const resultsDiv = panel.querySelector('#sc-results');
+                            if (resultsDiv) {
+                                resultsDiv.innerHTML = `
+                                    <div style="text-align: center; color: #ff5555;">
+                                        ❌ Erro: ${error.message}
+                                    </div>
+                                `;
+                            }
+                        } finally {
+                            btn.disabled = false;
+                            btn.textContent = originalText;
+                            updateStatus();
+                        }
+                    });
+                }
+            };
+            
+            // Configurar todos os botões
+            setupButton('#sc-run-basic', sharedCoreTests.sharedCoreBasicCheck);
+            setupButton('#sc-run-perf', sharedCoreTests.sharedCorePerformanceCheck);
+            setupButton('#sc-run-integration', sharedCoreTests.sharedCoreIntegrationCheck);
+            
+            // Botão de verificação completa
+            const completeBtn = panel.querySelector('#sc-run-complete');
+            if (completeBtn) {
+                completeBtn.addEventListener('click', async () => {
+                    completeBtn.disabled = true;
+                    completeBtn.textContent = 'VERIFICANDO...';
+                    
+                    const results = await this.runCompleteVerification();
+                    
+                    completeBtn.disabled = false;
+                    completeBtn.textContent = '🔍 Verificação Completa';
+                    
+                    // Mostrar resultados detalhados
+                    const resultsDiv = panel.querySelector('#sc-results');
+                    if (resultsDiv) {
+                        resultsDiv.innerHTML = '';
+                        
+                        // Score geral
+                        const scoreDiv = document.createElement('div');
+                        scoreDiv.style.cssText = `
+                            text-align: center;
+                            margin-bottom: 15px;
+                            padding: 10px;
+                            background: rgba(0, 0, 0, 0.3);
+                            border-radius: 8px;
+                        `;
+                        
+                        scoreDiv.innerHTML = `
+                            <div style="font-size: 32px; color: ${results.score >= 80 ? '#00ff9c' : results.score >= 60 ? '#ffaa00' : '#ff5555'}; font-weight: bold;">
+                                ${results.score}%
+                            </div>
+                            <div style="color: #aaaaff; font-size: 12px;">
+                                Score Geral | ${results.summary.passed}/${results.summary.total} testes
+                            </div>
+                        `;
+                        
+                        resultsDiv.appendChild(scoreDiv);
+                        
+                        // Detalhes dos testes
+                        results.summary.tests.forEach(test => {
+                            const testDiv = document.createElement('div');
+                            testDiv.style.cssText = `
+                                padding: 10px;
+                                margin: 8px 0;
+                                background: rgba(0, 0, 0, 0.2);
+                                border-radius: 6px;
+                                border-left: 4px solid ${test.status === 'success' ? '#00ff9c' : test.status === 'warning' ? '#ffaa00' : '#ff5555'};
+                            `;
+                            
+                            testDiv.innerHTML = `
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="color: ${test.status === 'success' ? '#88ffaa' : test.status === 'warning' ? '#ffcc88' : '#ffaaaa'}; font-size: 13px;">
+                                        ${test.name}
+                                    </div>
+                                    <div style="color: ${test.status === 'success' ? '#00ff9c' : test.status === 'warning' ? '#ffaa00' : '#ff5555'}; font-size: 20px;">
+                                        ${test.status === 'success' ? '✅' : test.status === 'warning' ? '⚠️' : '❌'}
+                                    </div>
+                                </div>
+                                <div style="color: #aaaaff; font-size: 11px; margin-top: 5px;">
+                                    ${test.message}
+                                </div>
+                            `;
+                            
+                            resultsDiv.appendChild(testDiv);
+                        });
+                    }
+                    
+                    // Atualizar status geral
+                    const overallStatus = panel.querySelector('#sc-overall-status');
+                    if (overallStatus) {
+                        overallStatus.textContent = results.overallStatus === 'success' ? '✅ OTIMIZADO' : 
+                                                  results.overallStatus === 'warning' ? '⚠️ PARCIAL' : '❌ PROBLEMAS';
+                        overallStatus.style.color = results.overallStatus === 'success' ? '#00ff9c' : 
+                                                  results.overallStatus === 'warning' ? '#ffaa00' : '#ff5555';
+                    }
+                    
+                    updateStatus();
+                });
+            }
+            
+            // Monitoramento automático
+            const monitorBtn = panel.querySelector('#sc-toggle-auto');
+            if (monitorBtn) {
+                monitorBtn.addEventListener('click', () => {
+                    if (monitoringInterval) {
+                        this.stopAutomaticMonitoring();
+                        monitorBtn.textContent = '🔄 LIGAR';
+                        monitorBtn.style.background = 'rgba(100, 100, 255, 0.3)';
+                    } else {
+                        this.startAutomaticMonitoring();
+                        monitorBtn.textContent = '⏸️ PARAR';
+                        monitorBtn.style.background = 'rgba(0, 255, 0, 0.3)';
+                    }
+                });
+            }
+            
+            // Fechar e minimizar
+            panel.querySelector('.close-btn').addEventListener('click', () => {
+                panel.remove();
+                sharedCorePanel = null;
+                if (monitoringInterval) {
+                    this.stopAutomaticMonitoring();
+                }
+            });
+            
+            panel.querySelector('.minimize-btn').addEventListener('click', function() {
+                const content = panel.children[1];
+                const isHidden = content.style.display === 'none';
+                content.style.display = isHidden ? 'flex' : 'none';
+                this.textContent = isHidden ? '−' : '+';
+            });
+            
+            // Arrastar
+            const header = panel.children[0];
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            header.addEventListener('mousedown', function(e) {
+                if (e.target.tagName === 'BUTTON') return;
+                
+                isDragging = true;
+                offsetX = e.clientX - panel.getBoundingClientRect().left;
+                offsetY = e.clientY - panel.getBoundingClientRect().top;
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+                e.preventDefault();
+            });
+            
+            function drag(e) {
+                if (!isDragging) return;
+                panel.style.left = (e.clientX - offsetX) + 'px';
+                panel.style.top = (e.clientY - offsetY) + 'px';
+            }
+            
+            function stopDrag() {
+                isDragging = false;
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+        },
+        
+        // Getter para testes
+        get tests() {
+            return sharedCoreTests;
+        }
+    };
+})();
+
+// ================== INTEGRAÇÃO COM O SISTEMA ==================
+
+// Inicializar quando carregar
+setTimeout(() => {
+    try {
+        SharedCoreVerifier.registerTests();
+        
+        // Adicionar ao sistema de diagnóstico se existir
+        if (window.diagnostics) {
+            window.diagnostics.sharedCore = SharedCoreVerifier;
+            console.log('✅ Módulo de SharedCore integrado ao sistema de diagnóstico');
+        }
+        
+        // Atalhos globais
+        window.SCVerify = SharedCoreVerifier;
+        window.SC = {
+            verify: () => SharedCoreVerifier.runCompleteVerification(),
+            panel: () => SharedCoreVerifier.createVerificationPanel(),
+            startMonitoring: () => SharedCoreVerifier.startAutomaticMonitoring(),
+            stopMonitoring: () => SharedCoreVerifier.stopAutomaticMonitoring(),
+            test: (testName) => {
+                const test = Object.values(SharedCoreVerifier.tests).find(t => 
+                    t.id.includes(testName) || t.title.toLowerCase().includes(testName.toLowerCase())
+                );
+                if (test) return Promise.resolve(test.execute());
+                return Promise.resolve({status: 'error', message: 'Teste não encontrado'});
+            }
+        };
+        
+        // Botão flutuante
+        if (!document.getElementById('sc-float-button')) {
+            const floatBtn = document.createElement('button');
+            floatBtn.id = 'sc-float-button';
+            floatBtn.innerHTML = '📦';
+            floatBtn.title = 'Verificar SharedCore';
+            floatBtn.style.cssText = `
+                position: fixed;
+                bottom: 280px;
+                right: 20px;
+                z-index: 99997;
+                background: linear-gradient(135deg, #8888ff, #6666cc);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+                cursor: pointer;
+                box-shadow: 0 4px 15px rgba(136, 136, 255, 0.4);
+                transition: all 0.3s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            
+            floatBtn.addEventListener('click', () => {
+                SharedCoreVerifier.createVerificationPanel();
+            });
+            
+            document.body.appendChild(floatBtn);
+            console.log('✅ Botão flutuante de SharedCore criado');
+        }
+        
+        console.log('%c📦 MÓDULO DE VERIFICAÇÃO DO SHAREDCORE PRONTO', 
+                    'color: #8888ff; font-weight: bold; font-size: 14px; background: #0a0a2a; padding: 5px;');
+        console.log('📋 Comandos disponíveis:');
+        console.log('• SCVerify.panel() - Criar painel de verificação');
+        console.log('• SCVerify.verify() - Executar verificação completa');
+        console.log('• SCVerify.startMonitoring() - Iniciar monitoramento automático (15 min)');
+        console.log('• SC.panel() - Atalho rápido');
+        console.log('• Botão 📦 roxo no canto inferior direito');
+        
+        // Verificação automática inicial (após 2 segundos como solicitado)
+        setTimeout(() => {
+            if (typeof SharedCore !== 'undefined') {
+                console.group('🔍 VERIFICAÇÃO SHAREDCORE AUTOMÁTICA (2s)');
+                
+                const requiredFunctions = [
+                    'debounce', 'throttle', 'formatPrice', 'isMobileDevice',
+                    'elementExists', 'logModule', 'supabaseFetch'
+                ];
+                
+                const missing = [];
+                requiredFunctions.forEach(func => {
+                    if (typeof SharedCore[func] === 'undefined') {
+                        missing.push(func);
+                    }
+                });
+                
+                if (missing.length === 0) {
+                    console.log('✅ Todas as funções essenciais disponíveis');
+                } else {
+                    console.error('❌ Funções faltando:', missing);
+                }
+                
+                console.groupEnd();
+            } else {
+                console.warn('⚠️ SharedCore não disponível para verificação automática');
+            }
+        }, 2000);
+        
+    } catch (error) {
+        console.error('❌ Erro ao inicializar módulo de SharedCore:', error);
+    }
+}, 1500);
+
     // Exportar funções globais
     window.Diagnostics = {
         analyzeSystem,
