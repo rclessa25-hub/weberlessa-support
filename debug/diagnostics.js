@@ -19951,170 +19951,30 @@ setTimeout(() => {
     }
 }, 1500);
 
-// ================== CORREÇÃO DO ÍCONE FLUTUANTE ==================
-
-// 1. PRIMEIRO, REMOVA QUALQUER BOTÃO EXISTENTE (se houver)
-const existingFloatBtn = document.getElementById('exclusion-float-button');
-if (existingFloatBtn) {
-    existingFloatBtn.remove();
-}
-
-// 2. CRIAR BOTÃO FLUTUANTE VISÍVEL
-const floatBtn = document.createElement('button');
-floatBtn.id = 'exclusion-float-button';
-floatBtn.innerHTML = '🚫';
-floatBtn.title = 'Excluir Diagnostics da Verificação';
-floatBtn.style.cssText = `
-    position: fixed;
-    bottom: 520px;  // ABAIXO dos outros botões
-    right: 20px;
-    z-index: 99993;
-    background: linear-gradient(135deg, #ff0096, #cc0066);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    font-size: 20px;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(255, 0, 150, 0.5);
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 1 !important;
-    visibility: visible !important;
-`;
-
-// 3. ADICIONAR ANIMAÇÃO DE PULSO
-const pulseStyle = document.createElement('style');
-pulseStyle.textContent = `
-    @keyframes pulse-exclusion {
-        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 150, 0.7); }
-        70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(255, 0, 150, 0); }
-        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 0, 150, 0); }
-    }
-    #exclusion-float-button {
-        animation: pulse-exclusion 2s infinite;
-    }
-`;
-document.head.appendChild(pulseStyle);
-
-// 4. FUNÇÃO PARA EXECUTAR A CORREÇÃO
-floatBtn.addEventListener('click', function() {
-    console.group('🚫 EXECUTANDO CORREÇÃO DO DIAGNOSTICS');
-    
-    // Listas CORRETAS (SEM diagnostics)
-    const CORRECT_MODULES = ['PdfSystem', 'MediaSystem', 'properties', 'admin', 'gallery'];
-    const CORRECT_FILES = [
-        { name: 'admin.js', path: 'js/modules/admin.js' },
-        { name: 'gallery.js', path: 'js/modules/gallery.js' },
-        { name: 'media-unified.js', path: 'js/modules/media/media-unified.js' },
-        { name: 'pdf-unified.js', path: 'js/modules/reader/pdf-unified.js' },
-        { name: 'properties.js', path: 'js/modules/properties.js' }
-    ];
-    
-    console.log('✅ DEFININDO LISTAS CORRETAS (SEM diagnostics):');
-    console.log('   📦 Módulos core:', CORRECT_MODULES);
-    console.log('   📄 Arquivos core:', CORRECT_FILES.map(f => f.name));
-    
-    // Verificar se há referências a diagnostics
-    let foundProblems = false;
-    const problemTests = [];
-    
-    // Verificar no TestManager
-    if (window.TestManager && window.TestManager.tests) {
-        Object.values(window.TestManager.tests).forEach(test => {
-            if (test.execute) {
-                const code = test.execute.toString();
-                if (code.includes("'diagnostics'") || code.includes('"diagnostics"')) {
-                    problemTests.push(test.title || test.id);
-                    foundProblems = true;
-                }
-            }
-        });
-    }
-    
-    // Verificar no SCMigration
-    if (window.SCMigration && window.SCMigration.tests) {
-        Object.values(window.SCMigration.tests).forEach(test => {
-            if (test.execute) {
-                const code = test.execute.toString();
-                if (code.includes("'diagnostics'") || code.includes('"diagnostics"')) {
-                    problemTests.push(`Migração: ${test.title || test.id}`);
-                    foundProblems = true;
-                }
-            }
-        });
-    }
-    
-    // Mostrar resultado
-    if (foundProblems) {
-        console.warn('❌ PROBLEMAS ENCONTRADOS:');
-        problemTests.forEach(test => console.log(`   • ${test}`));
-        
-        console.log('\n🔧 CÓDIGO PARA CORREÇÃO:');
-        console.log(`
-// SUBSTITUA NOS TESTES:
-
-// Módulos para verificar (APENAS CORE):
-const modulesToCheck = ${JSON.stringify(CORRECT_MODULES, null, 2)};
-
-// Arquivos para verificar (APENAS CORE):
-const filesToCheck = ${JSON.stringify(CORRECT_FILES, null, 2)};
-
-// NÃO INCLUA 'diagnostics' ou 'utils'!
-        `);
-        
-        // Mostrar alerta visual
-        alert(`🚫 DIAGNOSTICS INCLUÍDO INCORRETAMENTE\n\n${problemTests.length} testes estão verificando diagnostics.js\n\nCorrija usando as listas acima.`);
-        
-    } else {
-        console.log('✅ NENHUM PROBLEMA ENCONTRADO!');
-        console.log('diagnostics.js NÃO está sendo verificado como parte do core.');
-        
-        // Mostrar confirmação
-        alert('✅ TUDO CORRETO!\n\ndiagnostics.js NÃO está na verificação do core.');
-    }
-    
-    console.groupEnd();
-    
-    // Abrir também o painel se disponível
-    if (window.FixDiagnosticsExclusion && window.FixDiagnosticsExclusion.createExclusionPanel) {
-        window.FixDiagnosticsExclusion.createExclusionPanel();
-    }
-});
-
-// 5. ADICIONAR BOTÃO À PÁGINA
-document.body.appendChild(floatBtn);
-
-console.log('✅ Botão flutuante 🚫 criado na posição bottom: 520px, right: 20px');
-
-// 6. VERIFICAR TODOS OS BOTÕES EXISTENTES
-console.log('🔍 BOTÕES FLUTUANTES ATUAIS:');
-const allFloatButtons = document.querySelectorAll('button[id$="-float-button"]');
-allFloatButtons.forEach((btn, i) => {
-    const rect = btn.getBoundingClientRect();
-    console.log(`${i+1}. ${btn.id}: bottom=${rect.bottom}px, right=${rect.right}px, visible=${rect.width > 0}`);
-});
-
-// 7. SE AINDA NÃO APARECER, FORÇAR VISIBILIDADE
-setTimeout(() => {
-    const btn = document.getElementById('exclusion-float-button');
-    if (btn) {
-        btn.style.display = 'flex';
-        btn.style.visibility = 'visible';
-        btn.style.opacity = '1';
-        btn.style.zIndex = '99993';
-        
-        console.log('📍 Posição do botão 🚫:', {
-            bottom: btn.style.bottom,
-            right: btn.style.right,
-            display: btn.style.display,
-            visibility: btn.style.visibility
-        });
-    }
-}, 1000);
+// COMANDO NUCLEAR - GARANTIDO FUNCIONAR
+(function() {
+    const btn = document.createElement('button');
+    btn.innerHTML = '🚫 FIX DIAG';
+    btn.style = `
+        position: fixed !important;
+        top: 10px !important;
+        right: 10px !important;
+        z-index: 999999 !important;
+        background: red !important;
+        color: white !important;
+        border: 3px solid yellow !important;
+        padding: 10px 15px !important;
+        font-size: 14px !important;
+        font-weight: bold !important;
+        cursor: pointer !important;
+    `;
+    btn.onclick = () => {
+        alert('Execute: DiagnosticsExclusion.runAnalysis()');
+        console.log(DiagnosticsExclusion.runAnalysis());
+    };
+    document.body.appendChild(btn);
+    console.log('✅ BOTÃO NUCLEAR CRIADO NO CANTO SUPERIOR DIREITO!');
+})();
 
     // Exportar funções globais
     window.Diagnostics = {
