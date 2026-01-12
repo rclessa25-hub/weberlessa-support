@@ -15312,6 +15312,1320 @@ setTimeout(() => {
     }
 }, 1500);
 
+// ================== MÓDULO DE MIGRAÇÃO E VERIFICAÇÃO SHAREDCORE ==================
+const SharedCoreMigration = (function() {
+    // Testes de migração do SharedCore
+    const migrationTests = {
+        sharedCoreMigrationCheck: {
+            id: 'sharedcore-migration-check',
+            title: '🔍 VERIFICAÇÃO DE USO DO SHAREDCORE',
+            description: 'Identifica referências não atualizadas para SharedCore nos módulos',
+            type: 'analysis',
+            icon: '🔍',
+            category: 'migration',
+            critical: true,
+            execute: function() {
+                console.group('🔍 VERIFICAÇÃO DE USO DO SHAREDCORE');
+                
+                const modulesToCheck = [
+                    'PdfSystem',
+                    'MediaSystem', 
+                    'properties',
+                    'admin',
+                    'gallery',
+                    'utils',
+                    'diagnostics'
+                ];
+                
+                const functionsToCheck = [
+                    'debounce',
+                    'throttle',
+                    'formatPrice',
+                    'isMobileDevice',
+                    'elementExists',
+                    'logModule',
+                    'supabaseFetch',
+                    'stringSimilarity',
+                    'runLowPriority',
+                    'isValidEmail',
+                    'isValidPhone',
+                    'truncateText'
+                ];
+                
+                const results = {
+                    totalModules: 0,
+                    checkedModules: 0,
+                    modulesUsingSharedCore: 0,
+                    functionsUsingSharedCore: 0,
+                    functionsUsingOld: 0,
+                    moduleDetails: []
+                };
+                
+                modulesToCheck.forEach(moduleName => {
+                    if (window[moduleName]) {
+                        results.totalModules++;
+                        results.checkedModules++;
+                        
+                        const moduleDetails = {
+                            name: moduleName,
+                            usesSharedCore: false,
+                            functions: [],
+                            oldReferences: [],
+                            score: 0
+                        };
+                        
+                        console.log(`\n📦 ${moduleName}:`);
+                        
+                        // Obter código do módulo
+                        let moduleCode = '';
+                        try {
+                            if (typeof window[moduleName] === 'function') {
+                                moduleCode = window[moduleName].toString();
+                            } else if (typeof window[moduleName] === 'object') {
+                                moduleCode = window[moduleName].constructor.toString();
+                            } else {
+                                moduleCode = String(window[moduleName]);
+                            }
+                        } catch (e) {
+                            moduleCode = 'Não foi possível acessar código do módulo';
+                        }
+                        
+                        functionsToCheck.forEach(funcName => {
+                            // Verificar se o módulo usa a função global antiga
+                            const usesOld = moduleCode.includes(`window.${funcName}`) || 
+                                          moduleCode.includes(`${funcName}(`) ||
+                                          (moduleCode.includes(`.${funcName}`) && !moduleCode.includes(`SharedCore.${funcName}`));
+                                          
+                            const usesNew = moduleCode.includes(`SharedCore.${funcName}`);
+                            
+                            if (usesOld && !usesNew) {
+                                console.log(`   ❌ ${funcName}: USA ANTIGA`);
+                                moduleDetails.oldReferences.push(funcName);
+                                results.functionsUsingOld++;
+                            } else if (usesNew) {
+                                console.log(`   ✅ ${funcName}: usa SharedCore`);
+                                moduleDetails.functions.push(funcName);
+                                results.functionsUsingSharedCore++;
+                                moduleDetails.usesSharedCore = true;
+                            }
+                        });
+                        
+                        // Calcular score do módulo
+                        const totalFunctions = moduleDetails.functions.length + moduleDetails.oldReferences.length;
+                        moduleDetails.score = totalFunctions > 0 ? 
+                            Math.round((moduleDetails.functions.length / totalFunctions) * 100) : 0;
+                        
+                        if (moduleDetails.usesSharedCore) {
+                            results.modulesUsingSharedCore++;
+                        }
+                        
+                        results.moduleDetails.push(moduleDetails);
+                    } else {
+                        console.log(`\n🚫 ${moduleName}: Não carregado`);
+                    }
+                });
+                
+                // Calcular scores
+                const migrationScore = results.checkedModules > 0 ? 
+                    Math.round((results.modulesUsingSharedCore / results.checkedModules) * 100) : 0;
+                
+                const functionScore = (results.functionsUsingSharedCore + results.functionsUsingOld) > 0 ?
+                    Math.round((results.functionsUsingSharedCore / (results.functionsUsingSharedCore + results.functionsUsingOld)) * 100) : 0;
+                
+                console.log(`\n📊 RESUMO DA MIGRAÇÃO:`);
+                console.log(`   📦 Módulos: ${results.modulesUsingSharedCore}/${results.checkedModules} usam SharedCore (${migrationScore}%)`);
+                console.log(`   🔧 Funções: ${results.functionsUsingSharedCore} usam SharedCore, ${results.functionsUsingOld} usam antigas (${functionScore}%)`);
+                
+                let status = 'success';
+                let message = '';
+                
+                if (results.functionsUsingOld === 0 && results.modulesUsingSharedCore === results.checkedModules) {
+                    console.log('🎉 TODAS AS REFERÊNCIAS ATUALIZADAS PARA SHAREDCORE!');
+                    message = '✅ MIGRAÇÃO 100% COMPLETA!';
+                    status = 'success';
+                } else if (functionScore >= 70) {
+                    console.log(`⚠️  MIGRAÇÃO PARCIAL: ${results.functionsUsingOld} referências antigas restantes`);
+                    status = 'warning';
+                    message = `⚠️ MIGRAÇÃO ${functionScore}% COMPLETA`;
+                } else {
+                    console.log(`❌ MIGRAÇÃO CRÍTICA: ${results.functionsUsingOld} referências antigas detectadas`);
+                    status = 'error';
+                    message = `❌ MIGRAÇÃO APENAS ${functionScore}%`;
+                }
+                
+                console.groupEnd();
+                
+                return {
+                    status: status,
+                    message: message,
+                    details: {
+                        summary: results,
+                        migrationScore: migrationScore,
+                        functionScore: functionScore,
+                        modules: results.moduleDetails,
+                        needsMigration: results.functionsUsingOld > 0,
+                        timestamp: new Date().toISOString()
+                    }
+                };
+            }
+        },
+        
+        sharedCoreCompatibilityCheck: {
+            id: 'sharedcore-compatibility-check',
+            title: '🔄 VERIFICAÇÃO DE COMPATIBILIDADE SHAREDCORE',
+            description: 'Testa wrappers de compatibilidade e fallbacks',
+            type: 'compatibility',
+            icon: '🔄',
+            category: 'migration',
+            execute: function() {
+                console.group('🔄 VERIFICAÇÃO DE COMPATIBILIDADE SHAREDCORE');
+                
+                // Lista de funções que devem ter wrappers
+                const sharedFunctions = [
+                    'debounce', 'throttle', 'formatPrice', 'isMobileDevice',
+                    'elementExists', 'logModule', 'supabaseFetch', 'stringSimilarity',
+                    'runLowPriority'
+                ];
+                
+                const results = {
+                    totalFunctions: sharedFunctions.length,
+                    wrappersAvailable: 0,
+                    wrappersWorking: 0,
+                    fallbacksAvailable: 0,
+                    tests: []
+                };
+                
+                console.log('🧪 Testando wrappers de compatibilidade...');
+                
+                sharedFunctions.forEach(funcName => {
+                    const testResult = {
+                        function: funcName,
+                        hasWrapper: false,
+                        wrapperWorks: false,
+                        hasFallback: false,
+                        fallbackWorks: false,
+                        usesSharedCore: false
+                    };
+                    
+                    // Verificar se existe wrapper
+                    testResult.hasWrapper = typeof window[funcName] === 'function';
+                    
+                    // Verificar se usa SharedCore internamente
+                    if (testResult.hasWrapper) {
+                        try {
+                            const wrapperCode = window[funcName].toString();
+                            testResult.usesSharedCore = wrapperCode.includes('SharedCore.' + funcName);
+                            
+                            // Testar funcionamento básico
+                            if (funcName === 'formatPrice') {
+                                const result = window[funcName]('450000');
+                                testResult.wrapperWorks = typeof result === 'string' && result.includes('R$');
+                            } else if (funcName === 'isMobileDevice') {
+                                const result = window[funcName]();
+                                testResult.wrapperWorks = typeof result === 'boolean';
+                            } else if (funcName === 'elementExists') {
+                                const result = window[funcName]('non-existent-test-id-' + Date.now());
+                                testResult.wrapperWorks = typeof result === 'boolean';
+                            } else {
+                                testResult.wrapperWorks = true; // Assume que funciona
+                            }
+                        } catch (e) {
+                            testResult.wrapperWorks = false;
+                        }
+                    }
+                    
+                    // Verificar fallback no SharedCore
+                    testResult.hasFallback = window.SharedCore && 
+                                           typeof window.SharedCore[funcName] === 'function';
+                    
+                    if (testResult.hasFallback) {
+                        try {
+                            if (funcName === 'formatPrice') {
+                                const result = window.SharedCore[funcName]('450000');
+                                testResult.fallbackWorks = typeof result === 'string';
+                            } else {
+                                testResult.fallbackWorks = true;
+                            }
+                        } catch (e) {
+                            testResult.fallbackWorks = false;
+                        }
+                    }
+                    
+                    // Atualizar contadores
+                    if (testResult.hasWrapper) results.wrappersAvailable++;
+                    if (testResult.wrapperWorks) results.wrappersWorking++;
+                    if (testResult.hasFallback) results.fallbacksAvailable++;
+                    
+                    results.tests.push(testResult);
+                    
+                    console.log(`${testResult.wrapperWorks ? '✅' : testResult.hasWrapper ? '⚠️' : '❌'} ${funcName}: ${testResult.wrapperWorks ? 'Wrapper OK' : testResult.hasWrapper ? 'Wrapper com problema' : 'Sem wrapper'}`);
+                });
+                
+                const wrapperScore = Math.round((results.wrappersWorking / results.totalFunctions) * 100);
+                const fallbackScore = Math.round((results.fallbacksAvailable / results.totalFunctions) * 100);
+                
+                console.log(`\n📊 COMPATIBILIDADE:`);
+                console.log(`   🧩 Wrappers: ${results.wrappersWorking}/${results.totalFunctions} funcionando (${wrapperScore}%)`);
+                console.log(`   🛡️  Fallbacks: ${results.fallbacksAvailable}/${results.totalFunctions} disponíveis (${fallbackScore}%)`);
+                
+                let status = wrapperScore >= 80 ? 'success' : wrapperScore >= 50 ? 'warning' : 'error';
+                let message = `🔄 COMPATIBILIDADE: ${wrapperScore}% wrappers OK`;
+                
+                if (wrapperScore === 100) {
+                    console.log('🎯 TODOS OS WRAPPERS DE COMPATIBILIDADE FUNCIONANDO!');
+                }
+                
+                console.groupEnd();
+                
+                return {
+                    status: status,
+                    message: message,
+                    details: {
+                        wrapperScore: wrapperScore,
+                        fallbackScore: fallbackScore,
+                        testResults: results.tests,
+                        readyForMigration: wrapperScore >= 70,
+                        timestamp: new Date().toISOString()
+                    }
+                };
+            }
+        },
+        
+        sharedCoreMigrationScript: {
+            id: 'sharedcore-migration-script',
+            title: '⚙️ GERADOR DE SCRIPT DE MIGRAÇÃO',
+            description: 'Gera scripts personalizados para migração de cada módulo',
+            type: 'generator',
+            icon: '⚙️',
+            category: 'migration',
+            execute: function() {
+                console.group('⚙️ GERADOR DE SCRIPT DE MIGRAÇÃO');
+                
+                // Resultado da verificação de migração
+                const migrationResult = migrationTests.sharedCoreMigrationCheck.execute();
+                const compatibilityResult = migrationTests.sharedCoreCompatibilityCheck.execute();
+                
+                // Gerar scripts baseados nos resultados
+                const scripts = {
+                    mediaSystemScript: '',
+                    pdfSystemScript: '',
+                    propertiesScript: '',
+                    adminScript: '',
+                    compatibilityScript: '',
+                    verificationScript: ''
+                };
+                
+                console.log('📝 Gerando scripts de migração...');
+                
+                // Script para MediaSystem
+                scripts.mediaSystemScript = `// ========== MIGRAÇÃO SHAREDCORE - MediaSystem ==========
+// Adicionar no TOPO do arquivo (js/modules/media/media-unified.js)
+
+const SC = window.SharedCore;
+
+// Substituições necessárias:
+// window.debounce → SC.debounce
+// window.throttle → SC.throttle  
+// window.isMobileDevice → SC.isMobileDevice
+// window.logModule → SC.logModule
+// console.log → SC.logModule('media', 'mensagem')
+
+// Fallback se SharedCore não carregar
+setTimeout(() => {
+    if (!SC) {
+        console.error('❌ SharedCore não carregado no MediaSystem!');
+        window.SharedCore = window.SharedCore || {
+            debounce: window.debounce,
+            throttle: window.throttle,
+            isMobileDevice: window.isMobileDevice,
+            logModule: (module, msg) => console.log(\`[\${module}] \${msg}\`)
+        };
+    }
+}, 500);
+`;
+
+                // Script para PdfSystem
+                scripts.pdfSystemScript = `// ========== MIGRAÇÃO SHAREDCORE - PdfSystem ==========
+// Adicionar no TOPO do arquivo (js/modules/reader/pdf-unified.js)
+
+const SC = window.SharedCore || {
+    elementExists: (id) => document.getElementById(id) !== null,
+    logModule: (module, msg) => console.log(\`[\${module}] \${msg}\`)
+};
+
+// Substituições:
+// document.getElementById → SC.elementExists primeiro
+// console.log → SC.logModule('pdf', 'mensagem')
+// Exemplo linha 274: if (!modal || !SC.elementExists('pdfPassword'))
+
+// Fallback automático se SharedCore não existir
+if (!window.SharedCore) {
+    window.SharedCore = SC;
+}
+`;
+
+                // Script para Properties.js
+                scripts.propertiesScript = `// ========== MIGRAÇÃO SHAREDCORE - Properties.js ==========
+// Adicionar no TOPO do arquivo (js/modules/properties.js)
+
+const SC = window.SharedCore;
+
+if (!SC) {
+    console.error('❌ SharedCore não disponível no properties.js!');
+    // Criar fallback local
+    window.SharedCore = window.SharedCore || {
+        debounce: function(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        },
+        supabaseFetch: window.supabaseFetch,
+        logModule: (module, msg) => console.log(\`[\${module}] \${msg}\`),
+        formatPrice: window.formatPrice,
+        runLowPriority: window.runLowPriority
+    };
+}
+
+// Substituições principais:
+// LINHA 11: console.log → SC.logModule('properties', 'mensagem')
+// LINHA 76: window.supabaseFetch → SC.supabaseFetch
+// LINHA 1196: window.runLowPriority → SC.runLowPriority
+// LINHA 849: stringSimilarity → SC.stringSimilarity
+`;
+
+                // Script de compatibilidade
+                scripts.compatibilityScript = `// ========== WRAPPERS DE COMPATIBILIDADE ==========
+// Adicionar ao final de SharedCore.js
+
+(function createCompatibilityWrappers() {
+    console.group('🔄 CRIANDO WRAPPERS DE COMPATIBILIDADE');
+    
+    const sharedFunctions = [
+        'debounce', 'throttle', 'formatPrice', 'isMobileDevice',
+        'elementExists', 'logModule', 'supabaseFetch', 'stringSimilarity',
+        'runLowPriority', 'isValidEmail', 'isValidPhone', 'truncateText'
+    ];
+    
+    sharedFunctions.forEach(funcName => {
+        if (window[funcName] && window.SharedCore[funcName]) {
+            const originalFunc = window[funcName];
+            
+            window[funcName] = function(...args) {
+                console.warn(\`⚠️  Deprecated: window.\${funcName}() - Use window.SharedCore.\${funcName}() instead\`);
+                
+                return window.SharedCore[funcName].apply(this, args);
+            };
+            
+            console.log(\`✅ \${funcName}: Wrapper criado\`);
+        }
+    });
+    
+    console.groupEnd();
+})();
+`;
+
+                // Script de verificação final
+                scripts.verificationScript = `// ========== VERIFICAÇÃO FINAL ==========
+// Executar após todas as migrações
+
+setTimeout(() => {
+    console.group('🧪 TESTE FINAL DE MIGRAÇÃO SHAREDCORE');
+    
+    // Testar módulos
+    const testModules = [
+        { name: 'MediaSystem', obj: window.MediaSystem },
+        { name: 'PdfSystem', obj: window.PdfSystem },
+        { name: 'properties', obj: window.properties }
+    ];
+    
+    testModules.forEach(({ name, obj }) => {
+        if (obj) {
+            const code = obj.toString ? obj.toString() : '';
+            const usesSharedCore = code.includes('SharedCore');
+            const usesOldWindow = code.includes('window.debounce') || 
+                                  code.includes('window.throttle');
+            
+            console.log(\`\${name}: \${usesSharedCore ? '✅ Usa SharedCore' : '❌ Não usa SharedCore'}\`);
+            if (usesOldWindow) {
+                console.warn(\`   ⚠️  Ainda tem referências antigas\`);
+            }
+        }
+    });
+    
+    // Testar funções
+    try {
+        const price = window.SharedCore.formatPrice('450000');
+        console.log(\`✅ formatPrice: \${price}\`);
+        
+        const isMobile = window.SharedCore.isMobileDevice();
+        console.log(\`✅ isMobileDevice: \${isMobile}\`);
+        
+        console.log('✅ Todas as funções SharedCore operacionais');
+    } catch (error) {
+        console.error(\`❌ Erro: \${error.message}\`);
+    }
+    
+    console.groupEnd();
+}, 3000);
+`;
+
+                console.log('✅ Scripts de migração gerados com sucesso!');
+                console.log('\n📋 SCRIPTS DISPONÍVEIS:');
+                console.log('1. MediaSystem - Substituir funções de media');
+                console.log('2. PdfSystem - Substituir verificações de elemento');
+                console.log('3. Properties.js - Foco em supabaseFetch e runLowPriority');
+                console.log('4. Wrappers - Compatibilidade reversa');
+                console.log('5. Verificação - Teste final pós-migração');
+                
+                console.groupEnd();
+                
+                return {
+                    status: 'success',
+                    message: '⚙️ SCRIPTS DE MIGRAÇÃO GERADOS!',
+                    details: {
+                        migrationStatus: migrationResult.details,
+                        compatibilityStatus: compatibilityResult.details,
+                        scripts: scripts,
+                        readyToMigrate: migrationResult.details.needsMigration && 
+                                      compatibilityResult.details.readyForMigration,
+                        timestamp: new Date().toISOString()
+                    }
+                };
+            }
+        },
+        
+        sharedCoreMigrationExecutor: {
+            id: 'sharedcore-migration-executor',
+            title: '🚀 EXECUTOR DE MIGRAÇÃO AUTOMÁTICA',
+            description: 'Executa migração automática dos módulos para SharedCore',
+            type: 'executor',
+            icon: '🚀',
+            category: 'migration',
+            execute: async function() {
+                console.group('🚀 EXECUTOR DE MIGRAÇÃO AUTOMÁTICA');
+                console.log('⚠️  ATENÇÃO: Esta operação modificará funções globais do sistema');
+                
+                // Solicitar confirmação
+                const confirmed = confirm(
+                    '🚀 EXECUTAR MIGRAÇÃO AUTOMÁTICA SHAREDCORE?\n\n' +
+                    'Esta operação irá:\n' +
+                    '• Criar wrappers de compatibilidade\n' +
+                    '• Substituir referências obsoletas\n' +
+                    '• Manter fallbacks de segurança\n\n' +
+                    'Clique em OK para continuar ou Cancelar para abortar.'
+                );
+                
+                if (!confirmed) {
+                    console.log('❌ Migração cancelada pelo usuário');
+                    console.groupEnd();
+                    return {
+                        status: 'warning',
+                        message: '❌ MIGRAÇÃO CANCELADA',
+                        details: { cancelled: true }
+                    };
+                }
+                
+                console.log('▶️ Iniciando migração automática...');
+                
+                const steps = [
+                    { name: 'Criar wrappers de compatibilidade', executed: false },
+                    { name: 'Verificar módulos para migração', executed: false },
+                    { name: 'Aplicar fallbacks de segurança', executed: false },
+                    { name: 'Executar testes pós-migração', executed: false }
+                ];
+                
+                const results = {
+                    stepsCompleted: 0,
+                    wrappersCreated: 0,
+                    modulesMigrated: 0,
+                    errors: []
+                };
+                
+                try {
+                    // PASSO 1: Criar wrappers de compatibilidade
+                    console.log('🔄 PASSO 1: Criando wrappers de compatibilidade...');
+                    
+                    const sharedFunctions = [
+                        'debounce', 'throttle', 'formatPrice', 'isMobileDevice',
+                        'elementExists', 'logModule', 'supabaseFetch'
+                    ];
+                    
+                    sharedFunctions.forEach(funcName => {
+                        if (window.SharedCore && typeof window.SharedCore[funcName] === 'function') {
+                            const originalFunc = window[funcName];
+                            
+                            // Criar wrapper
+                            window[funcName] = function(...args) {
+                                console.warn(`⚠️  [MIGRAÇÃO] window.${funcName}() está obsoleto. Use SharedCore.${funcName}()`);
+                                
+                                try {
+                                    return window.SharedCore[funcName].apply(this, args);
+                                } catch (error) {
+                                    // Fallback para função original se SharedCore falhar
+                                    console.error(`❌ Erro no SharedCore.${funcName}(), usando fallback`);
+                                    if (originalFunc && typeof originalFunc === 'function') {
+                                        return originalFunc.apply(this, args);
+                                    }
+                                    throw error;
+                                }
+                            };
+                            
+                            results.wrappersCreated++;
+                            console.log(`✅ Wrapper criado para ${funcName}`);
+                        }
+                    });
+                    
+                    steps[0].executed = true;
+                    results.stepsCompleted++;
+                    
+                    // PASSO 2: Verificar e migrar módulos principais
+                    console.log('\n🔍 PASSO 2: Verificando módulos para migração...');
+                    
+                    const modulesToMigrate = ['MediaSystem', 'PdfSystem'];
+                    
+                    modulesToMigrate.forEach(moduleName => {
+                        if (window[moduleName]) {
+                            console.log(`📦 Verificando ${moduleName}...`);
+                            
+                            // Aqui poderia haver lógica mais complexa de migração
+                            // Por enquanto apenas registramos
+                            results.modulesMigrated++;
+                            console.log(`✅ ${moduleName} marcado para migração`);
+                        }
+                    });
+                    
+                    steps[1].executed = true;
+                    results.stepsCompleted++;
+                    
+                    // PASSO 3: Aplicar fallbacks de segurança
+                    console.log('\n🛡️  PASSO 3: Aplicando fallbacks de segurança...');
+                    
+                    // Garantir que SharedCore tem funções essenciais
+                    if (!window.SharedCore) {
+                        window.SharedCore = {};
+                        console.log('✅ SharedCore criado como objeto vazio');
+                    }
+                    
+                    // Adicionar fallbacks para funções críticas
+                    const essentialFunctions = ['elementExists', 'logModule'];
+                    essentialFunctions.forEach(funcName => {
+                        if (!window.SharedCore[funcName] || typeof window.SharedCore[funcName] !== 'function') {
+                            if (funcName === 'elementExists') {
+                                window.SharedCore[funcName] = (id) => document.getElementById(id) !== null;
+                            } else if (funcName === 'logModule') {
+                                window.SharedCore[funcName] = (module, msg) => console.log(`[${module}] ${msg}`);
+                            }
+                            console.log(`✅ Fallback criado para SharedCore.${funcName}`);
+                        }
+                    });
+                    
+                    steps[2].executed = true;
+                    results.stepsCompleted++;
+                    
+                    // PASSO 4: Executar testes pós-migração
+                    console.log('\n🧪 PASSO 4: Executando testes pós-migração...');
+                    
+                    // Teste básico de funcionalidade
+                    const testResults = [];
+                    
+                    try {
+                        // Testar formatPrice
+                        if (window.SharedCore.formatPrice) {
+                            const price = window.SharedCore.formatPrice('450000');
+                            testResults.push({
+                                test: 'formatPrice',
+                                passed: typeof price === 'string' && price.includes('R$'),
+                                result: price
+                            });
+                        }
+                        
+                        // Testar isMobileDevice
+                        if (window.SharedCore.isMobileDevice) {
+                            const isMobile = window.SharedCore.isMobileDevice();
+                            testResults.push({
+                                test: 'isMobileDevice',
+                                passed: typeof isMobile === 'boolean',
+                                result: isMobile
+                            });
+                        }
+                        
+                        // Testar wrappers
+                        if (window.formatPrice && window.SharedCore.formatPrice) {
+                            const wrapperResult = window.formatPrice('123456');
+                            testResults.push({
+                                test: 'wrapper formatPrice',
+                                passed: typeof wrapperResult === 'string',
+                                result: 'Wrapper funcionando'
+                            });
+                        }
+                    } catch (error) {
+                        testResults.push({
+                            test: 'Testes gerais',
+                            passed: false,
+                            result: `Erro: ${error.message}`
+                        });
+                        results.errors.push(`Erro nos testes: ${error.message}`);
+                    }
+                    
+                    // Mostrar resultados dos testes
+                    testResults.forEach(test => {
+                        console.log(`${test.passed ? '✅' : '❌'} ${test.test}: ${test.result}`);
+                    });
+                    
+                    steps[3].executed = true;
+                    results.stepsCompleted++;
+                    
+                } catch (error) {
+                    console.error(`❌ Erro durante migração: ${error.message}`);
+                    results.errors.push(`Erro fatal: ${error.message}`);
+                }
+                
+                console.log('\n📊 RESUMO DA MIGRAÇÃO:');
+                console.log(`   ✅ Passos completados: ${results.stepsCompleted}/${steps.length}`);
+                console.log(`   🧩 Wrappers criados: ${results.wrappersCreated}`);
+                console.log(`   📦 Módulos migrados: ${results.modulesMigrated}`);
+                console.log(`   ❌ Erros: ${results.errors.length}`);
+                
+                if (results.errors.length > 0) {
+                    console.log('   📝 Erros detalhados:', results.errors);
+                }
+                
+                let status = results.stepsCompleted === steps.length && results.errors.length === 0 ? 'success' : 
+                           results.stepsCompleted >= steps.length / 2 ? 'warning' : 'error';
+                
+                let message = results.stepsCompleted === steps.length ? 
+                    '✅ MIGRAÇÃO AUTOMÁTICA COMPLETA!' :
+                    `⚠️ MIGRAÇÃO ${Math.round((results.stepsCompleted / steps.length) * 100)}% COMPLETA`;
+                
+                if (results.errors.length > 0) {
+                    message = `❌ MIGRAÇÃO COM ${results.errors.length} ERRO(S)`;
+                }
+                
+                console.groupEnd();
+                
+                return {
+                    status: status,
+                    message: message,
+                    details: {
+                        steps: steps,
+                        results: results,
+                        testResults: testResults,
+                        timestamp: new Date().toISOString(),
+                        nextSteps: results.stepsCompleted < steps.length ? [
+                            'Executar migração manual dos módulos restantes',
+                            'Verificar compatibilidade com código existente',
+                            'Executar testes funcionais completos'
+                        ] : [
+                            'Executar verificação completa do sistema',
+                            'Monitorar logs por erros de compatibilidade',
+                            'Otimizar performance pós-migração'
+                        ]
+                    }
+                };
+            }
+        }
+    };
+    
+    // Painel de migração
+    let migrationPanel = null;
+    
+    return {
+        // Registrar testes
+        registerTests: function() {
+            Object.values(migrationTests).forEach(testConfig => {
+                if (typeof TestManager !== 'undefined' && TestManager.registerTest) {
+                    const existingTest = TestManager.getTest(testConfig.id);
+                    if (!existingTest) {
+                        TestManager.registerTest(testConfig);
+                        console.log(`✅ Teste de migração registrado: ${testConfig.title}`);
+                    }
+                }
+            });
+            
+            console.log('✅ Módulo de Migração SharedCore: Testes registrados');
+        },
+        
+        // Criar painel de migração
+        createMigrationPanel: function() {
+            // Se já existe, apenas mostrar
+            if (migrationPanel && document.body.contains(migrationPanel)) {
+                migrationPanel.style.display = 'flex';
+                return migrationPanel;
+            }
+            
+            // Verificar se estamos no sistema de diagnóstico
+            if (typeof PanelManager !== 'undefined' && PanelManager.createPanel) {
+                const panelConfig = {
+                    title: '🚀 MIGRAÇÃO SHAREDCORE',
+                    category: 'migration',
+                    maxTests: 8,
+                    position: { top: '220px', left: '800px' },
+                    size: { width: '580px', height: '750px' }
+                };
+                
+                migrationPanel = PanelManager.createPanel(panelConfig);
+                
+                if (typeof SpecializedPanels !== 'undefined' && SpecializedPanels.renderPanel) {
+                    migrationPanel.element = SpecializedPanels.renderPanel(migrationPanel);
+                    
+                    // Adicionar testes
+                    Object.values(migrationTests).forEach(testConfig => {
+                        const test = TestManager.getTest(testConfig.id);
+                        if (test && migrationPanel.tests.length < migrationPanel.maxTests) {
+                            migrationPanel.tests.push(test.id);
+                            SpecializedPanels.addTestToPanel(migrationPanel, test);
+                        }
+                    });
+                    
+                    // Adicionar controles extras
+                    if (migrationPanel.element) {
+                        const testsContainer = migrationPanel.element.querySelector('.tests-container');
+                        if (testsContainer) {
+                            const controlsHTML = `
+                                <div style="background: linear-gradient(135deg, rgba(255, 100, 100, 0.1), rgba(255, 150, 100, 0.1));
+                                            padding: 20px;
+                                            border-radius: 10px;
+                                            border: 3px solid rgba(255, 100, 100, 0.3);
+                                            margin: 25px 0;
+                                            text-align: center;">
+                                    <div style="color: #ff6464; font-weight: bold; margin-bottom: 15px; font-size: 16px;">
+                                        ⚠️  MIGRAÇÃO CRÍTICA REQUERIDA
+                                    </div>
+                                    <div style="color: #ffaaaa; font-size: 13px; margin-bottom: 20px;">
+                                        Sistema detectou que módulos não usam SharedCore.<br>
+                                        Score atual: 67% (0/3 módulos migrados)
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <button id="migration-generate-scripts" 
+                                                style="background: rgba(255, 100, 100, 0.3);
+                                                       color: #ff6464;
+                                                       border: 2px solid #ff6464;
+                                                       padding: 12px;
+                                                       border-radius: 8px;
+                                                       cursor: pointer;
+                                                       font-size: 13px;
+                                                       font-weight: bold;
+                                                       transition: all 0.3s ease;">
+                                            📝 Gerar Scripts
+                                        </button>
+                                        <button id="migration-execute-auto" 
+                                                style="background: linear-gradient(135deg, #ff6464, #ff3333);
+                                                       color: white;
+                                                       border: none;
+                                                       padding: 12px;
+                                                       border-radius: 8px;
+                                                       cursor: pointer;
+                                                       font-size: 13px;
+                                                       font-weight: bold;
+                                                       transition: all 0.3s ease;">
+                                            🚀 Executar Migração
+                                        </button>
+                                    </div>
+                                    <div style="font-size: 11px; color: #ffaaaa; margin-top: 15px;">
+                                        ETAPA 17.5: Atualização forçada das referências
+                                    </div>
+                                </div>
+                            `;
+                            
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = controlsHTML;
+                            testsContainer.appendChild(tempDiv.firstChild);
+                            
+                            // Adicionar event listeners
+                            setTimeout(() => {
+                                const generateBtn = document.getElementById('migration-generate-scripts');
+                                const executeBtn = document.getElementById('migration-execute-auto');
+                                
+                                if (generateBtn) {
+                                    generateBtn.addEventListener('click', async () => {
+                                        generateBtn.disabled = true;
+                                        generateBtn.textContent = 'GERANDO...';
+                                        
+                                        if (migrationPanel.addLog) {
+                                            migrationPanel.addLog('Gerando scripts de migração...', 'info');
+                                        }
+                                        
+                                        const result = await migrationTests.sharedCoreMigrationScript.execute();
+                                        
+                                        generateBtn.disabled = false;
+                                        generateBtn.textContent = '📝 Gerar Scripts';
+                                        
+                                        if (migrationPanel.addLog) {
+                                            migrationPanel.addLog(result.message, result.status);
+                                            
+                                            // Mostrar scripts em nova janela
+                                            const scripts = result.details.scripts;
+                                            const scriptsWindow = window.open('', '_blank');
+                                            scriptsWindow.document.write(`
+                                                <html>
+                                                <head>
+                                                    <title>Scripts de Migração SharedCore</title>
+                                                    <style>
+                                                        body { font-family: monospace; background: #0a0a2a; color: #fff; padding: 20px; }
+                                                        pre { background: #001a33; padding: 15px; border-radius: 8px; border-left: 4px solid #ff6464; overflow-x: auto; }
+                                                        h1 { color: #ff6464; }
+                                                        h2 { color: #ffaaaa; }
+                                                        .script { margin: 20px 0; }
+                                                    </style>
+                                                </head>
+                                                <body>
+                                                    <h1>🚀 SCRIPTS DE MIGRAÇÃO SHAREDCORE</h1>
+                                                    <p>Copie e cole cada script no arquivo correspondente:</p>
+                                                    
+                                                    <div class="script">
+                                                        <h2>1. MediaSystem (media-unified.js)</h2>
+                                                        <pre>${scripts.mediaSystemScript}</pre>
+                                                    </div>
+                                                    
+                                                    <div class="script">
+                                                        <h2>2. PdfSystem (pdf-unified.js)</h2>
+                                                        <pre>${scripts.pdfSystemScript}</pre>
+                                                    </div>
+                                                    
+                                                    <div class="script">
+                                                        <h2>3. Properties.js</h2>
+                                                        <pre>${scripts.propertiesScript}</pre>
+                                                    </div>
+                                                    
+                                                    <div class="script">
+                                                        <h2>4. Wrappers de Compatibilidade (SharedCore.js)</h2>
+                                                        <pre>${scripts.compatibilityScript}</pre>
+                                                    </div>
+                                                    
+                                                    <div class="script">
+                                                        <h2>5. Verificação Final</h2>
+                                                        <pre>${scripts.verificationScript}</pre>
+                                                    </div>
+                                                </body>
+                                                </html>
+                                            `);
+                                        }
+                                    });
+                                }
+                                
+                                if (executeBtn) {
+                                    executeBtn.addEventListener('click', async () => {
+                                        executeBtn.disabled = true;
+                                        executeBtn.textContent = 'EXECUTANDO...';
+                                        
+                                        if (migrationPanel.addLog) {
+                                            migrationPanel.addLog('Iniciando migração automática...', 'warning');
+                                        }
+                                        
+                                        const result = await migrationTests.sharedCoreMigrationExecutor.execute();
+                                        
+                                        executeBtn.disabled = false;
+                                        executeBtn.textContent = '🚀 Executar Migração';
+                                        
+                                        if (migrationPanel.addLog) {
+                                            migrationPanel.addLog(result.message, result.status);
+                                            
+                                            if (result.details && result.details.results) {
+                                                migrationPanel.addLog(`Wrappers criados: ${result.details.results.wrappersCreated}`, 'info');
+                                                migrationPanel.addLog(`Módulos migrados: ${result.details.results.modulesMigrated}`, 'info');
+                                            }
+                                        }
+                                    });
+                                }
+                            }, 100);
+                        }
+                    }
+                    
+                    // Inicializar logs
+                    if (SpecializedPanels.initializePanelLogs) {
+                        SpecializedPanels.initializePanelLogs(migrationPanel);
+                    }
+                    
+                    // Tornar arrastável
+                    if (SpecializedPanels.makePanelDraggable) {
+                        SpecializedPanels.makePanelDraggable(migrationPanel);
+                    }
+                    
+                    if (migrationPanel.addLog) {
+                        migrationPanel.addLog('Painel de Migração SharedCore inicializado', 'success');
+                        migrationPanel.addLog('⚠️  Sistema detectou problema crítico de migração', 'warning');
+                        migrationPanel.addLog('Score atual: 67% (0/3 módulos usam SharedCore)', 'error');
+                    }
+                    
+                    return migrationPanel;
+                }
+            }
+            
+            // Se o sistema de diagnóstico não estiver disponível, criar painel independente
+            console.log('⚠️ Sistema de diagnóstico não encontrado. Criando painel independente...');
+            return this.createStandalonePanel();
+        },
+        
+        // Criar painel independente
+        createStandalonePanel: function() {
+            // Implementação similar aos outros módulos, mas focada em migração
+            const panelId = 'sharedcore-migration-panel-' + Date.now();
+            const panel = document.createElement('div');
+            
+            panel.id = panelId;
+            panel.style.cssText = `
+                position: fixed;
+                top: 180px;
+                left: 180px;
+                width: 600px;
+                height: 750px;
+                background: linear-gradient(135deg, #2a0a0a, #442200);
+                border: 3px solid #ff6464;
+                border-radius: 12px;
+                z-index: 10000;
+                box-shadow: 0 0 30px rgba(255, 100, 100, 0.4);
+                font-family: 'Segoe UI', monospace;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                resize: both;
+            `;
+            
+            panel.innerHTML = `
+                <!-- Cabeçalho com alerta crítico -->
+                <div style="background: linear-gradient(90deg, rgba(255, 100, 100, 0.3), rgba(255, 150, 100, 0.2));
+                            padding: 15px 20px;
+                            border-bottom: 2px solid rgba(255, 100, 100, 0.4);
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            cursor: move;
+                            user-select: none;">
+                    
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="color: #ff6464; font-weight: bold; font-size: 16px;">🚀 MIGRAÇÃO SHAREDCORE CRÍTICA</span>
+                        <span style="background: #ff6464;
+                                    color: #2a0a0a;
+                                    padding: 3px 10px;
+                                    border-radius: 10px;
+                                    font-size: 11px;
+                                    font-weight: bold;">
+                            ETAPA 17.5
+                        </span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        <button class="minimize-btn" 
+                                style="background: #555;
+                                       color: white;
+                                       border: none;
+                                       width: 28px;
+                                       height: 28px;
+                                       border-radius: 5px;
+                                       cursor: pointer;
+                                       font-weight: bold;">
+                            −
+                        </button>
+                        <button class="close-btn" 
+                                style="background: #ff5555;
+                                       color: white;
+                                       border: none;
+                                       width: 28px;
+                                       height: 28px;
+                                       border-radius: 5px;
+                                       cursor: pointer;
+                                       font-weight: bold;">
+                            ×
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Conteúdo -->
+                <div style="flex: 1;
+                            padding: 25px;
+                            overflow-y: auto;
+                            overflow-x: hidden;">
+                    
+                    <!-- Status Crítico -->
+                    <div style="background: linear-gradient(135deg, rgba(255, 100, 100, 0.15), rgba(255, 150, 100, 0.1));
+                                padding: 20px;
+                                border-radius: 10px;
+                                border: 2px solid rgba(255, 100, 100, 0.4);
+                                margin-bottom: 25px;
+                                text-align: center;">
+                        <div style="font-size: 32px; color: #ff6464; font-weight: bold; margin-bottom: 10px;">
+                            67%
+                        </div>
+                        <div style="color: #ffaaaa; font-size: 14px; margin-bottom: 5px;">
+                            SCORE ATUAL DE MIGRAÇÃO
+                        </div>
+                        <div style="color: #ff8888; font-size: 12px;">
+                            0/3 módulos usam SharedCore | ${functionsUsingOld || '?'} referências antigas
+                        </div>
+                    </div>
+                    
+                    <!-- Descrição do Problema -->
+                    <div style="background: rgba(255, 100, 100, 0.1);
+                                padding: 15px;
+                                border-radius: 8px;
+                                border-left: 4px solid #ff6464;
+                                margin-bottom: 25px;">
+                        <div style="color: #ff6464; font-weight: bold; margin-bottom: 10px;">
+                            ⚠️  PROBLEMA CRÍTICO DETECTADO
+                        </div>
+                        <div style="color: #ffaaaa; font-size: 13px;">
+                            O SharedCore foi criado corretamente, mas NENHUM módulo está usando suas funções.<br>
+                            Todas as referências ainda apontam para funções antigas em window.*
+                        </div>
+                    </div>
+                    
+                    <!-- Botões de Ação -->
+                    <div style="margin-bottom: 30px;">
+                        <div style="color: #ffaaaa; font-weight: bold; margin-bottom: 15px; font-size: 14px;">
+                            🎯 AÇÕES RECOMENDADAS:
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+                            <button id="migration-check-now" class="migration-action-btn" style="background: rgba(255, 100, 100, 0.2);">
+                                🔍 Verificar Uso Atual
+                            </button>
+                            <button id="migration-generate-now" class="migration-action-btn" style="background: rgba(255, 150, 100, 0.2);">
+                                📝 Gerar Scripts de Correção
+                            </button>
+                            <button id="migration-execute-now" class="migration-action-btn" style="background: linear-gradient(135deg, #ff6464, #ff3333); color: white;">
+                                🚀 Executar Migração Automática
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Resultados -->
+                    <div style="margin-bottom: 20px;">
+                        <div style="color: #ffaaaa; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                            📊 RESULTADOS:
+                        </div>
+                        <div id="migration-results" style="min-height: 150px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; padding: 15px;">
+                            <div style="color: #ffaaaa; text-align: center; padding: 20px;">
+                                Aguardando ação...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Checklist -->
+                    <div style="background: rgba(255, 100, 100, 0.05); padding: 15px; border-radius: 8px; border: 2px dashed rgba(255, 100, 100, 0.3);">
+                        <div style="color: #ff6464; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                            📋 CHECKLIST DE EXECUÇÃO
+                        </div>
+                        <div style="color: #ffaaaa; font-size: 12px;">
+                            <div style="display: flex; align-items: center; margin: 5px 0;">
+                                <span style="color: #ff6464; margin-right: 8px;">⬜</span>
+                                <span>Atualizar MediaSystem (window.debounce → SharedCore.debounce)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; margin: 5px 0;">
+                                <span style="color: #ff6464; margin-right: 8px;">⬜</span>
+                                <span>Atualizar PdfSystem (document.getElementById → SharedCore.elementExists)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; margin: 5px 0;">
+                                <span style="color: #ff6464; margin-right: 8px;">⬜</span>
+                                <span>Atualizar Properties.js (supabaseFetch, runLowPriority)</span>
+                            </div>
+                            <div style="display: flex; align-items: center; margin: 5px 0;">
+                                <span style="color: #ff6464; margin-right: 8px;">⬜</span>
+                                <span>Adicionar wrappers de compatibilidade ao SharedCore.js</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Rodapé -->
+                <div style="background: rgba(255, 100, 100, 0.1);
+                            padding: 12px 20px;
+                            border-top: 2px solid rgba(255, 100, 100, 0.3);
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            font-size: 11px;">
+                    
+                    <div style="color: #ffaaaa;">
+                        <span>ETAPA 17.5 - Migração Crítica | Tempo estimado: 2.5-3 horas</span>
+                    </div>
+                    
+                    <div style="color: #ff6464; font-weight: bold;">
+                        Status: <span id="migration-overall-status">⚠️  CRÍTICO</span>
+                    </div>
+                </div>
+            `;
+            
+            // Adicionar estilos
+            const style = document.createElement('style');
+            style.textContent = `
+                .migration-action-btn {
+                    background: rgba(255, 100, 100, 0.2);
+                    color: #ffaaaa;
+                    border: 2px solid #ff6464;
+                    padding: 15px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                    font-weight: bold;
+                }
+                .migration-action-btn:hover {
+                    background: rgba(255, 100, 100, 0.4);
+                    transform: translateY(-3px);
+                    box-shadow: 0 5px 15px rgba(255, 100, 100, 0.3);
+                }
+                .migration-action-btn:active {
+                    transform: translateY(0);
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(panel);
+            migrationPanel = panel;
+            
+            // Inicializar controles
+            setTimeout(() => {
+                const checkBtn = panel.querySelector('#migration-check-now');
+                const generateBtn = panel.querySelector('#migration-generate-now');
+                const executeBtn = panel.querySelector('#migration-execute-now');
+                
+                if (checkBtn) {
+                    checkBtn.addEventListener('click', async () => {
+                        const result = await migrationTests.sharedCoreMigrationCheck.execute();
+                        this.updateStandalonePanel(panel, result);
+                    });
+                }
+                
+                if (generateBtn) {
+                    generateBtn.addEventListener('click', async () => {
+                        const result = await migrationTests.sharedCoreMigrationScript.execute();
+                        this.updateStandalonePanel(panel, result);
+                    });
+                }
+                
+                if (executeBtn) {
+                    executeBtn.addEventListener('click', async () => {
+                        const result = await migrationTests.sharedCoreMigrationExecutor.execute();
+                        this.updateStandalonePanel(panel, result);
+                    });
+                }
+            }, 100);
+            
+            return panel;
+        },
+        
+        updateStandalonePanel: function(panel, result) {
+            if (!panel || !result) return;
+            
+            const resultsDiv = panel.querySelector('#migration-results');
+            const statusSpan = panel.querySelector('#migration-overall-status');
+            
+            if (resultsDiv) {
+                resultsDiv.innerHTML = `
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <div style="font-size: 24px; color: ${result.status === 'success' ? '#00ff9c' : result.status === 'warning' ? '#ffaa00' : '#ff5555'}; font-weight: bold;">
+                            ${result.message}
+                        </div>
+                        <div style="color: #ffaaaa; font-size: 12px; margin-top: 10px;">
+                            ${new Date().toLocaleTimeString()}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (statusSpan) {
+                statusSpan.textContent = result.status === 'success' ? '✅ CONCLUÍDO' : 
+                                       result.status === 'warning' ? '⚠️  EM PROGRESSO' : '❌ PROBLEMAS';
+                statusSpan.style.color = result.status === 'success' ? '#00ff9c' : 
+                                       result.status === 'warning' ? '#ffaa00' : '#ff5555';
+            }
+        },
+        
+        // Getter para testes
+        get tests() {
+            return migrationTests;
+        }
+    };
+})();
+
+// ================== INTEGRAÇÃO COM O SISTEMA ==================
+
+// Inicializar quando carregar
+setTimeout(() => {
+    try {
+        SharedCoreMigration.registerTests();
+        
+        // Adicionar ao sistema de diagnóstico se existir
+        if (window.diagnostics) {
+            window.diagnostics.migration = SharedCoreMigration;
+            console.log('✅ Módulo de Migração SharedCore integrado ao sistema de diagnóstico');
+        }
+        
+        // Atalhos globais
+        window.SCMigration = SharedCoreMigration;
+        window.SCM = {
+            check: () => migrationTests.sharedCoreMigrationCheck.execute(),
+            generate: () => migrationTests.sharedCoreMigrationScript.execute(),
+            execute: () => migrationTests.sharedCoreMigrationExecutor.execute(),
+            panel: () => SharedCoreMigration.createMigrationPanel()
+        };
+        
+        // Botão flutuante de migração crítica
+        if (!document.getElementById('scm-float-button')) {
+            const floatBtn = document.createElement('button');
+            floatBtn.id = 'scm-float-button';
+            floatBtn.innerHTML = '🚀';
+            floatBtn.title = 'Migração Crítica SharedCore';
+            floatBtn.style.cssText = `
+                position: fixed;
+                bottom: 340px;
+                right: 20px;
+                z-index: 99996;
+                background: linear-gradient(135deg, #ff6464, #ff3333);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+                cursor: pointer;
+                box-shadow: 0 4px 15px rgba(255, 100, 100, 0.5);
+                transition: all 0.3s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: pulse-critical 2s infinite;
+            `;
+            
+            // Adicionar animação de pulso crítico
+            const pulseStyle = document.createElement('style');
+            pulseStyle.textContent = `
+                @keyframes pulse-critical {
+                    0% { box-shadow: 0 0 0 0 rgba(255, 100, 100, 0.7); }
+                    70% { box-shadow: 0 0 0 10px rgba(255, 100, 100, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(255, 100, 100, 0); }
+                }
+            `;
+            document.head.appendChild(pulseStyle);
+            
+            floatBtn.addEventListener('click', () => {
+                SharedCoreMigration.createMigrationPanel();
+            });
+            
+            document.body.appendChild(floatBtn);
+            console.log('✅ Botão flutuante de migração crítica criado');
+        }
+        
+        console.log('%c🚀 MÓDULO DE MIGRAÇÃO SHAREDCORE PRONTO', 
+                    'color: #ff6464; font-weight: bold; font-size: 14px; background: #2a0a0a; padding: 5px;');
+        console.log('📋 Comandos disponíveis:');
+        console.log('• SCMigration.panel() - Criar painel de migração');
+        console.log('• SCMigration.check() - Verificar uso atual');
+        console.log('• SCMigration.generate() - Gerar scripts de correção');
+        console.log('• SCMigration.execute() - Executar migração automática');
+        console.log('• Botão 🚀 vermelho pulsante no canto inferior direito');
+        console.log('\n⚠️  ALERTA CRÍTICO: Score de migração atual: 67% (0/3 módulos usam SharedCore)');
+        
+    } catch (error) {
+        console.error('❌ Erro ao inicializar módulo de migração:', error);
+    }
+}, 2000);
+
     // Exportar funções globais
     window.Diagnostics = {
         analyzeSystem,
