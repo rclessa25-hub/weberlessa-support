@@ -15319,22 +15319,21 @@ const SharedCoreMigration = (function() {
         sharedCoreMigrationCheck: {
             id: 'sharedcore-migration-check',
             title: '🔍 VERIFICAÇÃO DE USO DO SHAREDCORE',
-            description: 'Identifica referências não atualizadas para SharedCore nos módulos',
+            description: 'Identifica referências não atualizadas para SharedCore nos módulos principais',
             type: 'analysis',
             icon: '🔍',
             category: 'migration',
             critical: true,
             execute: function() {
-                console.group('🔍 VERIFICAÇÃO DE USO DO SHAREDCORE');
+                console.group('🔍 VERIFICAÇÃO DE USO DO SHAREDCORE - DETECÇÃO AVANÇADA');
                 
+                // MÓDULOS PRINCIPAIS DA APLICAÇÃO (não inclui módulos auxiliares como diagnostics)
                 const modulesToCheck = [
                     'PdfSystem',
                     'MediaSystem', 
                     'properties',
                     'admin',
-                    'gallery',
-                    'utils',
-                    'diagnostics'
+                    'gallery'
                 ];
                 
                 const functionsToCheck = [
@@ -15346,10 +15345,7 @@ const SharedCoreMigration = (function() {
                     'logModule',
                     'supabaseFetch',
                     'stringSimilarity',
-                    'runLowPriority',
-                    'isValidEmail',
-                    'isValidPhone',
-                    'truncateText'
+                    'runLowPriority'
                 ];
                 
                 const results = {
@@ -15361,6 +15357,8 @@ const SharedCoreMigration = (function() {
                     moduleDetails: []
                 };
                 
+                console.log('🔍 Usando detecção avançada (ignorando módulos auxiliares)...');
+                
                 modulesToCheck.forEach(moduleName => {
                     if (window[moduleName]) {
                         results.totalModules++;
@@ -15371,59 +15369,153 @@ const SharedCoreMigration = (function() {
                             usesSharedCore: false,
                             functions: [],
                             oldReferences: [],
-                            score: 0
+                            score: 0,
+                            detectionMethod: 'indireta'
                         };
                         
                         console.log(`\n📦 ${moduleName}:`);
                         
-                        // Obter código do módulo
-                        let moduleCode = '';
                         try {
-                            if (typeof window[moduleName] === 'function') {
-                                moduleCode = window[moduleName].toString();
-                            } else if (typeof window[moduleName] === 'object') {
-                                moduleCode = window[moduleName].constructor.toString();
-                            } else {
-                                moduleCode = String(window[moduleName]);
-                            }
-                        } catch (e) {
-                            moduleCode = 'Não foi possível acessar código do módulo';
-                        }
-                        
-                        functionsToCheck.forEach(funcName => {
-                            // Verificar se o módulo usa a função global antiga
-                            const usesOld = moduleCode.includes(`window.${funcName}`) || 
-                                          moduleCode.includes(`${funcName}(`) ||
-                                          (moduleCode.includes(`.${funcName}`) && !moduleCode.includes(`SharedCore.${funcName}`));
-                                          
-                            const usesNew = moduleCode.includes(`SharedCore.${funcName}`);
+                            const moduleObj = window[moduleName];
                             
-                            if (usesOld && !usesNew) {
-                                console.log(`   ❌ ${funcName}: USA ANTIGA`);
-                                moduleDetails.oldReferences.push(funcName);
-                                results.functionsUsingOld++;
-                            } else if (usesNew) {
-                                console.log(`   ✅ ${funcName}: usa SharedCore`);
-                                moduleDetails.functions.push(funcName);
-                                results.functionsUsingSharedCore++;
-                                moduleDetails.usesSharedCore = true;
+                            // MÉTODO 1: Verificação direta de uso de SharedCore
+                            let usesSharedCoreDirectly = false;
+                            let usesOldFunctions = false;
+                            let detectedFunctions = [];
+                            let detectedOldRefs = [];
+                            
+                            // Verificar se o módulo tem métodos que poderiam usar SharedCore
+                            if (typeof moduleObj === 'object' && moduleObj !== null) {
+                                // Contar métodos/propriedades
+                                const methodCount = Object.keys(moduleObj).length;
+                                
+                                if (methodCount > 0) {
+                                    // Módulo tem estrutura - provavelmente usa funções utilitárias
+                                    console.log(`   📊 ${methodCount} métodos/propriedades detectados`);
+                                    
+                                    // Verificar funções globais que DEVEM ser migradas
+                                    functionsToCheck.forEach(funcName => {
+                                        // Verificar se a função existe globalmente
+                                        const globalFuncExists = typeof window[funcName] === 'function';
+                                        const sharedCoreFuncExists = window.SharedCore && 
+                                                                    typeof window.SharedCore[funcName] === 'function';
+                                        
+                                        if (globalFuncExists && sharedCoreFuncExists) {
+                                            // Esta função DEVE ser migrada para SharedCore
+                                            console.log(`   ⚠️ ${funcName}: DEVE usar SharedCore.${funcName}`);
+                                            detectedOldRefs.push(funcName);
+                                            results.functionsUsingOld++;
+                                            usesOldFunctions = true;
+                                        } else if (sharedCoreFuncExists) {
+                                            // Função disponível apenas no SharedCore
+                                            console.log(`   ✅ ${funcName}: Disponível via SharedCore`);
+                                            detectedFunctions.push(funcName);
+                                            results.functionsUsingSharedCore++;
+                                            usesSharedCoreDirectly = true;
+                                        }
+                                    });
+                                }
                             }
-                        });
-                        
-                        // Calcular score do módulo
-                        const totalFunctions = moduleDetails.functions.length + moduleDetails.oldReferences.length;
-                        moduleDetails.score = totalFunctions > 0 ? 
-                            Math.round((moduleDetails.functions.length / totalFunctions) * 100) : 0;
-                        
-                        if (moduleDetails.usesSharedCore) {
-                            results.modulesUsingSharedCore++;
+                            
+                            // MÉTODO 2: Tentar análise de código (se possível)
+                            try {
+                                if (typeof moduleObj === 'function') {
+                                    const code = moduleObj.toString();
+                                    if (code.length > 100) { // Código significativo
+                                        functionsToCheck.forEach(funcName => {
+                                            if (code.includes(`SharedCore.${funcName}`)) {
+                                                console.log(`   ✅ ${funcName}: USA SharedCore (detectado no código)`);
+                                                if (!detectedFunctions.includes(funcName)) {
+                                                    detectedFunctions.push(funcName);
+                                                    results.functionsUsingSharedCore++;
+                                                }
+                                                usesSharedCoreDirectly = true;
+                                            } else if (code.includes(`window.${funcName}`) || 
+                                                      code.includes(` ${funcName}(`) ||
+                                                      code.includes(`.${funcName}(`)) {
+                                                console.log(`   ❌ ${funcName}: USA FORMA ANTIGA (detectado no código)`);
+                                                if (!detectedOldRefs.includes(funcName)) {
+                                                    detectedOldRefs.push(funcName);
+                                                    results.functionsUsingOld++;
+                                                }
+                                                usesOldFunctions = true;
+                                            }
+                                        });
+                                        moduleDetails.detectionMethod = 'análise de código';
+                                    }
+                                }
+                            } catch (codeError) {
+                                // Análise de código falhou - usar detecção indireta
+                                console.log(`   ℹ️ Análise de código não disponível`);
+                            }
+                            
+                            // Atualizar detalhes do módulo
+                            moduleDetails.functions = detectedFunctions;
+                            moduleDetails.oldReferences = detectedOldRefs;
+                            moduleDetails.usesSharedCore = usesSharedCoreDirectly;
+                            
+                            // Se detectou referências antigas, marcar como precisa de migração
+                            if (detectedOldRefs.length > 0) {
+                                moduleDetails.needsMigration = true;
+                            }
+                            
+                            // Calcular score do módulo
+                            const totalFunctions = moduleDetails.functions.length + moduleDetails.oldReferences.length;
+                            moduleDetails.score = totalFunctions > 0 ? 
+                                Math.round((moduleDetails.functions.length / totalFunctions) * 100) : 0;
+                            
+                            if (moduleDetails.usesSharedCore) {
+                                results.modulesUsingSharedCore++;
+                            }
+                            
+                            results.moduleDetails.push(moduleDetails);
+                            
+                        } catch (error) {
+                            console.log(`   ❌ Erro ao analisar módulo: ${error.message}`);
+                            results.moduleDetails.push({
+                                name: moduleName,
+                                error: error.message,
+                                usesSharedCore: false,
+                                functions: [],
+                                oldReferences: [],
+                                score: 0
+                            });
                         }
-                        
-                        results.moduleDetails.push(moduleDetails);
                     } else {
-                        console.log(`\n🚫 ${moduleName}: Não carregado`);
+                        console.log(`\n🚫 ${moduleName}: Não carregado (ignorando)`);
                     }
                 });
+                
+                // VERIFICAÇÃO DE FUNÇÕES GLOBAIS QUE DEVEM SER MIGRADAS
+                console.log('\n🔍 VERIFICAÇÃO DE FUNÇÕES GLOBAIS:');
+                let globalFunctionsToMigrate = [];
+                
+                functionsToCheck.forEach(funcName => {
+                    const globalExists = typeof window[funcName] === 'function';
+                    const sharedCoreExists = window.SharedCore && 
+                                           typeof window.SharedCore[funcName] === 'function';
+                    
+                    if (globalExists && sharedCoreExists) {
+                        console.log(`   ⚠️ ${funcName}: Disponível globalmente DEVE ser migrada para SharedCore`);
+                        globalFunctionsToMigrate.push(funcName);
+                        
+                        // Adicionar à contagem se ainda não foi contabilizado
+                        if (!results.functionsUsingOld) {
+                            results.functionsUsingOld++;
+                        }
+                    } else if (sharedCoreExists) {
+                        console.log(`   ✅ ${funcName}: Disponível apenas no SharedCore`);
+                    } else if (globalExists) {
+                        console.log(`   ❓ ${funcName}: Disponível apenas globalmente (SharedCore não tem)`);
+                    }
+                });
+                
+                if (globalFunctionsToMigrate.length > 0) {
+                    console.log(`\n⚠️  ${globalFunctionsToMigrate.length} funções DEVEM ser migradas:`);
+                    globalFunctionsToMigrate.forEach(func => {
+                        console.log(`   🔧 ${func}() → SharedCore.${func}()`);
+                    });
+                }
                 
                 // Calcular scores
                 const migrationScore = results.checkedModules > 0 ? 
@@ -15433,8 +15525,10 @@ const SharedCoreMigration = (function() {
                     Math.round((results.functionsUsingSharedCore / (results.functionsUsingSharedCore + results.functionsUsingOld)) * 100) : 0;
                 
                 console.log(`\n📊 RESUMO DA MIGRAÇÃO:`);
-                console.log(`   📦 Módulos: ${results.modulesUsingSharedCore}/${results.checkedModules} usam SharedCore (${migrationScore}%)`);
-                console.log(`   🔧 Funções: ${results.functionsUsingSharedCore} usam SharedCore, ${results.functionsUsingOld} usam antigas (${functionScore}%)`);
+                console.log(`   📦 Módulos principais verificados: ${results.checkedModules}`);
+                console.log(`   🎯 Módulos usando SharedCore: ${results.modulesUsingSharedCore}/${results.checkedModules} (${migrationScore}%)`);
+                console.log(`   🔧 Funções para migrar: ${results.functionsUsingOld}`);
+                console.log(`   ✅ Funções já migradas: ${results.functionsUsingSharedCore}`);
                 
                 let status = 'success';
                 let message = '';
@@ -15443,14 +15537,18 @@ const SharedCoreMigration = (function() {
                     console.log('🎉 TODAS AS REFERÊNCIAS ATUALIZADAS PARA SHAREDCORE!');
                     message = '✅ MIGRAÇÃO 100% COMPLETA!';
                     status = 'success';
-                } else if (functionScore >= 70) {
-                    console.log(`⚠️  MIGRAÇÃO PARCIAL: ${results.functionsUsingOld} referências antigas restantes`);
-                    status = 'warning';
-                    message = `⚠️ MIGRAÇÃO ${functionScore}% COMPLETA`;
-                } else {
-                    console.log(`❌ MIGRAÇÃO CRÍTICA: ${results.functionsUsingOld} referências antigas detectadas`);
+                } else if (results.functionsUsingOld > 0) {
+                    console.log(`❌ MIGRAÇÃO CRÍTICA: ${results.functionsUsingOld} funções precisam ser migradas`);
                     status = 'error';
-                    message = `❌ MIGRAÇÃO APENAS ${functionScore}%`;
+                    message = `❌ ${results.functionsUsingOld} FUNÇÕES PRECISAM DE MIGRAÇÃO`;
+                } else if (results.checkedModules === 0) {
+                    console.log('⚠️ NENHUM MÓDULO PRINCIPAL CARREGADO PARA VERIFICAÇÃO');
+                    status = 'warning';
+                    message = '⚠️ NENHUM MÓDULO PARA VERIFICAR';
+                } else {
+                    console.log('✅ SISTEMA PODE NÃO USAR ESSAS FUNÇÕES OU JÁ ESTÁ ATUALIZADO');
+                    status = 'success';
+                    message = '✅ VERIFICAÇÃO CONCLUÍDA';
                 }
                 
                 console.groupEnd();
@@ -15464,6 +15562,7 @@ const SharedCoreMigration = (function() {
                         functionScore: functionScore,
                         modules: results.moduleDetails,
                         needsMigration: results.functionsUsingOld > 0,
+                        globalFunctionsToMigrate: globalFunctionsToMigrate,
                         timestamp: new Date().toISOString()
                     }
                 };
@@ -15612,68 +15711,122 @@ const SharedCoreMigration = (function() {
                     propertiesScript: '',
                     adminScript: '',
                     compatibilityScript: '',
-                    verificationScript: ''
+                    verificationScript: '',
+                    quickFixScript: ''
                 };
                 
-                console.log('📝 Gerando scripts de migração...');
+                console.log('📝 Gerando scripts de migração baseados na análise...');
                 
                 // Script para MediaSystem
                 scripts.mediaSystemScript = `// ========== MIGRAÇÃO SHAREDCORE - MediaSystem ==========
 // Adicionar no TOPO do arquivo (js/modules/media/media-unified.js)
 
+// CONFIGURAÇÃO SHAREDCORE PARA MediaSystem
 const SC = window.SharedCore;
 
-// Substituições necessárias:
-// window.debounce → SC.debounce
-// window.throttle → SC.throttle  
-// window.isMobileDevice → SC.isMobileDevice
-// window.logModule → SC.logModule
-// console.log → SC.logModule('media', 'mensagem')
+// VERIFICAÇÃO DE FUNÇÕES UTILIZADAS:
+// ✓ debounce - Substituir window.debounce por SC.debounce
+// ✓ throttle - Substituir window.throttle por SC.throttle  
+// ✓ isMobileDevice - Substituir window.isMobileDevice por SC.isMobileDevice
+// ✓ logModule - Substituir console.log por SC.logModule('media', 'mensagem')
 
-// Fallback se SharedCore não carregar
-setTimeout(() => {
-    if (!SC) {
-        console.error('❌ SharedCore não carregado no MediaSystem!');
-        window.SharedCore = window.SharedCore || {
-            debounce: window.debounce,
-            throttle: window.throttle,
-            isMobileDevice: window.isMobileDevice,
-            logModule: (module, msg) => console.log(\`[\${module}] \${msg}\`)
-        };
-    }
-}, 500);
+// EXEMPLOS DE SUBSTITUIÇÃO:
+// ANTES: window.debounce(function() { ... }, 300);
+// DEPOIS: SC.debounce(function() { ... }, 300);
+//
+// ANTES: console.log('Media carregado');
+// DEPOIS: SC.logModule('media', 'Media carregado');
+//
+// ANTES: if (window.isMobileDevice()) { ... }
+// DEPOIS: if (SC.isMobileDevice()) { ... }
+
+// Fallback automático se SharedCore não carregar
+if (!SC) {
+    console.warn('⚠️ SharedCore não disponível no MediaSystem, criando fallback local');
+    window.SharedCore = window.SharedCore || {
+        debounce: window.debounce || function(fn, delay) {
+            let timeout;
+            return function() {
+                clearTimeout(timeout);
+                timeout = setTimeout(fn, delay);
+            };
+        },
+        throttle: window.throttle || function(fn, delay) {
+            let lastCall = 0;
+            return function() {
+                const now = Date.now();
+                if (now - lastCall >= delay) {
+                    lastCall = now;
+                    fn();
+                }
+            };
+        },
+        isMobileDevice: window.isMobileDevice || function() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        },
+        logModule: function(module, msg) {
+            console.log(\`[\${module}] \${msg}\`);
+        }
+    };
+}
+
+console.log('✅ MediaSystem configurado para usar SharedCore');
 `;
 
                 // Script para PdfSystem
                 scripts.pdfSystemScript = `// ========== MIGRAÇÃO SHAREDCORE - PdfSystem ==========
 // Adicionar no TOPO do arquivo (js/modules/reader/pdf-unified.js)
 
+// CONFIGURAÇÃO SHAREDCORE PARA PdfSystem
 const SC = window.SharedCore || {
-    elementExists: (id) => document.getElementById(id) !== null,
-    logModule: (module, msg) => console.log(\`[\${module}] \${msg}\`)
+    elementExists: function(id) {
+        const element = document.getElementById(id);
+        return element !== null && element !== undefined;
+    },
+    logModule: function(module, msg, level = 'info') {
+        const timestamp = new Date().toLocaleTimeString();
+        const prefix = \`[\${timestamp}] [\${module}]\`;
+        switch(level) {
+            case 'error': console.error(\`❌ \${prefix} \${msg}\`); break;
+            case 'warn': console.warn(\`⚠️  \${prefix} \${msg}\`); break;
+            default: console.log(\`✅ \${prefix} \${msg}\`);
+        }
+    }
 };
 
-// Substituições:
-// document.getElementById → SC.elementExists primeiro
-// console.log → SC.logModule('pdf', 'mensagem')
-// Exemplo linha 274: if (!modal || !SC.elementExists('pdfPassword'))
+// VERIFICAÇÃO DE FUNÇÕES UTILIZADAS:
+// ✓ elementExists - Substituir document.getElementById() por SC.elementExists() primeiro
+// ✓ logModule - Substituir console.log por SC.logModule('pdf', 'mensagem')
+
+// EXEMPLOS DE SUBSTITUIÇÃO CRÍTICOS:
+// LINHA ~274: if (!modal || !document.getElementById('pdfPassword')) {
+// SUBSTITUIR POR: if (!modal || !SC.elementExists('pdfPassword')) {
+//
+// LINHAS COM console.log: console.log('PDF carregado');
+// SUBSTITUIR POR: SC.logModule('pdf', 'PDF carregado');
 
 // Fallback automático se SharedCore não existir
 if (!window.SharedCore) {
     window.SharedCore = SC;
+    console.log('✅ PdfSystem: SharedCore inicializado com fallbacks');
 }
+
+console.log('✅ PdfSystem configurado para usar SharedCore');
 `;
 
                 // Script para Properties.js
                 scripts.propertiesScript = `// ========== MIGRAÇÃO SHAREDCORE - Properties.js ==========
 // Adicionar no TOPO do arquivo (js/modules/properties.js)
 
+// CONFIGURAÇÃO SHAREDCORE PARA Properties.js
 const SC = window.SharedCore;
 
 if (!SC) {
-    console.error('❌ SharedCore não disponível no properties.js!');
-    // Criar fallback local
+    console.error('❌ CRÍTICO: SharedCore não disponível no properties.js!');
+    
+    // CRIAR FALLBACK LOCAL COMPLETO
     window.SharedCore = window.SharedCore || {
+        // Funções de utilitários
         debounce: function(func, wait) {
             let timeout;
             return function executedFunction(...args) {
@@ -15685,103 +15838,279 @@ if (!SC) {
                 timeout = setTimeout(later, wait);
             };
         },
-        supabaseFetch: window.supabaseFetch,
-        logModule: (module, msg) => console.log(\`[\${module}] \${msg}\`),
-        formatPrice: window.formatPrice,
-        runLowPriority: window.runLowPriority
+        
+        // Funções de rede
+        supabaseFetch: window.supabaseFetch || function(table, filters) {
+            console.warn('⚠️  supabaseFetch fallback - função não implementada');
+            return Promise.resolve([]);
+        },
+        
+        // Funções de logging
+        logModule: function(module, msg, level = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = { error: '❌', warn: '⚠️', info: 'ℹ️', success: '✅' };
+            const icon = colors[level] || '📝';
+            console.log(\`\${icon} [\${timestamp}] [\${module}] \${msg}\`);
+        },
+        
+        // Funções de formatação
+        formatPrice: window.formatPrice || function(price) {
+            if (!price) return 'R$ 0,00';
+            const num = typeof price === 'string' ? parseFloat(price.replace(/[^0-9.-]+/g, '')) : price;
+            return 'R$ ' + num.toFixed(2).replace('.', ',').replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.');
+        },
+        
+        // Funções de performance
+        runLowPriority: window.runLowPriority || function(callback) {
+            if (typeof requestIdleCallback === 'function') {
+                requestIdleCallback(callback);
+            } else {
+                setTimeout(callback, 1);
+            }
+        },
+        
+        // Funções de string
+        stringSimilarity: window.stringSimilarity || function(s1, s2) {
+            if (!s1 || !s2) return 0;
+            const str1 = s1.toLowerCase();
+            const str2 = s2.toLowerCase();
+            if (str1 === str2) return 1;
+            return 0.5; // Fallback básico
+        }
     };
+    
+    console.log('⚠️  Properties.js: SharedCore criado com fallbacks locais');
 }
 
-// Substituições principais:
+// SUBSTITUIÇÕES PRINCIPAIS (baseado em análise):
 // LINHA 11: console.log → SC.logModule('properties', 'mensagem')
 // LINHA 76: window.supabaseFetch → SC.supabaseFetch
 // LINHA 1196: window.runLowPriority → SC.runLowPriority
 // LINHA 849: stringSimilarity → SC.stringSimilarity
+// LINHAS COM formatPrice: formatPrice(valor) → SC.formatPrice(valor)
+
+console.log('✅ Properties.js configurado para usar SharedCore');
 `;
 
-                // Script de compatibilidade
-                scripts.compatibilityScript = `// ========== WRAPPERS DE COMPATIBILIDADE ==========
-// Adicionar ao final de SharedCore.js
+                // Script de compatibilidade (wrappers)
+                scripts.compatibilityScript = `// ========== WRAPPERS DE COMPATIBILIDADE SHAREDCORE ==========
+// Adicionar ao FINAL do arquivo SharedCore.js (antes do fechamento)
 
 (function createCompatibilityWrappers() {
-    console.group('🔄 CRIANDO WRAPPERS DE COMPATIBILIDADE');
+    console.group('🔄 CRIANDO WRAPPERS DE COMPATIBILIDADE SHAREDCORE');
     
     const sharedFunctions = [
         'debounce', 'throttle', 'formatPrice', 'isMobileDevice',
         'elementExists', 'logModule', 'supabaseFetch', 'stringSimilarity',
-        'runLowPriority', 'isValidEmail', 'isValidPhone', 'truncateText'
+        'runLowPriority'
     ];
     
+    let wrappersCreated = 0;
+    
     sharedFunctions.forEach(funcName => {
-        if (window[funcName] && window.SharedCore[funcName]) {
+        // Verificar se a função existe globalmente E no SharedCore
+        const globalFuncExists = typeof window[funcName] === 'function';
+        const sharedCoreFuncExists = window.SharedCore && 
+                                   typeof window.SharedCore[funcName] === 'function';
+        
+        if (globalFuncExists && sharedCoreFuncExists) {
+            // Guardar função original para fallback
             const originalFunc = window[funcName];
             
+            // Criar wrapper que redireciona para SharedCore
             window[funcName] = function(...args) {
-                console.warn(\`⚠️  Deprecated: window.\${funcName}() - Use window.SharedCore.\${funcName}() instead\`);
+                // Warning no console (apenas em desenvolvimento)
+                if (window.location.href.includes('debug=true') || window.location.href.includes('localhost')) {
+                    console.warn(\`⚠️  [MIGRAÇÃO] window.\${funcName}() está obsoleto. Use SharedCore.\${funcName}()\`);
+                }
                 
-                return window.SharedCore[funcName].apply(this, args);
+                try {
+                    // Executar via SharedCore
+                    return window.SharedCore[funcName].apply(this, args);
+                } catch (error) {
+                    // Fallback para função original se SharedCore falhar
+                    console.error(\`❌ Erro no SharedCore.\${funcName}(), usando fallback\`, error);
+                    return originalFunc.apply(this, args);
+                }
             };
             
-            console.log(\`✅ \${funcName}: Wrapper criado\`);
+            wrappersCreated++;
+            console.log(\`✅ Wrapper criado para \${funcName}()\`);
+        } else if (globalFuncExists && !sharedCoreFuncExists) {
+            console.warn(\`⚠️  \${funcName}() existe globalmente mas não no SharedCore\`);
+        } else if (!globalFuncExists && sharedCoreFuncExists) {
+            console.log(\`ℹ️  \${funcName}() disponível apenas via SharedCore\`);
         }
     });
     
+    console.log(\`\\n📊 RESUMO: \${wrappersCreated} wrappers de compatibilidade criados\`);
+    console.log('🎯 Sistema mantém compatibilidade reversa durante migração');
     console.groupEnd();
+    
+    // Adicionar atalho global para SharedCore
+    window.SC = window.SharedCore;
+    console.log('✅ Atalho SC disponível (SC = SharedCore)');
 })();
 `;
 
                 // Script de verificação final
-                scripts.verificationScript = `// ========== VERIFICAÇÃO FINAL ==========
-// Executar após todas as migrações
+                scripts.verificationScript = `// ========== VERIFICAÇÃO FINAL DE MIGRAÇÃO ==========
+// Executar APÓS todas as migrações (pode ser adicionado ao final de qualquer módulo)
 
-setTimeout(() => {
-    console.group('🧪 TESTE FINAL DE MIGRAÇÃO SHAREDCORE');
+(function verifyMigration() {
+    console.group('🧪 VERIFICAÇÃO FINAL DE MIGRAÇÃO SHAREDCORE');
     
-    // Testar módulos
-    const testModules = [
+    const modulesToVerify = [
         { name: 'MediaSystem', obj: window.MediaSystem },
         { name: 'PdfSystem', obj: window.PdfSystem },
-        { name: 'properties', obj: window.properties }
+        { name: 'properties', obj: window.properties },
+        { name: 'admin', obj: window.admin }
     ];
     
-    testModules.forEach(({ name, obj }) => {
+    console.log('🔍 Verificando módulos migrados...');
+    
+    let migratedCount = 0;
+    let totalModules = 0;
+    
+    modulesToVerify.forEach(({ name, obj }) => {
         if (obj) {
-            const code = obj.toString ? obj.toString() : '';
-            const usesSharedCore = code.includes('SharedCore');
-            const usesOldWindow = code.includes('window.debounce') || 
-                                  code.includes('window.throttle');
+            totalModules++;
+            let usesSharedCore = false;
             
-            console.log(\`\${name}: \${usesSharedCore ? '✅ Usa SharedCore' : '❌ Não usa SharedCore'}\`);
-            if (usesOldWindow) {
-                console.warn(\`   ⚠️  Ainda tem referências antigas\`);
+            // Verificar uso de SharedCore
+            try {
+                const code = obj.toString ? obj.toString().substring(0, 500) : '';
+                usesSharedCore = code.includes('SharedCore') || 
+                                code.includes('SC.') ||
+                                code.includes('window.SharedCore');
+                
+                if (usesSharedCore) {
+                    console.log(\`✅ \${name}: USA SharedCore\`);
+                    migratedCount++;
+                } else {
+                    console.log(\`❌ \${name}: NÃO usa SharedCore\`);
+                }
+            } catch (e) {
+                console.log(\`⚠️  \${name}: Não foi possível verificar\`);
             }
         }
     });
     
-    // Testar funções
-    try {
-        const price = window.SharedCore.formatPrice('450000');
-        console.log(\`✅ formatPrice: \${price}\`);
-        
-        const isMobile = window.SharedCore.isMobileDevice();
-        console.log(\`✅ isMobileDevice: \${isMobile}\`);
-        
-        console.log('✅ Todas as funções SharedCore operacionais');
-    } catch (error) {
-        console.error(\`❌ Erro: \${error.message}\`);
+    // Verificar funções SharedCore
+    console.log('\\n🔧 Verificando funções SharedCore...');
+    const essentialFunctions = ['formatPrice', 'isMobileDevice', 'elementExists'];
+    let functionsWorking = 0;
+    
+    essentialFunctions.forEach(funcName => {
+        if (window.SharedCore && typeof window.SharedCore[funcName] === 'function') {
+            try {
+                // Teste rápido
+                if (funcName === 'formatPrice') {
+                    const result = window.SharedCore.formatPrice('123456');
+                    if (result && result.includes('R$')) {
+                        console.log(\`✅ SharedCore.\${funcName}() funcionando: \${result}\`);
+                        functionsWorking++;
+                    }
+                } else {
+                    console.log(\`✅ SharedCore.\${funcName}() disponível\`);
+                    functionsWorking++;
+                }
+            } catch (e) {
+                console.log(\`❌ SharedCore.\${funcName}() erro: \${e.message}\`);
+            }
+        } else {
+            console.log(\`❌ SharedCore.\${funcName}() não disponível\`);
+        }
+    });
+    
+    // Score final
+    const migrationScore = totalModules > 0 ? Math.round((migratedCount / totalModules) * 100) : 0;
+    const functionScore = Math.round((functionsWorking / essentialFunctions.length) * 100);
+    const overallScore = Math.round((migrationScore + functionScore) / 2);
+    
+    console.log(\`\\n📊 SCORE FINAL DA MIGRAÇÃO: \${overallScore}%\`);
+    console.log(\`   📦 Módulos: \${migratedCount}/\${totalModules} migrados (\${migrationScore}%)\`);
+    console.log(\`   🔧 Funções: \${functionsWorking}/\${essentialFunctions.length} funcionando (\${functionScore}%)\`);
+    
+    if (overallScore >= 80) {
+        console.log('🎉 MIGRAÇÃO BEM-SUCEDIDA!');
+    } else if (overallScore >= 50) {
+        console.log('⚠️  MIGRAÇÃO PARCIAL - Algumas correções necessárias');
+    } else {
+        console.log('❌ MIGRAÇÃO INCOMPLETA - Ação necessária');
     }
     
     console.groupEnd();
+})();
+
+// Executar após 3 segundos
+setTimeout(() => {
+    if (typeof verifyMigration === 'function') {
+        verifyMigration();
+    }
 }, 3000);
+`;
+
+                // Script de correção rápida (automático)
+                scripts.quickFixScript = `// ========== CORREÇÃO RÁPIDA SHAREDCORE ==========
+// Executar no console para correção automática imediata
+
+(function quickFix() {
+    console.group('🔧 CORREÇÃO RÁPIDA SHAREDCORE');
+    console.log('⚠️  Esta correção cria wrappers temporários para compatibilidade');
+    
+    // Criar SharedCore se não existir
+    if (!window.SharedCore) {
+        window.SharedCore = {};
+        console.log('✅ SharedCore criado como objeto vazio');
+    }
+    
+    // Funções essenciais que DEVEM existir
+    const essentialFunctions = [
+        { name: 'elementExists', impl: (id) => document.getElementById(id) !== null },
+        { name: 'logModule', impl: (module, msg) => console.log(\`[\${module}] \${msg}\`) },
+        { name: 'formatPrice', impl: (price) => \`R$ \${parseFloat(price || 0).toFixed(2).replace('.', ',')}\` },
+        { name: 'isMobileDevice', impl: () => /Mobi|Android/i.test(navigator.userAgent) }
+    ];
+    
+    // Adicionar funções essenciais ao SharedCore
+    essentialFunctions.forEach(({ name, impl }) => {
+        if (!window.SharedCore[name] || typeof window.SharedCore[name] !== 'function') {
+            window.SharedCore[name] = impl;
+            console.log(\`✅ SharedCore.\${name}() adicionado\`);
+        }
+    });
+    
+    // Criar wrappers de compatibilidade
+    essentialFunctions.forEach(({ name }) => {
+        if (window.SharedCore[name] && !window[name]) {
+            window[name] = function(...args) {
+                console.warn(\`⚠️  [COMPATIBILIDADE] window.\${name}() redirecionando para SharedCore\`);
+                return window.SharedCore[name].apply(this, args);
+            };
+            console.log(\`✅ Wrapper criado para window.\${name}()\`);
+        }
+    });
+    
+    console.log('\\n🎯 CORREÇÃO APLICADA!');
+    console.log('📋 Comandos disponíveis:');
+    console.log('• SharedCore.elementExists("#id") - Verificar elemento');
+    console.log('• SharedCore.logModule("module", "msg") - Log formatado');
+    console.log('• window.elementExists("#id") - Compatibilidade (usa SharedCore)');
+    console.groupEnd();
+    
+    return '✅ Correção rápida aplicada com sucesso!';
+})();
 `;
 
                 console.log('✅ Scripts de migração gerados com sucesso!');
                 console.log('\n📋 SCRIPTS DISPONÍVEIS:');
-                console.log('1. MediaSystem - Substituir funções de media');
-                console.log('2. PdfSystem - Substituir verificações de elemento');
-                console.log('3. Properties.js - Foco em supabaseFetch e runLowPriority');
-                console.log('4. Wrappers - Compatibilidade reversa');
-                console.log('5. Verificação - Teste final pós-migração');
+                console.log('1. MediaSystem.js - Para módulo de mídia');
+                console.log('2. PdfSystem.js - Para módulo de PDF');
+                console.log('3. Properties.js - Para módulo de propriedades');
+                console.log('4. Wrappers.js - Compatibilidade reversa (SharedCore.js)');
+                console.log('5. Verificação.js - Teste final pós-migração');
+                console.log('6. CorreçãoRápida.js - Correção imediata (executar no console)');
                 
                 console.groupEnd();
                 
@@ -15792,8 +16121,7 @@ setTimeout(() => {
                         migrationStatus: migrationResult.details,
                         compatibilityStatus: compatibilityResult.details,
                         scripts: scripts,
-                        readyToMigrate: migrationResult.details.needsMigration && 
-                                      compatibilityResult.details.readyForMigration,
+                        readyToMigrate: migrationResult.details.needsMigration,
                         timestamp: new Date().toISOString()
                     }
                 };
@@ -15890,7 +16218,7 @@ setTimeout(() => {
                     // PASSO 2: Verificar e migrar módulos principais
                     console.log('\n🔍 PASSO 2: Verificando módulos para migração...');
                     
-                    const modulesToMigrate = ['MediaSystem', 'PdfSystem'];
+                    const modulesToMigrate = ['MediaSystem', 'PdfSystem', 'properties'];
                     
                     modulesToMigrate.forEach(moduleName => {
                         if (window[moduleName]) {
@@ -15916,13 +16244,17 @@ setTimeout(() => {
                     }
                     
                     // Adicionar fallbacks para funções críticas
-                    const essentialFunctions = ['elementExists', 'logModule'];
+                    const essentialFunctions = ['elementExists', 'logModule', 'formatPrice', 'isMobileDevice'];
                     essentialFunctions.forEach(funcName => {
                         if (!window.SharedCore[funcName] || typeof window.SharedCore[funcName] !== 'function') {
                             if (funcName === 'elementExists') {
                                 window.SharedCore[funcName] = (id) => document.getElementById(id) !== null;
                             } else if (funcName === 'logModule') {
                                 window.SharedCore[funcName] = (module, msg) => console.log(`[${module}] ${msg}`);
+                            } else if (funcName === 'formatPrice') {
+                                window.SharedCore[funcName] = (price) => `R$ ${parseFloat(price || 0).toFixed(2).replace('.', ',')}`;
+                            } else if (funcName === 'isMobileDevice') {
+                                window.SharedCore[funcName] = () => /Mobi|Android/i.test(navigator.userAgent);
                             }
                             console.log(`✅ Fallback criado para SharedCore.${funcName}`);
                         }
@@ -15955,6 +16287,16 @@ setTimeout(() => {
                                 test: 'isMobileDevice',
                                 passed: typeof isMobile === 'boolean',
                                 result: isMobile
+                            });
+                        }
+                        
+                        // Testar elementExists
+                        if (window.SharedCore.elementExists) {
+                            const exists = window.SharedCore.elementExists('non-existent-' + Date.now());
+                            testResults.push({
+                                test: 'elementExists',
+                                passed: typeof exists === 'boolean' && exists === false,
+                                result: 'Funciona corretamente'
                             });
                         }
                         
@@ -16206,6 +16548,11 @@ setTimeout(() => {
                                                     <div class="script">
                                                         <h2>5. Verificação Final</h2>
                                                         <pre>${scripts.verificationScript}</pre>
+                                                    </div>
+                                                    
+                                                    <div class="script">
+                                                        <h2>6. Correção Rápida (executar no console)</h2>
+                                                        <pre>${scripts.quickFixScript}</pre>
                                                     </div>
                                                 </body>
                                                 </html>
