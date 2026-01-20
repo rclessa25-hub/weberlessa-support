@@ -20223,6 +20223,305 @@ const filesToCheck = ${JSON.stringify(result.correctFiles, null, 2)};
             };
         }
     };
+
+// ========== ADICIONE ESTE CÓDIGO NO DIAGNOSTICS.JS ==========
+// Procure por onde os outros testes estão definidos e adicione junto
+
+// VERIFICAÇÃO DE SUPABASE - VERIFICA SE CONSTANTES ESTÃO CORRETAS
+const SupabaseVerificationTest = {
+    id: 'supabase-verification',
+    title: '🔍 VERIFICAÇÃO SUPABASE',
+    description: 'Verifica se as constantes do Supabase estão corretas',
+    type: 'verification',
+    icon: '🔍',
+    category: 'storage',
+    critical: true,
+    
+    execute: async function() {
+        console.group('🔍 VERIFICAÇÃO SUPABASE');
+        
+        let results = {
+            status: 'success',
+            checks: [],
+            recommendations: []
+        };
+        
+        // 1. VERIFICAR CONSTANTES
+        console.log('1. 🔧 VERIFICANDO CONSTANTES:');
+        
+        if (!window.SUPABASE_URL) {
+            console.error('❌ SUPABASE_URL: NÃO DEFINIDA');
+            results.checks.push({ item: 'SUPABASE_URL', status: 'error', message: 'Não definida' });
+            results.recommendations.push('Definir window.SUPABASE_URL no arquivo de configuração');
+        } else {
+            const isSupabaseUrl = window.SUPABASE_URL.includes('supabase.co');
+            console.log(`✅ SUPABASE_URL: ${window.SUPABASE_URL}`);
+            console.log(`   É URL do Supabase? ${isSupabaseUrl ? '✅ SIM' : '❌ NÃO'}`);
+            
+            results.checks.push({ 
+                item: 'SUPABASE_URL', 
+                status: isSupabaseUrl ? 'success' : 'warning',
+                message: isSupabaseUrl ? 'URL válida' : 'URL pode estar incorreta'
+            });
+            
+            if (!isSupabaseUrl) {
+                results.recommendations.push('SUPABASE_URL deve apontar para supabase.co');
+            }
+        }
+        
+        if (!window.SUPABASE_KEY) {
+            console.error('❌ SUPABASE_KEY: NÃO DEFINIDA');
+            results.checks.push({ item: 'SUPABASE_KEY', status: 'error', message: 'Não definida' });
+            results.recommendations.push('Definir window.SUPABASE_KEY no arquivo de configuração');
+        } else {
+            const keyLength = window.SUPABASE_KEY.length;
+            const isJWT = window.SUPABASE_KEY.startsWith('eyJ'); // JWT geralmente começa com eyJ
+            console.log(`✅ SUPABASE_KEY: ${keyLength} caracteres`);
+            console.log(`   Formato JWT? ${isJWT ? '✅ SIM' : '⚠️ PODE NÃO SER VÁLIDO'}`);
+            
+            results.checks.push({ 
+                item: 'SUPABASE_KEY', 
+                status: keyLength > 50 ? 'success' : 'warning',
+                message: `${keyLength} caracteres`
+            });
+        }
+        
+        // 2. TESTAR CONEXÃO COM SUPABASE
+        console.log('\n2. 🌐 TESTANDO CONEXÃO:');
+        
+        if (window.SUPABASE_URL && window.SUPABASE_KEY) {
+            try {
+                // Testar REST API
+                const restTest = await fetch(`${window.SUPABASE_URL}/rest/v1/properties?select=id&limit=1`, {
+                    headers: {
+                        'apikey': window.SUPABASE_KEY,
+                        'Authorization': `Bearer ${window.SUPABASE_KEY}`
+                    }
+                });
+                
+                console.log(`📊 REST API: ${restTest.ok ? '✅ CONECTADO' : `❌ FALHA (${restTest.status})`}`);
+                results.checks.push({
+                    item: 'REST Connection',
+                    status: restTest.ok ? 'success' : 'error',
+                    message: restTest.ok ? 'Conectado' : `Erro ${restTest.status}`
+                });
+                
+                // Testar Storage
+                const storageTest = await fetch(`${window.SUPABASE_URL}/storage/v1/bucket/properties`, {
+                    headers: {
+                        'apikey': window.SUPABASE_KEY,
+                        'Authorization': `Bearer ${window.SUPABASE_KEY}`
+                    }
+                });
+                
+                console.log(`📦 Storage "properties": ${storageTest.ok ? '✅ ACESSÍVEL' : `⚠️ ${storageTest.status}`}`);
+                results.checks.push({
+                    item: 'Storage Bucket',
+                    status: storageTest.ok ? 'success' : 'warning',
+                    message: storageTest.ok ? 'Acessível' : `Status ${storageTest.status}`
+                });
+                
+            } catch (error) {
+                console.error(`❌ ERRO NA CONEXÃO: ${error.message}`);
+                results.checks.push({
+                    item: 'Conexão',
+                    status: 'error',
+                    message: error.message
+                });
+                results.recommendations.push('Verificar conexão de internet e permissões CORS');
+            }
+        } else {
+            console.log('⚠️ Não é possível testar conexão - constantes faltando');
+        }
+        
+        // 3. VERIFICAR MEDIASYSTEM
+        console.log('\n3. 🖼️ VERIFICANDO MEDIASYSTEM:');
+        
+        if (window.MediaSystem && window.MediaSystem.uploadFiles) {
+            console.log('✅ MediaSystem disponível');
+            results.checks.push({
+                item: 'MediaSystem',
+                status: 'success',
+                message: 'uploadFiles disponível'
+            });
+        } else {
+            console.warn('⚠️ MediaSystem não disponível ou uploadFiles não encontrado');
+            results.checks.push({
+                item: 'MediaSystem',
+                status: 'warning',
+                message: 'uploadFiles não encontrado'
+            });
+            results.recommendations.push('Verificar se media-unified.js foi carregado');
+        }
+        
+        // 4. CORREÇÕES AUTOMÁTICAS (se necessário)
+        console.log('\n4. 🔧 CORREÇÕES DISPONÍVEIS:');
+        
+        const needsFix = results.checks.some(check => check.status === 'error');
+        
+        if (needsFix) {
+            console.log('⚠️ PROBLEMAS DETECTADOS - CORREÇÕES:');
+            
+            if (!window.SUPABASE_URL || !window.SUPABASE_URL.includes('supabase.co')) {
+                console.log('💡 Correção automática disponível para SUPABASE_URL');
+                results.recommendations.push('Executar correção automática: window.fixSupabaseConstants()');
+                
+                // Adicionar função de correção
+                if (!window.fixSupabaseConstants) {
+                    window.fixSupabaseConstants = function() {
+                        console.log('🔧 APLICANDO CORREÇÃO AUTOMÁTICA SUPABASE...');
+                        window.SUPABASE_URL = 'https://syztbxvpdaplpetmixmt.supabase.co';
+                        window.SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5enRieHZwZGFwbHBldG1peG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxODY0OTAsImV4cCI6MjA3OTc2MjQ5MH0.SISlMoO1kLWbIgx9pze8Dv1O-kfQ_TAFDX6yPUxfJxo';
+                        console.log('✅ Constantes corrigidas. Recarregue a página.');
+                        alert('✅ Constantes do Supabase corrigidas!\n\nRecarregue a página para aplicar.');
+                    };
+                }
+            }
+        } else {
+            console.log('✅ Tudo parece correto!');
+        }
+        
+        // 5. RESUMO
+        console.log('\n📊 RESUMO DA VERIFICAÇÃO:');
+        const errors = results.checks.filter(c => c.status === 'error').length;
+        const warnings = results.checks.filter(c => c.status === 'warning').length;
+        const successes = results.checks.filter(c => c.status === 'success').length;
+        
+        console.log(`✅ Sucessos: ${successes}`);
+        console.log(`⚠️  Avisos: ${warnings}`);
+        console.log(`❌ Erros: ${errors}`);
+        
+        if (errors > 0) {
+            results.status = 'error';
+            console.log('🔴 VERIFICAÇÃO FALHOU - Corrija os erros acima');
+        } else if (warnings > 0) {
+            results.status = 'warning';
+            console.log('🟡 VERIFICAÇÃO COM AVISOS - Verifique recomendações');
+        } else {
+            console.log('🟢 VERIFICAÇÃO APROVADA!');
+        }
+        
+        console.groupEnd();
+        
+        return results;
+    },
+    
+    // Função de reparo automático
+    fix: function() {
+        if (window.fixSupabaseConstants) {
+            window.fixSupabaseConstants();
+            return { status: 'fix_applied', message: 'Correção aplicada' };
+        }
+        return { status: 'no_fix_available', message: 'Nenhuma correção disponível' };
+    }
+};
+
+// ========== ADICIONE ESTE TESTE À LISTA DE TESTES ==========
+// Procure onde outros testes são registrados (ex: TestManager.registerTest)
+// e adicione esta linha:
+
+// EXEMPLO DE COMO ADICIONAR:
+if (typeof TestManager !== 'undefined' && TestManager.registerTest) {
+    // Verificar se já não existe
+    const existingTest = TestManager.getTest ? TestManager.getTest('supabase-verification') : null;
+    if (!existingTest) {
+        TestManager.registerTest(SupabaseVerificationTest);
+        console.log('✅ Teste de verificação do Supabase registrado');
+    }
+}
+
+// ========== FUNÇÃO DE TESTE DE UPLOAD RÁPIDO ==========
+// Adicione também esta função para testes manuais
+if (!window.testSupabaseUpload) {
+    window.testSupabaseUpload = async function() {
+        console.group('🧪 TESTE DE UPLOAD SUPABASE');
+        
+        // Verificar constantes primeiro
+        if (!window.SUPABASE_URL || !window.SUPABASE_URL.includes('supabase.co')) {
+            console.error('❌ SUPABASE_URL incorreta:', window.SUPABASE_URL);
+            console.log('💡 Execute: window.fixSupabaseConstants()');
+            console.groupEnd();
+            return false;
+        }
+        
+        if (!window.SUPABASE_KEY || window.SUPABASE_KEY.length < 50) {
+            console.error('❌ SUPABASE_KEY inválida');
+            console.groupEnd();
+            return false;
+        }
+        
+        // Verificar MediaSystem
+        if (!window.MediaSystem || !window.MediaSystem.uploadFiles) {
+            console.error('❌ MediaSystem não disponível');
+            console.groupEnd();
+            return false;
+        }
+        
+        try {
+            console.log('📁 Criando arquivo de teste...');
+            
+            // Criar arquivo de teste
+            const testContent = 'conteúdo de teste para upload';
+            const testBlob = new Blob([testContent], { type: 'text/plain' });
+            const testFile = new File([testBlob], 'teste_upload.txt', { 
+                type: 'text/plain',
+                lastModified: Date.now()
+            });
+            
+            console.log('📤 Enviando arquivo de teste...');
+            
+            // Usar MediaSystem para upload
+            const propertyId = 'test_' + Date.now();
+            const urls = await MediaSystem.uploadFiles([testFile], propertyId, 'test');
+            
+            if (urls && urls.length > 0) {
+                console.log('✅ UPLOAD BEM-SUCEDIDO!');
+                console.log('🔗 URL:', urls[0]);
+                
+                // Verificar se a URL é acessível
+                console.log('🔍 Verificando acesso à URL...');
+                const accessCheck = await fetch(urls[0]);
+                console.log(`📊 Acesso: ${accessCheck.ok ? '✅ OK' : '❌ FALHOU'}`);
+                
+                console.groupEnd();
+                return true;
+            } else {
+                console.error('❌ Upload falhou - nenhuma URL retornada');
+                console.groupEnd();
+                return false;
+            }
+            
+        } catch (error) {
+            console.error('❌ ERRO NO UPLOAD:', error);
+            console.log('🔍 Detalhes do erro:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
+            console.groupEnd();
+            return false;
+        }
+    };
+    
+    console.log('✅ Função testSupabaseUpload disponível');
+}
+
+// ========== VERIFICAÇÃO AUTOMÁTICA ==========
+// Verificar automaticamente se há problemas com Supabase
+setTimeout(() => {
+    // Verificar apenas se SUPABASE_URL parece errada
+    if (window.SUPABASE_URL && window.SUPABASE_URL.includes('undefined')) {
+        console.warn('⚠️ PROBLEMA DETECTADO: SUPABASE_URL contém "undefined"');
+        console.log('💡 Execute o teste de verificação do Supabase');
+        
+        // Executar verificação automaticamente se TestManager estiver disponível
+        if (window.TestManager && window.TestManager.runTest) {
+            setTimeout(() => {
+                TestManager.runTest('supabase-verification');
+            }, 5000);
+        }
+    }
+}, 3000);
     
 })();
 
