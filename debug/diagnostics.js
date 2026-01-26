@@ -20522,6 +20522,581 @@ setTimeout(() => {
         }
     }
 }, 3000);
+
+// ========== ADICIONE ESTE CÓDIGO NO DIAGNOSTICS.JS ==========
+// Procure por onde os outros testes estão definidos e adicione junto
+
+// VERIFICAÇÃO DO BOTÃO ADMIN - DIAGNÓSTICO COMPLETO
+const AdminButtonDiagnostic = {
+    id: 'admin-button-diagnostic',
+    title: '🛠️ DIAGNÓSTICO BOTÃO ADMIN',
+    description: 'Verifica e corrige problemas do botão flutuante do administrador',
+    type: 'diagnostic',
+    icon: '🛠️',
+    category: 'ui',
+    critical: false,
+    
+    execute: function() {
+        console.group('🛠️ DIAGNÓSTICO DO BOTÃO ADMIN');
+        
+        const results = {
+            status: 'pending',
+            checks: [],
+            fixesApplied: [],
+            recommendations: []
+        };
+        
+        // 1. LOCALIZAR O BOTÃO
+        console.log('1. 🔍 LOCALIZANDO BOTÃO ADMIN...');
+        
+        let adminBtn = null;
+        const possibleSelectors = [
+            '.admin-toggle',
+            '.admin-panel-toggle',
+            '.admin-floating-btn',
+            '.admin-button',
+            '[onclick*="toggleAdmin"]',
+            '[onclick*="adminPanel"]',
+            'button[title*="admin"]',
+            'button[title*="Admin"]',
+            '#adminToggle',
+            '#adminButton'
+        ];
+        
+        for (const selector of possibleSelectors) {
+            const element = document.querySelector(selector);
+            if (element) {
+                adminBtn = element;
+                console.log(`✅ Botão encontrado com seletor: ${selector}`);
+                break;
+            }
+        }
+        
+        if (!adminBtn) {
+            // Tentar encontrar por texto/ícone
+            const allButtons = document.querySelectorAll('button');
+            for (const btn of allButtons) {
+                const btnText = btn.textContent + btn.innerHTML;
+                if (btnText.includes('admin') || btnText.includes('cog') || 
+                    btnText.includes('⚙️') || btnText.includes('🔧') ||
+                    btnText.includes('user-cog')) {
+                    adminBtn = btn;
+                    console.log(`✅ Botão encontrado por conteúdo: ${btnText.substring(0, 50)}...`);
+                    break;
+                }
+            }
+        }
+        
+        if (adminBtn) {
+            results.checks.push({
+                item: 'Botão encontrado',
+                status: 'success',
+                message: adminBtn.tagName + ' ' + (adminBtn.className || 'sem classe')
+            });
+            
+            // Analisar botão encontrado
+            console.log('📌 INFO DO BOTÃO:');
+            console.log('- Tag:', adminBtn.tagName);
+            console.log('- Classes:', adminBtn.className);
+            console.log('- ID:', adminBtn.id || 'sem id');
+            console.log('- Onclick atributo:', adminBtn.getAttribute('onclick'));
+            console.log('- Onclick propriedade:', adminBtn.onclick);
+            console.log('- HTML interno:', adminBtn.innerHTML.substring(0, 100));
+            
+            // 2. VERIFICAR ESTILOS
+            console.log('\n2. 🎨 VERIFICANDO ESTILOS...');
+            
+            const computedStyle = window.getComputedStyle(adminBtn);
+            const styleChecks = [
+                { prop: 'display', expected: 'block|flex|inline-block|grid', badValue: 'none' },
+                { prop: 'visibility', expected: 'visible', badValue: 'hidden|collapse' },
+                { prop: 'opacity', expected: '>= 0.1', badValue: '0' },
+                { prop: 'pointerEvents', expected: 'auto|visible', badValue: 'none' },
+                { prop: 'position', expected: 'fixed|absolute', badValue: 'static' },
+                { prop: 'zIndex', expected: '> 100', badValue: '0|auto' }
+            ];
+            
+            styleChecks.forEach(check => {
+                const value = computedStyle[check.prop];
+                let status = 'success';
+                let message = value;
+                
+                if (check.badValue && new RegExp(check.badValue).test(value)) {
+                    status = 'error';
+                    message = `${value} (PROBLEMA!)`;
+                    results.recommendations.push(`Corrigir ${check.prop}: ${value} → ${check.expected}`);
+                } else if (check.prop === 'zIndex' && parseInt(value) < 100) {
+                    status = 'warning';
+                    message = `${value} (pode ficar atrás de outros elementos)`;
+                }
+                
+                results.checks.push({
+                    item: `CSS ${check.prop}`,
+                    status: status,
+                    message: message
+                });
+                
+                console.log(`- ${check.prop}: ${value} ${status === 'error' ? '❌' : status === 'warning' ? '⚠️' : '✅'}`);
+            });
+            
+            // 3. VERIFICAR VISIBILIDADE E CLICABILIDADE
+            console.log('\n3. 👁️ VERIFICANDO VISIBILIDADE...');
+            
+            const rect = adminBtn.getBoundingClientRect();
+            const isVisible = rect.width > 0 && rect.height > 0;
+            const isInViewport = (
+                rect.top >= 0 &&
+                rect.left >= 0 &&
+                rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+            );
+            
+            console.log(`- Dimensões: ${rect.width}x${rect.height}px`);
+            console.log(`- Posição: top ${rect.top}, left ${rect.left}`);
+            console.log(`- Visível na tela: ${isVisible ? '✅ SIM' : '❌ NÃO'}`);
+            console.log(`- Dentro do viewport: ${isInViewport ? '✅ SIM' : '⚠️ PARCIAL/NÃO'}`);
+            
+            results.checks.push({
+                item: 'Visibilidade',
+                status: isVisible ? 'success' : 'error',
+                message: `${rect.width}x${rect.height}px`
+            });
+            
+            results.checks.push({
+                item: 'Posição na tela',
+                status: isInViewport ? 'success' : 'warning',
+                message: `${Math.round(rect.top)}px, ${Math.round(rect.left)}px`
+            });
+            
+            // 4. VERIFICAR ELEMENTOS SOBREPOSTOS
+            console.log('\n4. 🧱 VERIFICANDO SOBREPOSIÇÃO...');
+            
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const elementAtCenter = document.elementFromPoint(centerX, centerY);
+            
+            console.log(`- Elemento no centro: ${elementAtCenter.tagName} ${elementAtCenter.className || ''}`);
+            console.log(`- É o próprio botão? ${elementAtCenter === adminBtn ? '✅ SIM' : '❌ NÃO'}`);
+            
+            if (elementAtCenter !== adminBtn) {
+                results.checks.push({
+                    item: 'Sobreposição',
+                    status: 'error',
+                    message: `${elementAtCenter.tagName} está cobrindo o botão`
+                });
+                
+                results.recommendations.push(`Elemento ${elementAtCenter.tagName} está cobrindo o botão. Ajustar z-index ou posição.`);
+            } else {
+                results.checks.push({
+                    item: 'Sobreposição',
+                    status: 'success',
+                    message: 'Nenhum elemento cobrindo o botão'
+                });
+            }
+            
+            // 5. VERIFICAR EVENT LISTENERS
+            console.log('\n5. 🎯 VERIFICANDO EVENT LISTENERS...');
+            
+            const hasOnclickAttr = adminBtn.hasAttribute('onclick');
+            const hasOnclickProp = adminBtn.onclick !== null;
+            
+            console.log(`- Atributo onclick: ${hasOnclickAttr ? '✅ SIM' : '❌ NÃO'}`);
+            console.log(`- Propriedade onclick: ${hasOnclickProp ? '✅ SIM' : '❌ NÃO'}`);
+            
+            if (hasOnclickAttr) {
+                const onclickValue = adminBtn.getAttribute('onclick');
+                console.log(`- Valor do onclick: ${onclickValue}`);
+            }
+            
+            // Verificar função toggleAdminPanel
+            const hasToggleAdminPanel = typeof window.toggleAdminPanel === 'function';
+            console.log(`- Função toggleAdminPanel: ${hasToggleAdminPanel ? '✅ DISPONÍVEL' : '❌ NÃO ENCONTRADA'}`);
+            
+            if (hasToggleAdminPanel) {
+                const funcCode = window.toggleAdminPanel.toString();
+                console.log(`- Tamanho da função: ${funcCode.length} caracteres`);
+                console.log(`- Contém prompt/senha? ${funcCode.includes('prompt') && funcCode.includes('password') ? '✅ SIM' : '⚠️ NÃO'}`);
+            }
+            
+            results.checks.push({
+                item: 'Atributo onclick',
+                status: hasOnclickAttr ? 'success' : 'error',
+                message: hasOnclickAttr ? 'Presente' : 'Ausente'
+            });
+            
+            results.checks.push({
+                item: 'Função toggleAdminPanel',
+                status: hasToggleAdminPanel ? 'success' : 'error',
+                message: hasToggleAdminPanel ? 'Disponível' : 'Não encontrada'
+            });
+            
+            // 6. TESTAR CLIQUE PROGRAMÁTICO
+            console.log('\n6. 🧪 TESTANDO CLIQUE...');
+            
+            if (hasToggleAdminPanel) {
+                try {
+                    // Criar evento de teste
+                    const testEvent = new MouseEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+                    
+                    // Testar se o evento é cancelado
+                    const defaultPrevented = !adminBtn.dispatchEvent(testEvent);
+                    
+                    console.log(`- Evento dispatch: ${defaultPrevented ? '❌ CANCELADO' : '✅ DISPARADO'}`);
+                    
+                    if (!defaultPrevented) {
+                        results.checks.push({
+                            item: 'Teste de clique',
+                            status: 'success',
+                            message: 'Evento disparado corretamente'
+                        });
+                    } else {
+                        results.checks.push({
+                            item: 'Teste de clique',
+                            status: 'warning',
+                            message: 'Evento cancelado por outro listener'
+                        });
+                    }
+                } catch (error) {
+                    console.error(`- Erro no teste: ${error.message}`);
+                    results.checks.push({
+                        item: 'Teste de clique',
+                        status: 'error',
+                        message: `Erro: ${error.message}`
+                    });
+                }
+            }
+            
+            // 7. APLICAR CORREÇÕES AUTOMÁTICAS (se necessário)
+            console.log('\n7. 🔧 APLICANDO CORREÇÕES...');
+            
+            let needsFix = results.checks.some(c => c.status === 'error');
+            let hasWarnings = results.checks.some(c => c.status === 'warning');
+            
+            if (needsFix || hasWarnings) {
+                console.log('⚠️ PROBLEMAS DETECTADOS - APLICANDO CORREÇÕES...');
+                
+                // Correção 1: Garantir visibilidade
+                if (!isVisible || computedStyle.display === 'none') {
+                    adminBtn.style.display = 'flex';
+                    adminBtn.style.visibility = 'visible';
+                    adminBtn.style.opacity = '1';
+                    results.fixesApplied.push('Visibilidade corrigida');
+                    console.log('✅ Visibilidade corrigida');
+                }
+                
+                // Correção 2: Garantir z-index alto
+                if (parseInt(computedStyle.zIndex) < 1000) {
+                    adminBtn.style.zIndex = '9999';
+                    results.fixesApplied.push('z-index aumentado para 9999');
+                    console.log('✅ z-index aumentado');
+                }
+                
+                // Correção 3: Garantir posição fixa
+                if (computedStyle.position === 'static') {
+                    adminBtn.style.position = 'fixed';
+                    adminBtn.style.bottom = '20px';
+                    adminBtn.style.right = '20px';
+                    results.fixesApplied.push('Posição ajustada para fixed');
+                    console.log('✅ Posição ajustada');
+                }
+                
+                // Correção 4: Adicionar onclick se faltar
+                if (!hasOnclickAttr && hasToggleAdminPanel) {
+                    adminBtn.setAttribute('onclick', 'toggleAdminPanel()');
+                    adminBtn.onclick = window.toggleAdminPanel;
+                    results.fixesApplied.push('Evento onclick adicionado');
+                    console.log('✅ onclick adicionado');
+                }
+                
+                // Correção 5: Remover pointer-events: none
+                if (computedStyle.pointerEvents === 'none') {
+                    adminBtn.style.pointerEvents = 'auto';
+                    results.fixesApplied.push('pointer-events: none removido');
+                    console.log('✅ pointer-events corrigido');
+                }
+            } else {
+                console.log('✅ Nenhuma correção necessária');
+            }
+            
+        } else {
+            console.error('❌ BOTÃO ADMIN NÃO ENCONTRADO!');
+            results.checks.push({
+                item: 'Botão admin',
+                status: 'error',
+                message: 'Não encontrado na página'
+            });
+            
+            results.recommendations.push('O botão admin não foi encontrado. Verifique se o HTML está correto.');
+        }
+        
+        // 8. RESUMO FINAL
+        console.log('\n8. 📊 RESUMO DO DIAGNÓSTICO:');
+        
+        const errorCount = results.checks.filter(c => c.status === 'error').length;
+        const warningCount = results.checks.filter(c => c.status === 'warning').length;
+        const successCount = results.checks.filter(c => c.status === 'success').length;
+        
+        console.log(`✅ Sucessos: ${successCount}`);
+        console.log(`⚠️  Avisos: ${warningCount}`);
+        console.log(`❌ Erros: ${errorCount}`);
+        
+        if (errorCount > 0) {
+            results.status = 'error';
+            console.log('🔴 DIAGNÓSTICO: PROBLEMAS ENCONTRADOS');
+            
+            // Mostrar erros específicos
+            results.checks.filter(c => c.status === 'error').forEach((check, i) => {
+                console.log(`   ${i+1}. ${check.item}: ${check.message}`);
+            });
+        } else if (warningCount > 0) {
+            results.status = 'warning';
+            console.log('🟡 DIAGNÓSTICO: AVISOS - VERIFICAÇÃO RECOMENDADA');
+        } else {
+            results.status = 'success';
+            console.log('🟢 DIAGNÓSTICO: TUDO OK!');
+        }
+        
+        // Mostrar correções aplicadas
+        if (results.fixesApplied.length > 0) {
+            console.log('\n🔧 CORREÇÕES APLICADAS:');
+            results.fixesApplied.forEach((fix, i) => {
+                console.log(`   ${i+1}. ${fix}`);
+            });
+            
+            // Forçar redesenho
+            adminBtn && adminBtn.offsetHeight;
+        }
+        
+        // Mostrar recomendações
+        if (results.recommendations.length > 0) {
+            console.log('\n💡 RECOMENDAÇÕES:');
+            results.recommendations.forEach((rec, i) => {
+                console.log(`   ${i+1}. ${rec}`);
+            });
+        }
+        
+        console.groupEnd();
+        
+        return results;
+    },
+    
+    // Função de reparo avançado
+    fix: function() {
+        console.group('🔧 REPARO AVANÇADO DO BOTÃO ADMIN');
+        
+        const results = {
+            applied: [],
+            failed: [],
+            details: {}
+        };
+        
+        try {
+            // 1. Recriar botão se necessário
+            const adminBtn = document.querySelector('.admin-toggle');
+            
+            if (!adminBtn) {
+                console.log('🔄 Criando botão admin do zero...');
+                
+                const newBtn = document.createElement('button');
+                newBtn.className = 'admin-toggle';
+                newBtn.id = 'adminToggle';
+                newBtn.innerHTML = '<i class="fas fa-user-cog"></i>';
+                newBtn.title = 'Painel Administrativo';
+                newBtn.setAttribute('onclick', 'toggleAdminPanel()');
+                
+                // Estilos garantidos
+                Object.assign(newBtn.style, {
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    zIndex: '9999',
+                    width: '50px',
+                    height: '50px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.3s ease'
+                });
+                
+                // Efeitos hover
+                newBtn.addEventListener('mouseenter', () => {
+                    newBtn.style.transform = 'scale(1.1)';
+                    newBtn.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.3)';
+                });
+                
+                newBtn.addEventListener('mouseleave', () => {
+                    newBtn.style.transform = 'scale(1)';
+                    newBtn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+                });
+                
+                // Adicionar à página
+                document.body.appendChild(newBtn);
+                
+                results.applied.push('Botão admin criado do zero');
+                results.details.newButton = true;
+                
+                console.log('✅ Botão admin criado');
+            }
+            
+            // 2. Garantir que a função existe
+            if (typeof window.toggleAdminPanel !== 'function') {
+                console.log('📝 Criando função toggleAdminPanel...');
+                
+                window.toggleAdminPanel = function() {
+                    console.log('🛠️ toggleAdminPanel executada');
+                    
+                    // Verificar se já existe um painel
+                    let adminPanel = document.getElementById('adminPanel');
+                    
+                    if (adminPanel) {
+                        // Alternar visibilidade
+                        const isVisible = adminPanel.style.display !== 'none';
+                        adminPanel.style.display = isVisible ? 'none' : 'block';
+                        console.log(`🔄 Painel admin ${isVisible ? 'ocultado' : 'mostrado'}`);
+                    } else {
+                        // Criar painel básico
+                        adminPanel = document.createElement('div');
+                        adminPanel.id = 'adminPanel';
+                        adminPanel.innerHTML = `
+                            <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:10px;box-shadow:0 0 30px rgba(0,0,0,0.3);z-index:10000;min-width:300px;">
+                                <h3 style="margin-top:0;">🔧 Painel Admin</h3>
+                                <p>Função básica para testes.</p>
+                                <button onclick="document.getElementById('adminPanel').remove()" style="padding:5px 10px;background:#667eea;color:white;border:none;border-radius:5px;cursor:pointer;">
+                                    Fechar
+                                </button>
+                            </div>
+                        `;
+                        document.body.appendChild(adminPanel);
+                        console.log('✅ Painel admin criado');
+                    }
+                };
+                
+                results.applied.push('Função toggleAdminPanel criada');
+                results.details.functionCreated = true;
+            }
+            
+            // 3. Adicionar CSS de fallback
+            const styleId = 'admin-button-fallback-css';
+            if (!document.getElementById(styleId)) {
+                const style = document.createElement('style');
+                style.id = styleId;
+                style.textContent = `
+                    .admin-toggle {
+                        position: fixed !important;
+                        bottom: 20px !important;
+                        right: 20px !important;
+                        z-index: 9999 !important;
+                        width: 50px !important;
+                        height: 50px !important;
+                        border-radius: 50% !important;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                        color: white !important;
+                        border: none !important;
+                        font-size: 20px !important;
+                        cursor: pointer !important;
+                        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        opacity: 1 !important;
+                        visibility: visible !important;
+                    }
+                    
+                    .admin-toggle:hover {
+                        transform: scale(1.1) !important;
+                        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+                    }
+                `;
+                document.head.appendChild(style);
+                results.applied.push('CSS de fallback adicionado');
+            }
+            
+            results.status = 'success';
+            console.log('✅ Reparo avançado aplicado com sucesso');
+            
+        } catch (error) {
+            results.status = 'error';
+            results.failed.push(error.message);
+            console.error('❌ Erro no reparo:', error);
+        }
+        
+        console.groupEnd();
+        return results;
+    }
+};
+
+// ========== REGISTRAR O TESTE ==========
+// Procure onde outros testes são registrados e adicione:
+
+if (typeof TestManager !== 'undefined' && TestManager.registerTest) {
+    const existingTest = TestManager.getTest ? TestManager.getTest('admin-button-diagnostic') : null;
+    if (!existingTest) {
+        TestManager.registerTest(AdminButtonDiagnostic);
+        console.log('✅ Teste de diagnóstico do botão admin registrado');
+    }
+}
+
+// ========== FUNÇÃO DE TESTE RÁPIDO ==========
+// Adicionar função global para teste rápido
+if (!window.testAdminButton) {
+    window.testAdminButton = function() {
+        console.group('🧪 TESTE RÁPIDO DO BOTÃO ADMIN');
+        
+        // Teste básico
+        const btn = document.querySelector('.admin-toggle');
+        console.log('Botão encontrado?', btn ? '✅ SIM' : '❌ NÃO');
+        
+        if (btn) {
+            console.log('Simulando clique...');
+            btn.click();
+            
+            // Verificar se algo aconteceu
+            setTimeout(() => {
+                const panel = document.getElementById('adminPanel');
+                console.log('Painel admin visível?', panel && panel.style.display !== 'none' ? '✅ SIM' : '❌ NÃO');
+            }, 500);
+        }
+        
+        console.groupEnd();
+        
+        // Executar diagnóstico completo também
+        if (typeof AdminButtonDiagnostic.execute === 'function') {
+            setTimeout(() => AdminButtonDiagnostic.execute(), 1000);
+        }
+    };
+}
+
+// ========== VERIFICAÇÃO AUTOMÁTICA ==========
+// Verificar automaticamente após carregamento
+setTimeout(() => {
+    // Verificar se há botão admin na página
+    const hasAdminButton = document.querySelector('.admin-toggle') !== null;
+    
+    if (!hasAdminButton) {
+        console.warn('⚠️ Botão admin não encontrado na página');
+        
+        // Se estiver em modo debug, executar verificação
+        if (window.location.href.includes('debug=true')) {
+            console.log('🔍 Executando diagnóstico do botão admin...');
+            setTimeout(() => {
+                if (typeof AdminButtonDiagnostic.execute === 'function') {
+                    AdminButtonDiagnostic.execute();
+                }
+            }, 3000);
+        }
+    }
+}, 5000);
     
 })();
 
