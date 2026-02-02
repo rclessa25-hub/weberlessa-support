@@ -20720,6 +20720,8 @@ setTimeout(() => {
         console.log('   - document.querySelector(\'.admin-toggle\').click() - Testar botão');
         
     }, 2000); // Aguardar 2 segundos
+  
+})();
 
 // ========== ADICIONE ESTE CÓDIGO NO DIAGNOSTICS.JS ==========
 // Procure por onde os outros testes estão definidos e adicione junto
@@ -21232,8 +21234,6 @@ setTimeout(() => {
     }
 }, 5000);
     
-})();
-
 // ========== FIM DO MÓDULO DE EXCLUSÃO ==========
     // Exportar funções globais
     window.Diagnostics = {
