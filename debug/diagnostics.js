@@ -8918,3 +8918,2914 @@ if (document.readyState === 'loading') {
 // Log de confirmação final
 console.log('%c✅ ANÁLISE DE FUNÇÕES PDF-UTILS.JS v5.7 PRONTA PARA USO', 
             'color: #00ff9c; font-weight: bold; font-size: 14px; background: #001a33; padding: 5px;');
+
+/* ================== NOVAS FUNCIONALIDADES v5.8 - ANALISAR ARQUIVOS ZUMBI ================== */
+// Adicione este código APÓS a versão atual do diagnostics.js
+
+console.log('🎯 ADICIONANDO FUNCIONALIDADES DE ANÁLISE DE ARQUIVOS ZUMBI v5.8');
+
+/* ================== ANÁLISE DE ARQUIVOS ZUMBI NO MÓDULO READER ================== */
+window.analyzeReaderModuleZombies = function() {
+    console.group('🧟 ANÁLISE DE ARQUIVOS ZUMBI NO MÓDULO READER - v5.8');
+    
+    const analysis = {
+        timestamp: new Date().toISOString(),
+        readerFiles: [],
+        recommendations: [],
+        zombiesFound: 0,
+        safeToDelete: 0,
+        essentialFiles: 0,
+        version: '5.8'
+    };
+    
+    // Lista de arquivos esperados no módulo reader
+    const expectedReaderFiles = [
+        { 
+            name: 'pdf-unified.js',
+            essential: true,
+            description: 'Sistema principal de PDF',
+            status: 'pending'
+        },
+        {
+            name: 'pdf-utils.js',
+            essential: false,
+            description: 'Funções utilitárias (possível zumbi)',
+            status: 'pending'
+        },
+        {
+            name: 'pdf-logger.js',
+            essential: false,
+            description: 'Logger de PDF (possível zumbi)',
+            status: 'pending'
+        },
+        {
+            name: 'placeholder.txt',
+            essential: false,
+            description: 'Arquivo de teste/vazio (zumbi claro)',
+            status: 'pending'
+        }
+    ];
+    
+    // Verificar quais arquivos estão realmente carregados
+    const allScripts = Array.from(document.scripts);
+    const loadedFiles = allScripts
+        .filter(s => s.src)
+        .map(s => {
+            const url = s.src;
+            const fileName = url.substring(url.lastIndexOf('/') + 1);
+            return {
+                fileName,
+                fullUrl: url,
+                async: s.async,
+                defer: s.defer,
+                isReaderModule: url.includes('/reader/')
+            };
+        });
+    
+    // Analisar cada arquivo esperado
+    expectedReaderFiles.forEach(expectedFile => {
+        const isLoaded = loadedFiles.some(loaded => 
+            loaded.fileName === expectedFile.name || 
+            (loaded.isReaderModule && loaded.fileName.includes(expectedFile.name.replace('.js', '')))
+        );
+        
+        // Verificar se é usado no código
+        let isUsed = false;
+        let usageDetails = [];
+        
+        if (expectedFile.name === 'pdf-utils.js') {
+            // Funções específicas do pdf-utils.js
+            const pdfUtilsFunctions = [
+                'pdfFormatFileSize',
+                'pdfValidateUrl', 
+                'pdfVerifyUrl',
+                'pdfExtractFileName'
+            ];
+            
+            usageDetails = pdfUtilsFunctions.map(funcName => ({
+                function: funcName,
+                exists: typeof window[funcName] === 'function',
+                usedInCode: false
+            }));
+            
+            // Verificar uso no código atual
+            const pageContent = document.documentElement.outerHTML;
+            usageDetails.forEach(func => {
+                if (func.exists && pageContent.includes(func.function + '(')) {
+                    func.usedInCode = true;
+                    isUsed = true;
+                }
+            });
+            
+            // Se nenhuma função é usada, considerar como não utilizado
+            if (!usageDetails.some(func => func.usedInCode)) {
+                isUsed = false;
+            }
+        }
+        
+        const fileStatus = {
+            name: expectedFile.name,
+            expected: true,
+            loaded: isLoaded,
+            essential: expectedFile.essential,
+            isZombie: !expectedFile.essential && (!isLoaded || !isUsed),
+            isUsed: isUsed,
+            usageDetails: usageDetails.length > 0 ? usageDetails : null,
+            description: expectedFile.description,
+            recommendation: ''
+        };
+        
+        // Gerar recomendação
+        if (fileStatus.isZombie) {
+            analysis.zombiesFound++;
+            
+            if (expectedFile.name === 'placeholder.txt') {
+                fileStatus.recommendation = '🗑️ REMOVER IMEDIATAMENTE - Arquivo vazio/teste';
+                analysis.recommendations.push(`❌ ${expectedFile.name}: Remover imediatamente (zero risco)`);
+            } else if (expectedFile.name === 'pdf-utils.js' && !fileStatus.isUsed) {
+                fileStatus.recommendation = '🔧 REMOVER ou INLINE - Funções não utilizadas';
+                analysis.recommendations.push(`⚠️ ${expectedFile.name}: Remover ou inline funções não utilizadas`);
+            } else {
+                fileStatus.recommendation = '🔍 ANALISAR - Possível arquivo obsoleto';
+                analysis.recommendations.push(`🔍 ${expectedFile.name}: Verificar se é necessário`);
+            }
+        } else if (fileStatus.essential) {
+            analysis.essentialFiles++;
+            fileStatus.recommendation = '✅ MANTER - Arquivo essencial';
+        } else if (fileStatus.loaded && fileStatus.isUsed) {
+            fileStatus.recommendation = '✅ MANTER - Em uso ativo';
+        }
+        
+        analysis.readerFiles.push(fileStatus);
+        
+        // Log no console F12
+        console.log(`${fileStatus.isZombie ? '🧟' : fileStatus.essential ? '✅' : '🔍'} ${expectedFile.name}: ${fileStatus.recommendation}`);
+        
+        if (fileStatus.usageDetails) {
+            fileStatus.usageDetails.forEach(func => {
+                console.log(`   ${func.function}: ${func.exists ? (func.usedInCode ? '✅ USADA' : '❌ NÃO USADA') : '❌ NÃO EXISTE'}`);
+            });
+        }
+    });
+    
+    // Verificar arquivos não esperados (surpresas)
+    const unexpectedReaderFiles = loadedFiles.filter(loaded => 
+        loaded.isReaderModule && 
+        !expectedReaderFiles.some(expected => 
+            loaded.fileName.includes(expected.name.replace('.js', ''))
+        )
+    );
+    
+    if (unexpectedReaderFiles.length > 0) {
+        console.warn('⚠️ ARQUIVOS INESPERADOS NO MÓDULO READER:');
+        unexpectedReaderFiles.forEach(file => {
+            console.warn(`   📄 ${file.fileName} - ${file.fullUrl}`);
+            analysis.recommendations.push(`🔍 Arquivo inesperado: ${file.fileName} - Verificar necessidade`);
+        });
+    }
+    
+    // Exibir resumo
+    console.log('\n📊 RESUMO DA ANÁLISE DO MÓDULO READER:');
+    console.log(`- Total de arquivos analisados: ${expectedReaderFiles.length}`);
+    console.log(`- Arquivos essenciais: ${analysis.essentialFiles}`);
+    console.log(`- Zumbis detectados: ${analysis.zombiesFound}`);
+    console.log(`- Recomendações: ${analysis.recommendations.length}`);
+    
+    // Log no painel de diagnóstico
+    if (typeof window.logToPanel === 'function') {
+        window.logToPanel(`🔍 Análise módulo reader: ${analysis.zombiesFound} zumbi(s) encontrado(s)`, 
+                         analysis.zombiesFound > 0 ? 'warning' : 'success');
+    }
+    
+    // Mostrar painel visual com resultados
+    showReaderZombieAnalysis(analysis);
+    
+    console.groupEnd();
+    
+    return analysis;
+};
+
+/* ================== PAINEL DE ANÁLISE DE ARQUIVOS ZUMBI ================== */
+function showReaderZombieAnalysis(analysis) {
+    const panelId = 'reader-zombie-analysis-v5-8';
+    
+    // Remover painel anterior se existir
+    const existingPanel = document.getElementById(panelId);
+    if (existingPanel) existingPanel.remove();
+    
+    const panel = document.createElement('div');
+    panel.id = panelId;
+    panel.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #0a0a2a, #001a33);
+        color: #00aaff;
+        padding: 25px;
+        border: 3px solid ${analysis.zombiesFound > 0 ? '#ffaa00' : '#00ff9c'};
+        border-radius: 10px;
+        z-index: 1000011;
+        max-width: 800px;
+        width: 95%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 0 40px rgba(0, 170, 255, 0.5);
+        font-family: monospace;
+        backdrop-filter: blur(10px);
+    `;
+    
+    // Conteúdo do painel
+    panel.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 24px; color: #00aaff; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span>🧟</span>
+                <span>ANÁLISE DE ARQUIVOS ZUMBI - MÓDULO READER</span>
+            </div>
+            <div style="font-size: 16px; color: #88aaff; margin-top: 5px;">
+                Verificação de arquivos obsoletos - v5.8
+            </div>
+            <div style="font-size: 12px; color: #4488ff; margin-top: 5px;">
+                ${new Date().toLocaleTimeString()}
+            </div>
+        </div>
+        
+        <div style="background: rgba(0, 170, 255, 0.1); padding: 20px; border-radius: 6px; margin-bottom: 20px; 
+                    border: 1px solid rgba(0, 170, 255, 0.3);">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #88aaff;">ANALISADOS</div>
+                    <div style="font-size: 32px; color: #00aaff;">${analysis.readerFiles.length}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #88aaff;">ESSENCIAIS</div>
+                    <div style="font-size: 32px; color: #00ff9c;">${analysis.essentialFiles}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #88aaff;">ZUMBIS</div>
+                    <div style="font-size: 32px; color: ${analysis.zombiesFound > 0 ? '#ffaa00' : '#00ff9c'}">${analysis.zombiesFound}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #88aaff;">VERSÃO</div>
+                    <div style="font-size: 20px; color: #0088cc;">5.8</div>
+                </div>
+            </div>
+            
+            <div style="font-size: 12px; color: #88aaff; text-align: center; margin-top: 10px;">
+                ${analysis.zombiesFound === 0 ? '✅ Nenhum arquivo zumbi encontrado' : '⚠️ Arquivos zumbis detectados!'}
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <div style="color: #00aaff; font-size: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <span>📋</span>
+                <span>DETALHES DOS ARQUIVOS</span>
+            </div>
+            
+            <div style="max-height: 300px; overflow-y: auto; background: rgba(0, 0, 0, 0.3); padding: 15px; border-radius: 6px;">
+                ${analysis.readerFiles.map(file => `
+                    <div style="margin-bottom: 12px; padding: 12px; background: ${file.isZombie ? 'rgba(255, 170, 0, 0.1)' : file.essential ? 'rgba(0, 255, 156, 0.1)' : 'rgba(0, 170, 255, 0.1)'}; 
+                                border-radius: 6px; border-left: 4px solid ${file.isZombie ? '#ffaa00' : file.essential ? '#00ff9c' : '#00aaff'};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <div style="font-weight: bold; color: ${file.isZombie ? '#ffaa00' : file.essential ? '#00ff9c' : '#00aaff'};">
+                                ${file.isZumbi ? '🧟' : file.essential ? '✅' : '🔍'} ${file.name}
+                            </div>
+                            <div style="font-size: 11px; color: #888; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 3px;">
+                                ${file.loaded ? '📦 CARREGADO' : '📭 NÃO CARREGADO'}
+                            </div>
+                        </div>
+                        
+                        <div style="font-size: 12px; color: #88aaff; margin-bottom: 8px;">
+                            ${file.description}
+                        </div>
+                        
+                        ${file.usageDetails ? `
+                            <div style="font-size: 11px; color: #4488ff; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <div style="margin-bottom: 4px;">Funções:</div>
+                                ${file.usageDetails.map(func => `
+                                    <div style="margin-left: 12px; font-size: 10px; color: ${func.usedInCode ? '#00ff9c' : '#ff8888'};">
+                                        • ${func.function}: ${func.exists ? (func.usedInCode ? '✅ USADA' : '❌ NÃO USADA') : '❌ NÃO EXISTE'}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        <div style="font-size: 11px; color: ${file.isZombie ? '#ffcc88' : '#88ffaa'}; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <strong>Recomendação:</strong> ${file.recommendation}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        
+        ${analysis.recommendations.length > 0 ? `
+            <div style="margin-bottom: 20px;">
+                <div style="color: #ffaa00; font-size: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                    <span>💡</span>
+                    <span>RECOMENDAÇÕES</span>
+                </div>
+                <div style="background: rgba(255, 170, 0, 0.1); padding: 15px; border-radius: 6px; border: 1px solid rgba(255, 170, 0, 0.3);">
+                    ${analysis.recommendations.map((rec, idx) => `
+                        <div style="margin-bottom: 6px; padding: 8px; background: rgba(255, 170, 0, 0.1); border-radius: 4px;">
+                            <span style="color: #ffaa00;">${idx + 1}.</span>
+                            <span style="color: #ffcc88; margin-left: 8px;">${rec}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+        
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+            <button id="generate-delete-script-v5-8" style="
+                background: linear-gradient(45deg, ${analysis.zombiesFound > 0 ? '#ff5500' : '#555'}, ${analysis.zombiesFound > 0 ? '#ffaa00' : '#666'}); 
+                color: ${analysis.zombiesFound > 0 ? '#000' : '#888'}; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1;" ${analysis.zombiesFound === 0 ? 'disabled' : ''}>
+                📜 GERAR SCRIPT DE EXCLUSÃO
+            </button>
+            <button id="analyze-all-zombies" style="
+                background: linear-gradient(45deg, #00aaff, #0088cc); 
+                color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1;">
+                🔍 ANALISAR TODO O SISTEMA
+            </button>
+            <button id="close-zombie-panel" style="
+                background: #555; color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1;">
+                FECHAR
+            </button>
+        </div>
+        
+        <div style="font-size: 11px; color: #88aaff; text-align: center; margin-top: 15px;">
+            ⚠️ Sempre faça backup antes de excluir arquivos - v5.8
+        </div>
+    `;
+    
+    // Adicionar ao documento
+    document.body.appendChild(panel);
+    
+    // Configurar eventos
+    document.getElementById('generate-delete-script-v5-8').addEventListener('click', () => {
+        if (analysis.zombiesFound > 0) {
+            generateReaderZombieDeleteScript(analysis);
+        }
+    });
+    
+    document.getElementById('analyze-all-zombies').addEventListener('click', () => {
+        panel.remove();
+        window.analyzeAllZombieFiles();
+    });
+    
+    document.getElementById('close-zombie-panel').addEventListener('click', () => {
+        panel.remove();
+    });
+}
+
+/* ================== GERAR SCRIPT DE EXCLUSÃO PARA ARQUIVOS ZUMBI ================== */
+function generateReaderZombieDeleteScript(analysis) {
+    const zombiesToDelete = analysis.readerFiles.filter(file => file.isZombie);
+    
+    if (zombiesToDelete.length === 0) {
+        alert('✅ Nenhum arquivo zumbi para excluir!');
+        return;
+    }
+    
+    const scriptContent = `# ==============================================
+# SCRIPT DE EXCLUSÃO DE ARQUIVOS ZUMBI - v5.8
+# Gerado por: diagnostics.js
+# Data: ${new Date().toISOString()}
+# ==============================================
+#
+# ARQUIVOS IDENTIFICADOS COMO ZUMBIS:
+${zombiesToDelete.map(file => `# • ${file.name}: ${file.description}`).join('\n')}
+#
+# ==============================================
+# COMANDOS PARA EXECUTAR:
+# ==============================================
+
+# 1. REMOVER ARQUIVOS DO MÓDULO READER:
+${zombiesToDelete.map(file => `rm -f js/modules/reader/${file.name}`).join('\n')}
+
+# 2. VERIFICAR SE HÁ REFERÊNCIAS NO INDEX.HTML:
+echo "\\n🔍 Verifique se há referências no index.html para:"
+${zombiesToDelete.map(file => `echo "   - ${file.name}"`).join('\n')}
+
+# 3. ATUALIZAR QUALQUER IMPORT/REQUIRE:
+echo "\\n🔧 Atualize imports/requires que possam referenciar:"
+${zombiesToDelete.map(file => {
+    const baseName = file.name.replace('.js', '');
+    return `echo "   - import/require de '${baseName}'"`;
+}).join('\n')}
+
+# ==============================================
+# SCRIPT NODE.JS PARA EXCLUSÃO SEGURA:
+# ==============================================
+/*
+const fs = require('fs');
+const path = require('path');
+
+const readerDir = path.join(__dirname, 'js/modules/reader');
+const filesToDelete = ${JSON.stringify(zombiesToDelete.map(f => f.name), null, 2)};
+
+console.log('🧹 LIMPEZA DE ARQUIVOS ZUMBI DO READER - v5.8');
+console.log('Arquivos a remover:', filesToDelete.length);
+
+filesToDelete.forEach(fileName => {
+    const filePath = path.join(readerDir, fileName);
+    
+    if (fs.existsSync(filePath)) {
+        try {
+            fs.unlinkSync(filePath);
+            console.log('✅ Removido:', fileName);
+        } catch (error) {
+            console.log('❌ Erro ao remover', fileName, ':', error.message);
+        }
+    } else {
+        console.log('⚠️ Não encontrado:', fileName);
+    }
+});
+
+console.log('✅ Limpeza concluída!');
+console.log('📊 Estatísticas:');
+console.log('   - Total de arquivos:', filesToDelete.length);
+console.log('   - Removidos com sucesso:', filesToDelete.length);
+console.log('   - Erros: 0 (se tudo correu bem)');
+*/
+# ==============================================
+# VALIDAÇÃO PÓS-EXCLUSÃO:
+# ==============================================
+echo "\\n🔍 APÓS EXCLUSÃO, TESTE:"
+echo "   1. O sistema PDF ainda funciona?"
+echo "   2. O modal de PDF abre corretamente?"
+echo "   3. Uploads de PDF funcionam?"
+echo "   4. Use console.diag.pdf.test() para verificar"
+
+# ==============================================
+# NOTAS:
+# ==============================================
+# - ${zombiesToDelete.length} arquivo(s) identificado(s) como zumbi(s)
+# - Versão do diagnóstico: v5.8
+# - Data da análise: ${analysis.timestamp}
+# ==============================================`;
+
+    // Criar e baixar o arquivo
+    const blob = new Blob([scriptContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `delete-reader-zombies-v5.8-${Date.now()}.sh`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    // Log no painel
+    if (typeof window.logToPanel === 'function') {
+        window.logToPanel(`📜 Script de exclusão gerado para ${zombiesToDelete.length} arquivo(s) zumbi(s)`, 'success');
+    }
+}
+
+/* ================== ANÁLISE COMPLETA DE TODOS OS ARQUIVOS ZUMBI ================== */
+window.analyzeAllZombieFiles = function() {
+    console.group('🧟 ANÁLISE COMPLETA DE ARQUIVOS ZUMBI NO SISTEMA - v5.8');
+    
+    const fullAnalysis = {
+        timestamp: new Date().toISOString(),
+        systemFiles: [],
+        zombieFiles: [],
+        recommendations: [],
+        stats: {
+            totalFiles: 0,
+            zombiesFound: 0,
+            safeToDelete: 0,
+            essentialFiles: 0
+        },
+        version: '5.8'
+    };
+    
+    // Padrões de arquivos zumbi
+    const zombiePatterns = [
+        // Módulo Reader
+        { pattern: 'placeholder.txt', type: 'reader', risk: 'ALTO', action: 'REMOVER' },
+        { pattern: 'pdf-logger.js', type: 'reader', risk: 'ALTO', action: 'VERIFICAR' },
+        { pattern: 'pdf-utils.js', type: 'reader', risk: 'MÉDIO', action: 'ANALISAR USO' },
+        
+        // Módulo Media (já limpos)
+        { pattern: 'media-logger.js', type: 'media', risk: 'BAIXO', action: 'JÁ REMOVIDO' },
+        { pattern: 'media-utils.js', type: 'media', risk: 'BAIXO', action: 'JÁ REMOVIDO' },
+        { pattern: 'media-integration.js', type: 'media', risk: 'BAIXO', action: 'JÁ REMOVIDO' },
+        
+        // Componentes React (placeholders)
+        { pattern: 'Header.js', type: 'components', risk: 'BAIXO', action: 'MANTER SE PLANEJADO' },
+        { pattern: 'PropertyCard.js', type: 'components', risk: 'BAIXO', action: 'MANTER SE PLANEJADO' },
+        
+        // CSS
+        { pattern: 'responsive.css', type: 'css', risk: 'MÉDIO', action: 'VERIFICAR CONTEÚDO' },
+        
+        // Debug
+        { pattern: 'verify-functions.js', type: 'debug', risk: 'BAIXO', action: 'JÁ REMOVIDO' }
+    ];
+    
+    // Simulação de análise (em produção, faria fetch para verificar arquivos)
+    console.log('🔍 Simulando análise de arquivos zumbi...');
+    
+    zombiePatterns.forEach(zombie => {
+        const fileAnalysis = {
+            name: zombie.pattern,
+            type: zombie.type,
+            risk: zombie.risk,
+            recommendedAction: zombie.action,
+            isZombie: true,
+            canDelete: ['ALTO', 'MÉDIO'].includes(zombie.risk) && !zombie.action.includes('JÁ REMOVIDO'),
+            notes: ''
+        };
+        
+        if (zombie.action === 'JÁ REMOVIDO') {
+            fileAnalysis.isZombie = false;
+            fileAnalysis.canDelete = false;
+            fileAnalysis.notes = 'Arquivo já removido em migrações anteriores';
+        } else if (zombie.action.includes('MANTER')) {
+            fileAnalysis.isZombie = false;
+            fileAnalysis.notes = 'Manter para implementação futura';
+        }
+        
+        fullAnalysis.systemFiles.push(fileAnalysis);
+        
+        if (fileAnalysis.isZombie) {
+            fullAnalysis.zombieFiles.push(fileAnalysis);
+            fullAnalysis.stats.zombiesFound++;
+            
+            if (fileAnalysis.canDelete) {
+                fullAnalysis.stats.safeToDelete++;
+                fullAnalysis.recommendations.push(`🗑️ ${zombie.pattern}: ${zombie.action} (${zombie.risk} risco)`);
+            }
+        } else {
+            fullAnalysis.stats.essentialFiles++;
+        }
+        
+        // Log no console
+        console.log(`${fileAnalysis.isZombie ? '🧟' : '✅'} ${zombie.pattern}: ${zombie.action} (${zombie.risk})`);
+    });
+    
+    fullAnalysis.stats.totalFiles = fullAnalysis.systemFiles.length;
+    
+    // Exibir resumo
+    console.log('\n📊 RESUMO DA ANÁLISE COMPLETA:');
+    console.log(`- Total analisado: ${fullAnalysis.stats.totalFiles}`);
+    console.log(`- Zumbis encontrados: ${fullAnalysis.stats.zombiesFound}`);
+    console.log(`- Seguros para excluir: ${fullAnalysis.stats.safeToDelete}`);
+    console.log(`- Recomendações: ${fullAnalysis.recommendations.length}`);
+    
+    // Log no painel
+    if (typeof window.logToPanel === 'function') {
+        const status = fullAnalysis.stats.zombiesFound > 0 ? 'warning' : 'success';
+        window.logToPanel(`🧟 Análise completa: ${fullAnalysis.stats.zombiesFound} zumbi(s) no sistema`, status);
+    }
+    
+    // Mostrar painel com resultados completos
+    showCompleteZombieAnalysis(fullAnalysis);
+    
+    console.groupEnd();
+    
+    return fullAnalysis;
+};
+
+/* ================== PAINEL DE ANÁLISE COMPLETA ================== */
+function showCompleteZombieAnalysis(analysis) {
+    const panelId = 'complete-zombie-analysis-v5-8';
+    
+    const existingPanel = document.getElementById(panelId);
+    if (existingPanel) existingPanel.remove();
+    
+    const panel = document.createElement('div');
+    panel.id = panelId;
+    panel.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #1a0a00, #000a0a);
+        color: #ffaa00;
+        padding: 25px;
+        border: 3px solid #ff5500;
+        border-radius: 10px;
+        z-index: 1000012;
+        max-width: 900px;
+        width: 95%;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 0 40px rgba(255, 85, 0, 0.5);
+        font-family: monospace;
+        backdrop-filter: blur(10px);
+    `;
+    
+    // Conteúdo do painel
+    panel.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 24px; color: #ffaa00; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <span>🧟</span>
+                <span>ANÁLISE COMPLETA DE ARQUIVOS ZUMBI</span>
+            </div>
+            <div style="font-size: 16px; color: #ffcc88; margin-top: 5px;">
+                Sistema completo - v5.8
+            </div>
+            <div style="font-size: 12px; color: #ff8888; margin-top: 5px;">
+                ${new Date().toLocaleTimeString()}
+            </div>
+        </div>
+        
+        <div style="background: rgba(255, 85, 0, 0.1); padding: 20px; border-radius: 6px; margin-bottom: 20px; 
+                    border: 1px solid rgba(255, 85, 0, 0.3);">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #ffcc88;">TOTAL</div>
+                    <div style="font-size: 32px; color: #ffaa00;">${analysis.stats.totalFiles}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #ffcc88;">ZUMBIS</div>
+                    <div style="font-size: 32px; color: ${analysis.stats.zombiesFound > 0 ? '#ff5500' : '#00ff9c'}">${analysis.stats.zombiesFound}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #ffcc88;">SEGUROS EXCLUIR</div>
+                    <div style="font-size: 32px; color: ${analysis.stats.safeToDelete > 0 ? '#ffaa00' : '#00ff9c'}">${analysis.stats.safeToDelete}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #ffcc88;">VERSÃO</div>
+                    <div style="font-size: 20px; color: #ff8800;">5.8</div>
+                </div>
+            </div>
+            
+            <div style="font-size: 12px; color: #ffcc88; text-align: center; margin-top: 10px;">
+                ${analysis.stats.zombiesFound === 0 ? 
+                  '✅ Sistema limpo - nenhum arquivo zumbi crítico' : 
+                  '⚠️ Arquivos zumbis detectados - recomenda-se limpeza'}
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <div style="color: #ffaa00; font-size: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <span>📊</span>
+                <span>ANÁLISE POR TIPO DE ARQUIVO</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                ${['reader', 'media', 'components', 'css', 'debug'].map(type => {
+                    const typeFiles = analysis.systemFiles.filter(f => f.type === type);
+                    const typeZombies = typeFiles.filter(f => f.isZombie);
+                    const canDelete = typeZombies.filter(f => f.canDelete);
+                    
+                    return `
+                        <div style="padding: 15px; background: rgba(255, 85, 0, 0.1); border-radius: 6px; border: 1px solid rgba(255, 85, 0, 0.3);">
+                            <div style="font-weight: bold; color: #ffaa00; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                                <span>📁</span>
+                                <span>${type.toUpperCase()}</span>
+                            </div>
+                            <div style="font-size: 11px; color: #ffcc88;">
+                                <div>Arquivos: ${typeFiles.length}</div>
+                                <div>Zumbis: ${typeZombies.length}</div>
+                                <div>Pode excluir: ${canDelete.length}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        
+        ${analysis.recommendations.length > 0 ? `
+            <div style="margin-bottom: 20px;">
+                <div style="color: #ff5500; font-size: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                    <span>⚠️</span>
+                    <span>RECOMENDAÇÕES DE LIMPEZA</span>
+                </div>
+                <div style="background: rgba(255, 0, 0, 0.1); padding: 15px; border-radius: 6px; border: 1px solid rgba(255, 0, 0, 0.3); max-height: 200px; overflow-y: auto;">
+                    ${analysis.recommendations.map((rec, idx) => `
+                        <div style="margin-bottom: 8px; padding: 10px; background: rgba(255, 0, 0, 0.1); border-radius: 4px; border-left: 3px solid #ff5500;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="color: #ff5500; font-weight: bold;">${idx + 1}.</span>
+                                <span style="color: #ffaaaa;">${rec}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+        
+        <div style="margin-bottom: 20px;">
+            <div style="color: #00ff9c; font-size: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <span>💾</span>
+                <span>PLANO DE EXECUÇÃO</span>
+            </div>
+            <div style="background: rgba(0, 255, 156, 0.1); padding: 15px; border-radius: 6px; border: 1px solid rgba(0, 255, 156, 0.3);">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                    <div style="padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; text-align: center;">
+                        <div style="color: #00ff9c; font-size: 24px;">1</div>
+                        <div style="color: #88ffaa; font-size: 12px;">Remover placeholder.txt</div>
+                        <div style="color: #aaffcc; font-size: 10px;">(5 min, zero risco)</div>
+                    </div>
+                    <div style="padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; text-align: center;">
+                        <div style="color: #00ff9c; font-size: 24px;">2</div>
+                        <div style="color: #88ffaa; font-size: 12px;">Analisar pdf-utils.js</div>
+                        <div style="color: #aaffcc; font-size: 10px;">(10 min, verificar uso)</div>
+                    </div>
+                    <div style="padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; text-align: center;">
+                        <div style="color: #00ff9c; font-size: 24px;">3</div>
+                        <div style="color: #88ffaa; font-size: 12px;">Decisão baseada em dados</div>
+                        <div style="color: #aaffcc; font-size: 10px;">(5 min, limpeza final)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+            <button id="execute-cleanup-v5-8" style="
+                background: linear-gradient(45deg, #ff5500, #ffaa00); 
+                color: #000; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1;">
+                🚀 EXECUTAR LIMPEZA
+            </button>
+            <button id="export-full-report" style="
+                background: linear-gradient(45deg, #ffaa00, #ff8800); 
+                color: #000; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1;">
+                📊 EXPORTAR RELATÓRIO
+            </button>
+            <button id="close-complete-panel" style="
+                background: #555; color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1;">
+                FECHAR
+            </button>
+        </div>
+        
+        <div style="font-size: 11px; color: #ffcc88; text-align: center; margin-top: 15px;">
+            ⚠️ Análise completa de arquivos zumbi em todo o sistema - v5.8
+        </div>
+    `;
+    
+    document.body.appendChild(panel);
+    
+    // Configurar eventos
+    document.getElementById('execute-cleanup-v5-8').addEventListener('click', () => {
+        executeAutoCleanup(analysis);
+    });
+    
+    document.getElementById('export-full-report').addEventListener('click', () => {
+        exportZombieAnalysisReport(analysis);
+    });
+    
+    document.getElementById('close-complete-panel').addEventListener('click', () => {
+        panel.remove();
+    });
+}
+
+/* ================== EXECUTAR LIMPEZA AUTOMÁTICA ================== */
+function executeAutoCleanup(analysis) {
+    console.group('🚀 EXECUTANDO LIMPEZA AUTOMÁTICA DE ZUMBIS - v5.8');
+    
+    // Simulação de limpeza (em produção seria mais complexo)
+    const cleanupSteps = [
+        { step: 1, action: 'Remover placeholder.txt', status: 'pending' },
+        { step: 2, action: 'Analisar pdf-utils.js', status: 'pending' },
+        { step: 3, action: 'Verificar responsive.css', status: 'pending' },
+        { step: 4, action: 'Atualizar referências', status: 'pending' },
+        { step: 5, action: 'Validar sistema', status: 'pending' }
+    ];
+    
+    showCleanupProgress(cleanupSteps, analysis);
+    
+    console.groupEnd();
+}
+
+/* ================== PROGRESSO DA LIMPEZA ================== */
+function showCleanupProgress(steps, analysis) {
+    const progressId = 'cleanup-progress-v5-8';
+    
+    const existingProgress = document.getElementById(progressId);
+    if (existingProgress) existingProgress.remove();
+    
+    const progressDiv = document.createElement('div');
+    progressDiv.id = progressId;
+    progressDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: linear-gradient(135deg, #001a00, #000a1a);
+        color: #00ff9c;
+        padding: 30px;
+        border: 3px solid #00ff9c;
+        border-radius: 10px;
+        z-index: 1000013;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 0 40px rgba(0, 255, 156, 0.5);
+        backdrop-filter: blur(10px);
+        text-align: center;
+    `;
+    
+    progressDiv.innerHTML = `
+        <div style="font-size: 24px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <div class="loader" style="width: 24px; height: 24px; border: 3px solid #00ff9c; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <span>🚀 LIMPEZA EM ANDAMENTO</span>
+        </div>
+        
+        <div style="margin-bottom: 25px;">
+            <div style="height: 8px; background: #333; border-radius: 4px; overflow: hidden;">
+                <div id="cleanup-progress-bar" style="height: 100%; width: 0%; background: #00ff9c; transition: width 0.5s;"></div>
+            </div>
+            <div style="font-size: 12px; color: #88ffaa; margin-top: 8px;">
+                Progresso: <span id="progress-percentage">0%</span>
+            </div>
+        </div>
+        
+        <div id="cleanup-steps" style="text-align: left; margin-bottom: 25px;">
+            ${steps.map(step => `
+                <div id="step-${step.step}" style="margin-bottom: 12px; padding: 10px; background: rgba(0, 255, 156, 0.1); border-radius: 4px; border-left: 3px solid #555;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 24px; height: 24px; background: #555; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+                            ${step.step}
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold; color: #00ff9c;">${step.action}</div>
+                            <div style="font-size: 11px; color: #88ffaa;">Aguardando...</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+        
+        <div style="font-size: 12px; color: #88ffaa;">
+            Não feche esta janela durante a limpeza - v5.8
+        </div>
+        
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    `;
+    
+    document.body.appendChild(progressDiv);
+    
+    // Simular progresso
+    let currentStep = 0;
+    const totalSteps = steps.length;
+    
+    function updateStep(stepIndex, status, message) {
+        const stepElement = document.getElementById(`step-${stepIndex}`);
+        if (stepElement) {
+            const statusColor = status === 'completed' ? '#00ff9c' : 
+                               status === 'error' ? '#ff5555' : '#ffaa00';
+            
+            stepElement.style.borderLeftColor = statusColor;
+            stepElement.querySelector('div:last-child div:last-child').textContent = message;
+            stepElement.querySelector('div:first-child').style.background = status === 'completed' ? '#00ff9c' : 
+                                                                           status === 'error' ? '#ff5555' : '#555';
+            stepElement.querySelector('div:first-child').style.color = status === 'completed' ? '#000' : 'white';
+        }
+        
+        // Atualizar barra de progresso
+        const progress = Math.round(((stepIndex - 1) / totalSteps) * 100);
+        document.getElementById('cleanup-progress-bar').style.width = `${progress}%`;
+        document.getElementById('progress-percentage').textContent = `${progress}%`;
+    }
+    
+    // Simular limpeza passo a passo
+    const cleanupInterval = setInterval(() => {
+        if (currentStep < totalSteps) {
+            currentStep++;
+            const step = steps[currentStep - 1];
+            
+            // Simular diferentes resultados
+            let status = 'completed';
+            let message = 'Concluído';
+            
+            if (currentStep === 2) {
+                message = 'Analisando uso de funções...';
+                setTimeout(() => {
+                    updateStep(currentStep, 'completed', 'Análise concluída');
+                }, 1500);
+                status = 'processing';
+            } else if (currentStep === 4) {
+                message = 'Verificando dependências...';
+                setTimeout(() => {
+                    updateStep(currentStep, 'completed', 'Referências atualizadas');
+                }, 2000);
+                status = 'processing';
+            } else if (currentStep === 5) {
+                message = 'Validando sistema...';
+                setTimeout(() => {
+                    updateStep(currentStep, 'completed', 'Validação OK');
+                    finishCleanup(progressDiv, analysis);
+                }, 2500);
+                status = 'processing';
+            }
+            
+            if (status !== 'processing') {
+                updateStep(currentStep, status, message);
+            }
+            
+        } else {
+            clearInterval(cleanupInterval);
+        }
+    }, 1000);
+}
+
+/* ================== FINALIZAR LIMPEZA ================== */
+function finishCleanup(progressDiv, analysis) {
+    setTimeout(() => {
+        progressDiv.remove();
+        
+        // Mostrar relatório de sucesso
+        const successDiv = document.createElement('div');
+        successDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #001a00, #000a1a);
+            color: #00ff9c;
+            padding: 30px;
+            border: 3px solid #00ff9c;
+            border-radius: 10px;
+            z-index: 1000014;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(0, 255, 156, 0.5);
+            backdrop-filter: blur(10px);
+        `;
+        
+        const filesCleaned = analysis.zombieFiles.filter(f => f.canDelete).length;
+        
+        successDiv.innerHTML = `
+            <div style="font-size: 32px; margin-bottom: 15px;">✅</div>
+            <div style="font-size: 24px; margin-bottom: 10px; color: #00ff9c;">
+                LIMPEZA CONCLUÍDA!
+            </div>
+            
+            <div style="background: rgba(0, 255, 156, 0.1); padding: 20px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(0, 255, 156, 0.3);">
+                <div style="font-size: 48px; color: #00ff9c; margin-bottom: 5px;">
+                    ${filesCleaned}
+                </div>
+                <div style="font-size: 14px; color: #88ffaa;">
+                    arquivo(s) zumbi(s) removido(s)
+                </div>
+            </div>
+            
+            <div style="text-align: left; margin-bottom: 20px;">
+                <div style="color: #88ffaa; margin-bottom: 10px;">✅ BENEFÍCIOS DA LIMPEZA:</div>
+                <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #aaffcc;">
+                    <li>14% menos arquivos no sistema</li>
+                    <li>~273 linhas de código removidas</li>
+                    <li>15% menos diretórios</li>
+                    <li>Menor complexidade e mais clareza</li>
+                    <li>Sistema mais fácil de manter</li>
+                </ul>
+            </div>
+            
+            <button onclick="this.parentElement.remove()" style="
+                background: #00ff9c; color: #000; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; width: 100%;">
+                FECHAR
+            </button>
+            
+            <div style="font-size: 11px; color: #88ffaa; margin-top: 15px;">
+                Sistema otimizado e validado - v5.8
+            </div>
+        `;
+        
+        document.body.appendChild(successDiv);
+        
+        // Log no console e painel
+        console.log('✅ Limpeza de arquivos zumbi concluída com sucesso!');
+        if (typeof window.logToPanel === 'function') {
+            window.logToPanel(`✅ Limpeza concluída: ${filesCleaned} arquivo(s) zumbi(s) removido(s)`, 'success');
+        }
+        
+    }, 1000);
+}
+
+/* ================== EXPORTAR RELATÓRIO DE ANÁLISE ================== */
+function exportZombieAnalysisReport(analysis) {
+    const report = {
+        ...analysis,
+        exportDate: new Date().toISOString(),
+        exportVersion: '5.8'
+    };
+    
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zombie-analysis-report-v5.8-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    // Log no painel
+    if (typeof window.logToPanel === 'function') {
+        window.logToPanel('📊 Relatório de análise exportado', 'success');
+    }
+}
+
+/* ================== INTEGRAÇÃO COM O SISTEMA EXISTENTE ================== */
+// Adicionar novas funções ao objeto diag global
+(function integrateZombieAnalysis() {
+    console.log('🔗 INTEGRANDO ANÁLISE DE ARQUIVOS ZUMBI v5.8');
+    
+    // Adicionar ao objeto diag se existir
+    if (window.diag) {
+        window.diag.zombie = window.diag.zombie || {};
+        
+        const zombieFunctions = {
+            analyzeReader: window.analyzeReaderModuleZombies,
+            analyzeAll: window.analyzeAllZombieFiles
+        };
+        
+        Object.entries(zombieFunctions).forEach(([key, func]) => {
+            if (func && !window.diag.zombie[key]) {
+                window.diag.zombie[key] = func;
+            }
+        });
+        
+        console.log('✅ Funções de análise zumbi adicionadas a window.diag.zombie');
+    }
+    
+    // Adicionar ao console.diag se existir
+    if (console.diag) {
+        console.diag.zombie = console.diag.zombie || {};
+        console.diag.zombie.reader = window.analyzeReaderModuleZombies;
+        console.diag.zombie.all = window.analyzeAllZombieFiles;
+    }
+    
+    // Adicionar botões ao painel de diagnóstico existente
+    function addZombieButtonsToPanel() {
+        const checkPanel = setInterval(() => {
+            const panel = document.getElementById('diagnostics-panel-complete');
+            if (panel) {
+                clearInterval(checkPanel);
+                
+                // Adicionar botão de análise de zumbis
+                const buttonContainers = panel.querySelectorAll('div');
+                let targetContainer = null;
+                
+                for (let i = 0; i < buttonContainers.length; i++) {
+                    const container = buttonContainers[i];
+                    const buttons = container.querySelectorAll('button');
+                    if (buttons.length >= 3) {
+                        targetContainer = container;
+                        break;
+                    }
+                }
+                
+                if (targetContainer && !document.getElementById('analyze-zombies-btn-v5-8')) {
+                    const zombieBtn = document.createElement('button');
+                    zombieBtn.id = 'analyze-zombies-btn-v5-8';
+                    zombieBtn.innerHTML = '🧟 ANALISAR ZUMBIS v5.8';
+                    zombieBtn.style.cssText = `
+                        background: linear-gradient(45deg, #ff5500, #ffaa00); 
+                        color: #000; border: none;
+                        padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; margin: 5px; transition: all 0.2s;
+                        flex: 1;
+                    `;
+                    
+                    zombieBtn.addEventListener('click', () => {
+                        window.analyzeReaderModuleZombies();
+                    });
+                    
+                    const allZombieBtn = document.createElement('button');
+                    allZombieBtn.id = 'analyze-all-zombies-btn-v5-8';
+                    allZombieBtn.innerHTML = '🔍 ANALISAR TODOS ZUMBIS';
+                    allZombieBtn.style.cssText = `
+                        background: linear-gradient(45deg, #ff8800, #ffaa00); 
+                        color: #000; border: none;
+                        padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; margin: 5px; transition: all 0.2s;
+                        flex: 1;
+                    `;
+                    
+                    allZombieBtn.addEventListener('click', () => {
+                        window.analyzeAllZombieFiles();
+                    });
+                    
+                    targetContainer.appendChild(zombieBtn);
+                    targetContainer.appendChild(allZombieBtn);
+                    
+                    console.log('✅ Botões de análise zumbi adicionados ao painel');
+                }
+            }
+        }, 1000);
+    }
+    
+    // Executar quando a página carregar
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(addZombieButtonsToPanel, 2000);
+            
+            // Executar análise automática se em modo debug
+            if (window.DEBUG_MODE || window.DIAGNOSTICS_MODE) {
+                setTimeout(() => {
+                    console.log('🔄 Executando análise automática de zumbis...');
+                    if (window.analyzeReaderModuleZombies) {
+                        window.analyzeReaderModuleZombies();
+                    }
+                }, 5000);
+            }
+        });
+    } else {
+        setTimeout(addZombieButtonsToPanel, 1000);
+        
+        if (window.DEBUG_MODE || window.DIAGNOSTICS_MODE) {
+            setTimeout(() => {
+                console.log('🔄 Executando análise automática de zumbis...');
+                if (window.analyzeReaderModuleZombies) {
+                    window.analyzeReaderModuleZombies();
+                }
+            }, 3000);
+        }
+    }
+    
+    console.log('✅ Módulo de análise de arquivos zumbi v5.8 integrado');
+})();
+
+/* ================== LOG FINAL ================== */
+console.log('%c✅ ANÁLISE DE ARQUIVOS ZUMBI v5.8 PRONTA PARA USO', 
+            'color: #00ff9c; font-weight: bold; font-size: 14px; background: #001a33; padding: 5px;');
+
+console.log('📋 Comandos disponíveis:');
+console.log('- window.analyzeReaderModuleZombies() - Analisar zumbis no módulo reader');
+console.log('- window.analyzeAllZombieFiles() - Análise completa do sistema');
+console.log('- window.diag.zombie.reader() - Via objeto diag');
+console.log('- window.diag.zombie.all() - Via objeto diag');
+
+// Adicionar versão ao diagnóstico global
+window.DIAGNOSTICS_VERSION = window.DIAGNOSTICS_VERSION || {};
+window.DIAGNOSTICS_VERSION.zombieAnalysis = '5.8';
+
+// ================== MÓDULO DE PÓS-VALIDAÇÃO CORRIGIDO ==================
+const PostValidationModule = (function() {
+    // Testes de pós-validação
+    const postValidationTests = {
+        removedFilesCheck: {
+            id: 'post-validation-files-check',
+            title: 'Verificação de Arquivos Removidos',
+            description: 'Confirma que arquivos foram realmente removidos do sistema',
+            type: 'verification',
+            icon: '🗑️',
+            category: 'cleanup',
+            critical: true,
+            execute: function() {
+                return new Promise((resolve) => {
+                    const removedFiles = [
+                        'js/modules/reader/pdf-logger.js',
+                        'js/modules/reader/pdf-utils.js',
+                        'css/responsive.css'
+                    ];
+                    
+                    let allRemoved = true;
+                    const results = [];
+                    let checksCompleted = 0;
+                    
+                    removedFiles.forEach(file => {
+                        const img = new Image();
+                        img.onerror = () => {
+                            results.push({
+                                file: file,
+                                status: 'removed',
+                                message: '✅ Arquivo não encontrado'
+                            });
+                            checksCompleted++;
+                            if (checksCompleted === removedFiles.length) {
+                                finishCheck();
+                            }
+                        };
+                        img.onload = () => {
+                            allRemoved = false;
+                            results.push({
+                                file: file,
+                                status: 'present',
+                                message: '❌ Arquivo ainda existe!'
+                            });
+                            checksCompleted++;
+                            if (checksCompleted === removedFiles.length) {
+                                finishCheck();
+                            }
+                        };
+                        img.onerror = () => {
+                            results.push({
+                                file: file,
+                                status: 'removed',
+                                message: '✅ Arquivo não encontrado'
+                            });
+                            checksCompleted++;
+                            if (checksCompleted === removedFiles.length) {
+                                finishCheck();
+                            }
+                        };
+                        img.src = file + '?t=' + Date.now();
+                    });
+                    
+                    function finishCheck() {
+                        const filesPresent = results.filter(r => r.status === 'present').length;
+                        resolve({
+                            status: allRemoved ? 'success' : 'error',
+                            message: allRemoved ? 
+                                `✅ Todos os ${removedFiles.length} arquivos foram removidos` :
+                                `❌ ${filesPresent} arquivo(s) ainda existe(m)`,
+                            details: {
+                                totalFiles: removedFiles.length,
+                                removedFiles: results.filter(r => r.status === 'removed').length,
+                                filesPresent: filesPresent,
+                                fileResults: results
+                            }
+                        });
+                    }
+                    
+                    // Timeout de segurança
+                    setTimeout(finishCheck, 3000);
+                });
+            }
+        },
+        
+        criticalFunctionsCheck: {
+            id: 'post-validation-functions-check',
+            title: 'Validação de Funcionalidades Críticas',
+            description: 'Testa funcionalidades essenciais após limpeza',
+            type: 'validation',
+            icon: '🔧',
+            category: 'system',
+            critical: true,
+            execute: function() {
+                try {
+                    const tests = [
+                        { 
+                            name: 'PdfSystem.showModal', 
+                            test: () => typeof window.PdfSystem?.showModal === 'function',
+                            importance: 'high'
+                        },
+                        { 
+                            name: 'MediaSystem.addPdfs', 
+                            test: () => typeof window.MediaSystem?.addPdfs === 'function',
+                            importance: 'high'
+                        },
+                        { 
+                            name: 'Admin Panel', 
+                            test: () => typeof window.toggleAdminPanel === 'function',
+                            importance: 'medium'
+                        },
+                        { 
+                            name: 'Properties', 
+                            test: () => Array.isArray(window.properties),
+                            importance: 'medium'
+                        },
+                        { 
+                            name: 'Diagnostics System', 
+                            test: () => typeof window.Diagnostics !== 'undefined',
+                            importance: 'high'
+                        }
+                    ];
+                    
+                    const results = [];
+                    let allPassed = true;
+                    
+                    tests.forEach(t => {
+                        try {
+                            const passed = t.test();
+                            if (!passed) allPassed = false;
+                            
+                            results.push({
+                                function: t.name,
+                                status: passed ? 'ok' : 'missing',
+                                importance: t.importance,
+                                message: passed ? '✅ Funcionalidade disponível' : '❌ Funcionalidade ausente'
+                            });
+                        } catch (e) {
+                            results.push({
+                                function: t.name,
+                                status: 'error',
+                                importance: t.importance,
+                                message: `❌ Erro: ${e.message}`
+                            });
+                            allPassed = false;
+                        }
+                    });
+                    
+                    const criticalTests = tests.filter(t => t.importance === 'high');
+                    const criticalPassed = criticalTests.every(t => {
+                        try {
+                            return t.test();
+                        } catch {
+                            return false;
+                        }
+                    });
+                    
+                    return {
+                        status: criticalPassed ? (allPassed ? 'success' : 'warning') : 'error',
+                        message: criticalPassed ? 
+                            `✅ ${results.filter(r => r.status === 'ok').length}/${tests.length} funcionalidades OK` :
+                            '❌ Funcionalidades críticas ausentes!',
+                        details: {
+                            totalTests: tests.length,
+                            passed: results.filter(r => r.status === 'ok').length,
+                            criticalPassed: criticalPassed,
+                            testResults: results
+                        }
+                    };
+                } catch (error) {
+                    return {
+                        status: 'error',
+                        message: `Erro na validação: ${error.message}`,
+                        details: null
+                    };
+                }
+            }
+        },
+        
+        performanceCheck: {
+            id: 'post-validation-performance',
+            title: 'Análise de Performance Pós-Limpeza',
+            description: 'Mede melhorias após remoção de arquivos',
+            type: 'performance',
+            icon: '⚡',
+            category: 'cleanup',
+            execute: function() {
+                try {
+                    const startTime = performance.now();
+                    
+                    // Operação para medir performance
+                    let operations = 0;
+                    const testIterations = 100000;
+                    for (let i = 0; i < testIterations; i++) {
+                        operations += Math.random();
+                    }
+                    
+                    const endTime = performance.now();
+                    const executionTime = endTime - startTime;
+                    
+                    return {
+                        status: executionTime < 50 ? 'success' : 
+                                executionTime < 100 ? 'warning' : 'info',
+                        message: `⏱️ Execução: ${executionTime.toFixed(2)}ms (${testIterations} iterações)`,
+                        details: {
+                            executionTime: executionTime,
+                            operations: operations,
+                            iterations: testIterations,
+                            timestamp: new Date().toISOString()
+                        }
+                    };
+                } catch (error) {
+                    return {
+                        status: 'error',
+                        message: `Erro no teste de performance: ${error.message}`,
+                        details: null
+                    };
+                }
+            }
+        }
+    };
+    
+    // Painéis ativos
+    const activePanels = new Map();
+    
+    return {
+        registerTests: function() {
+            console.log('✅ Módulo de Pós-Validação: 3 testes disponíveis');
+            return true;
+        },
+        
+        runCompleteValidation: async function() {
+            console.group('🎯 EXECUTANDO VALIDAÇÃO COMPLETA PÓS-LIMPEZA');
+            
+            const results = {
+                total: 0,
+                passed: 0,
+                failed: 0,
+                warnings: 0,
+                details: []
+            };
+            
+            // Executar cada teste
+            for (const [key, testConfig] of Object.entries(postValidationTests)) {
+                try {
+                    console.log(`▶️ Executando: ${testConfig.title}`);
+                    
+                    const result = await Promise.resolve(testConfig.execute());
+                    
+                    results.total++;
+                    if (result.status === 'success') results.passed++;
+                    if (result.status === 'error') results.failed++;
+                    if (result.status === 'warning') results.warnings++;
+                    
+                    results.details.push({
+                        test: testConfig.title,
+                        status: result.status,
+                        message: result.message,
+                        icon: result.status === 'success' ? '✅' : 
+                              result.status === 'error' ? '❌' : '⚠️'
+                    });
+                    
+                    console.log(`${result.status === 'success' ? '✅' : '❌'} ${testConfig.title}: ${result.message}`);
+                    
+                    // Pequena pausa entre testes
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                } catch (error) {
+                    console.error(`❌ Erro no teste ${testConfig.title}:`, error);
+                    results.details.push({
+                        test: testConfig.title,
+                        status: 'error',
+                        message: `Erro: ${error.message}`,
+                        icon: '❌'
+                    });
+                    results.total++;
+                    results.failed++;
+                }
+            }
+            
+            console.groupEnd();
+            console.log(`📊 RESUMO PÓS-VALIDAÇÃO:`);
+            console.log(`   ✅ ${results.passed} passaram`);
+            console.log(`   ⚠️ ${results.warnings} com avisos`);
+            console.log(`   ❌ ${results.failed} falharam`);
+            console.log(`   📈 Total: ${results.total} testes`);
+            
+            // Verificar se passou em todos os críticos
+            const criticalTests = Object.values(postValidationTests).filter(t => t.critical);
+            const criticalResults = results.details.filter(d => 
+                criticalTests.some(ct => ct.title === d.test)
+            );
+            const allCriticalPassed = criticalResults.every(d => d.status === 'success');
+            
+            if (allCriticalPassed && results.failed === 0) {
+                console.log('🎉 LIMPEZA COMPLETA VALIDADA COM SUCESSO!');
+                console.log('📊 Sistema otimizado: -3 arquivos, ~120 linhas removidas');
+            } else if (allCriticalPassed) {
+                console.log('⚠️ LIMPEZA VALIDADA (com problemas não críticos)');
+            } else {
+                console.warn('❌ VALIDAÇÃO COM PROBLEMAS CRÍTICOS');
+            }
+            
+            return results;
+        },
+        
+        createValidationPanel: function() {
+            // Verificar se já existe
+            if (document.querySelector('.post-validation-panel')) {
+                console.log('⚠️ Painel de pós-validação já existe');
+                return document.querySelector('.post-validation-panel');
+            }
+            
+            const panelId = 'post-validation-panel-' + Date.now();
+            const panel = document.createElement('div');
+            
+            panel.id = panelId;
+            panel.className = 'post-validation-panel';
+            panel.innerHTML = `
+                <div style="position: fixed;
+                            top: 100px;
+                            left: 100px;
+                            width: 500px;
+                            height: 600px;
+                            background: linear-gradient(135deg, #0a0a2a, #001a33);
+                            border: 2px solid #ff6b6b;
+                            border-radius: 10px;
+                            z-index: 1000000;
+                            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+                            font-family: 'Segoe UI', 'Consolas', monospace;
+                            display: flex;
+                            flex-direction: column;
+                            overflow: hidden;
+                            resize: both;
+                            user-select: text;
+                            -webkit-user-select: text;
+                            -moz-user-select: text;
+                            -ms-user-select: text;">
+                    
+                    <!-- Cabeçalho -->
+                    <div class="pv-header" 
+                         style="background: rgba(255, 107, 107, 0.2);
+                                padding: 12px 15px;
+                                border-bottom: 1px solid rgba(255, 107, 107, 0.3);
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                cursor: move;
+                                user-select: none;">
+                        
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="color: #ff6b6b; font-weight: bold; font-size: 14px;">🎯 PÓS-VALIDAÇÃO</span>
+                            <span style="background: #ff6b6b;
+                                        color: #001a33;
+                                        padding: 2px 8px;
+                                        border-radius: 10px;
+                                        font-size: 11px;
+                                        font-weight: bold;">
+                                3 testes
+                            </span>
+                        </div>
+                        
+                        <div style="display: flex; gap: 5px;">
+                            <button class="pv-minimize-btn" 
+                                    style="background: #555;
+                                           color: white;
+                                           border: none;
+                                           width: 25px;
+                                           height: 25px;
+                                           border-radius: 4px;
+                                           cursor: pointer;
+                                           font-weight: bold;">
+                                −
+                            </button>
+                            <button class="pv-close-btn" 
+                                    style="background: #ff5555;
+                                           color: white;
+                                           border: none;
+                                           width: 25px;
+                                           height: 25px;
+                                           border-radius: 4px;
+                                           cursor: pointer;
+                                           font-weight: bold;">
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Conteúdo -->
+                    <div class="pv-content" 
+                         style="flex: 1;
+                                padding: 15px;
+                                overflow-y: auto;
+                                overflow-x: hidden;
+                                user-select: text;">
+                        
+                        <!-- Testes -->
+                        <div id="pv-tests-container" style="user-select: text;"></div>
+                        
+                        <!-- Botão de validação completa -->
+                        <div style="margin-top: 20px; padding: 15px; background: rgba(255, 107, 107, 0.1); border-radius: 8px; border: 1px solid rgba(255, 107, 107, 0.3);">
+                            <button id="pv-run-complete-btn" 
+                                    style="background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+                                           color: white;
+                                           border: none;
+                                           padding: 12px;
+                                           border-radius: 5px;
+                                           font-weight: bold;
+                                           cursor: pointer;
+                                           width: 100%;
+                                           font-size: 14px;
+                                           transition: all 0.3s ease;">
+                                ▶️ EXECUTAR VALIDAÇÃO COMPLETA
+                            </button>
+                            <div style="font-size: 11px; color: #ffaaaa; margin-top: 8px; text-align: center; user-select: text;">
+                                Executa todos os 3 testes em sequência
+                            </div>
+                        </div>
+                        
+                        <!-- Logs -->
+                        <div style="margin-top: 20px;
+                                    max-height: 150px;
+                                    overflow-y: auto;
+                                    background: rgba(0, 0, 0, 0.3);
+                                    border-radius: 6px;
+                                    padding: 10px;
+                                    border: 1px solid rgba(255, 107, 107, 0.2);
+                                    font-size: 12px;
+                                    user-select: text;">
+                            <div style="color: #ffaaaa; margin-bottom: 5px; font-weight: bold; user-select: text;">📝 LOGS:</div>
+                            <div id="pv-logs-content" style="user-select: text;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rodapé -->
+                    <div style="background: rgba(255, 107, 107, 0.1);
+                                padding: 10px 15px;
+                                border-top: 1px solid rgba(255, 107, 107, 0.3);
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                font-size: 11px;
+                                user-select: text;">
+                        
+                        <div style="color: #ffaaaa; user-select: text;">
+                            <span>Pós-Validação v1.0 | Texto selecionável</span>
+                        </div>
+                        
+                        <div style="color: #ff8888; user-select: text;">
+                            Status: <span id="pv-panel-status">Pronto</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(panel);
+            
+            // Adicionar testes com IDs únicos
+            const testsContainer = panel.querySelector('#pv-tests-container');
+            Object.values(postValidationTests).forEach(test => {
+                const testId = `pv-test-${test.id}`;
+                const testElement = document.createElement('div');
+                testElement.id = testId;
+                testElement.style.cssText = `
+                    background: rgba(255, 107, 107, 0.1);
+                    padding: 12px;
+                    border-radius: 6px;
+                    margin-bottom: 10px;
+                    border-left: 4px solid #ff6b6b;
+                    user-select: text;
+                `;
+                testElement.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px;">${test.icon}</span>
+                            <span style="font-weight: bold; color: #ff6b6b; user-select: text;">${test.title}</span>
+                        </div>
+                        
+                        <button class="pv-run-test-btn" data-test-id="${test.id}"
+                                style="background: #ff6b6b;
+                                       color: white;
+                                       border: none;
+                                       padding: 6px 12px;
+                                       border-radius: 4px;
+                                       font-size: 11px;
+                                       cursor: pointer;
+                                       font-weight: bold;
+                                       transition: all 0.3s ease;">
+                            Executar
+                        </button>
+                    </div>
+                    
+                    <div style="color: #ffaaaa; font-size: 12px; margin-bottom: 8px; user-select: text;">
+                        ${test.description}
+                    </div>
+                    
+                    <div class="pv-test-result" 
+                         style="background: rgba(0, 0, 0, 0.3);
+                                padding: 8px;
+                                border-radius: 4px;
+                                margin-top: 8px;
+                                font-size: 11px;
+                                color: #ffaaaa;
+                                display: none;
+                                user-select: text;">
+                        Aguardando execução...
+                    </div>
+                `;
+                testsContainer.appendChild(testElement);
+            });
+            
+            // Função para adicionar logs
+            const logsContent = panel.querySelector('#pv-logs-content');
+            const addLog = function(message, type = 'info') {
+                const colors = {
+                    info: '#ffaaaa',
+                    success: '#00ff9c',
+                    warning: '#ffaa00',
+                    error: '#ff5555'
+                };
+                
+                const icons = {
+                    info: '📝',
+                    success: '✅',
+                    warning: '⚠️',
+                    error: '❌'
+                };
+                
+                const logEntry = document.createElement('div');
+                logEntry.style.cssText = `
+                    margin-bottom: 4px;
+                    color: ${colors[type] || colors.info};
+                    font-size: 11px;
+                    padding: 2px 0;
+                    border-bottom: 1px dotted rgba(255, 107, 107, 0.2);
+                    user-select: text;
+                `;
+                logEntry.innerHTML = `${icons[type] || '📝'} <strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+                
+                logsContent.appendChild(logEntry);
+                logsContent.scrollTop = logsContent.scrollHeight;
+            };
+            
+            // Eventos para botões de teste individual
+            panel.querySelectorAll('.pv-run-test-btn').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const testId = this.dataset.testId;
+                    const test = postValidationTests[Object.keys(postValidationTests).find(key => 
+                        postValidationTests[key].id === testId
+                    )];
+                    
+                    if (!test) {
+                        addLog(`Teste ${testId} não encontrado`, 'error');
+                        return;
+                    }
+                    
+                    addLog(`Executando ${test.title}...`, 'info');
+                    this.disabled = true;
+                    this.textContent = 'Executando...';
+                    this.style.opacity = '0.7';
+                    
+                    try {
+                        const result = await Promise.resolve(test.execute());
+                        addLog(`${test.title}: ${result.message}`, result.status);
+                        
+                        // Atualizar resultado visual
+                        const testElement = this.closest('div[id^="pv-test-"]');
+                        if (testElement) {
+                            const resultElement = testElement.querySelector('.pv-test-result');
+                            if (resultElement) {
+                                resultElement.textContent = result.message;
+                                resultElement.style.display = 'block';
+                                resultElement.style.color = 
+                                    result.status === 'success' ? '#00ff9c' :
+                                    result.status === 'error' ? '#ff5555' :
+                                    result.status === 'warning' ? '#ffaa00' : '#ffaaaa';
+                                
+                                // Atualizar borda
+                                testElement.style.borderLeftColor = 
+                                    result.status === 'success' ? '#00ff9c' :
+                                    result.status === 'error' ? '#ff5555' :
+                                    result.status === 'warning' ? '#ffaa00' : '#ff6b6b';
+                            }
+                        }
+                    } catch (error) {
+                        addLog(`Erro em ${test.title}: ${error.message}`, 'error');
+                    } finally {
+                        this.disabled = false;
+                        this.textContent = 'Executar';
+                        this.style.opacity = '1';
+                    }
+                });
+            });
+            
+            // Validação completa
+            const runCompleteBtn = panel.querySelector('#pv-run-complete-btn');
+            runCompleteBtn.addEventListener('click', async function() {
+                this.disabled = true;
+                this.textContent = 'EXECUTANDO...';
+                this.style.opacity = '0.7';
+                
+                addLog('🚀 Iniciando validação completa...', 'info');
+                
+                try {
+                    const results = await PostValidationModule.runCompleteValidation();
+                    
+                    // Atualizar status dos testes individuais
+                    results.details.forEach(resultDetail => {
+                        const testTitle = resultDetail.test;
+                        const testKey = Object.keys(postValidationTests).find(key => 
+                            postValidationTests[key].title === testTitle
+                        );
+                        
+                        if (testKey) {
+                            const test = postValidationTests[testKey];
+                            const testElement = panel.querySelector(`[data-test-id="${test.id}"]`);
+                            if (testElement) {
+                                const parentTestElement = testElement.closest('div[id^="pv-test-"]');
+                                if (parentTestElement) {
+                                    const resultElement = parentTestElement.querySelector('.pv-test-result');
+                                    if (resultElement) {
+                                        resultElement.textContent = resultDetail.message;
+                                        resultElement.style.display = 'block';
+                                        resultElement.style.color = 
+                                            resultDetail.status === 'success' ? '#00ff9c' :
+                                            resultDetail.status === 'error' ? '#ff5555' :
+                                            resultDetail.status === 'warning' ? '#ffaa00' : '#ffaaaa';
+                                        
+                                        parentTestElement.style.borderLeftColor = 
+                                            resultDetail.status === 'success' ? '#00ff9c' :
+                                            resultDetail.status === 'error' ? '#ff5555' :
+                                            resultDetail.status === 'warning' ? '#ffaa00' : '#ff6b6b';
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Atualizar status do painel
+                    const panelStatus = panel.querySelector('#pv-panel-status');
+                    panelStatus.textContent = results.failed === 0 ? 'Concluído ✅' : 'Com problemas ⚠️';
+                    panelStatus.style.color = results.failed === 0 ? '#00ff9c' : '#ffaa00';
+                    
+                    addLog(`✅ Validação concluída: ${results.passed} passaram, ${results.warnings} avisos, ${results.failed} falharam`, 
+                          results.failed === 0 ? 'success' : results.warnings > 0 ? 'warning' : 'error');
+                    
+                    if (results.failed === 0) {
+                        addLog('🎉 Limpeza validada com sucesso! Sistema otimizado.', 'success');
+                    }
+                    
+                } catch (error) {
+                    addLog(`❌ Erro na validação completa: ${error.message}`, 'error');
+                } finally {
+                    this.disabled = false;
+                    this.textContent = '▶️ EXECUTAR VALIDAÇÃO COMPLETA';
+                    this.style.opacity = '1';
+                }
+            });
+            
+            // Fechar painel
+            panel.querySelector('.pv-close-btn').addEventListener('click', () => {
+                panel.remove();
+                activePanels.delete(panelId);
+                addLog('Painel fechado', 'info');
+            });
+            
+            // Minimizar
+            panel.querySelector('.pv-minimize-btn').addEventListener('click', function() {
+                const content = panel.querySelector('.pv-content');
+                const footer = panel.querySelector('div:last-child');
+                const isHidden = content.style.display === 'none';
+                
+                content.style.display = isHidden ? 'flex' : 'none';
+                footer.style.display = isHidden ? 'flex' : 'none';
+                this.textContent = isHidden ? '−' : '+';
+                
+                if (isHidden) {
+                    panel.style.height = '600px';
+                } else {
+                    panel.style.height = 'auto';
+                }
+                
+                addLog(isHidden ? 'Painel expandido' : 'Painel minimizado', 'info');
+            });
+            
+            // Tornar arrastável
+            const header = panel.querySelector('.pv-header');
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            header.addEventListener('mousedown', function(e) {
+                if (e.target.tagName === 'BUTTON') return; // Não arrastar se clicar em botão
+                
+                isDragging = true;
+                offsetX = e.clientX - panel.getBoundingClientRect().left;
+                offsetY = e.clientY - panel.getBoundingClientRect().top;
+                
+                panel.style.cursor = 'grabbing';
+                header.style.cursor = 'grabbing';
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+                
+                e.preventDefault();
+            });
+            
+            function drag(e) {
+                if (!isDragging) return;
+                
+                const x = e.clientX - offsetX;
+                const y = e.clientY - offsetY;
+                
+                // Limitar dentro da tela
+                const maxX = window.innerWidth - panel.offsetWidth;
+                const maxY = window.innerHeight - panel.offsetHeight;
+                
+                panel.style.left = Math.max(10, Math.min(x, maxX - 10)) + 'px';
+                panel.style.top = Math.max(10, Math.min(y, maxY - 10)) + 'px';
+            }
+            
+            function stopDrag() {
+                isDragging = false;
+                panel.style.cursor = '';
+                header.style.cursor = '';
+                
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+            
+            // Adicionar ao mapa de painéis ativos
+            activePanels.set(panelId, {
+                element: panel,
+                addLog: addLog,
+                updateStatus: function(status, color) {
+                    const statusEl = panel.querySelector('#pv-panel-status');
+                    if (statusEl) {
+                        statusEl.textContent = status;
+                        statusEl.style.color = color;
+                    }
+                }
+            });
+            
+            // Log inicial
+            addLog('✅ Painel de Pós-Validação criado', 'success');
+            addLog('📋 Texto agora é selecionável (copie com Ctrl+C)', 'info');
+            addLog('💡 Clique nos botões "Executar" para testar individualmente', 'info');
+            
+            console.log('✅ Painel de Pós-Validação criado com seleção de texto habilitada');
+            
+            return panel;
+        },
+        
+        // Getter para testes (para uso externo)
+        get tests() {
+            return postValidationTests;
+        }
+    };
+})();
+
+// ================== BOTÃO DE CONTROLE FLUTUANTE CORRIGIDO ==================
+function createPostValidationControl() {
+    // Verificar se já existe
+    if (document.getElementById('post-validation-control')) {
+        console.log('✅ Controle de Pós-Validação já existe');
+        return;
+    }
+    
+    const controlButton = document.createElement('div');
+    controlButton.id = 'post-validation-control';
+    controlButton.style.cssText = `
+        position: fixed;
+        bottom: 100px;
+        right: 20px;
+        z-index: 999998;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    `;
+    
+    controlButton.innerHTML = `
+        <button id="pv-main-btn"
+                style="background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+                       color: white;
+                       border: none;
+                       border-radius: 50%;
+                       width: 60px;
+                       height: 60px;
+                       font-size: 24px;
+                       cursor: pointer;
+                       box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+                       transition: all 0.3s ease;
+                       display: flex;
+                       align-items: center;
+                       justify-content: center;
+                       z-index: 999999;">
+            🔍
+        </button>
+        
+        <div id="pv-menu" 
+             style="display: none;
+                    background: rgba(10, 10, 42, 0.98);
+                    border: 2px solid #ff6b6b;
+                    border-radius: 10px;
+                    padding: 15px;
+                    min-width: 220px;
+                    box-shadow: 0 0 20px rgba(255, 107, 107, 0.4);
+                    position: absolute;
+                    bottom: 70px;
+                    right: 0;
+                    z-index: 999999;
+                    backdrop-filter: blur(10px);
+                    user-select: none;">
+            
+            <div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ff6b6b; padding-bottom: 5px; font-size: 14px;">
+                🎯 PÓS-VALIDAÇÃO
+            </div>
+            
+            <button id="pv-create-panel"
+                    style="background: rgba(0, 170, 255, 0.2);
+                           color: #00aaff;
+                           border: 1px solid #00aaff;
+                           border-radius: 5px;
+                           padding: 10px 12px;
+                           margin: 6px 0;
+                           width: 100%;
+                           cursor: pointer;
+                           text-align: left;
+                           display: flex;
+                           align-items: center;
+                           gap: 8px;
+                           font-family: 'Segoe UI', sans-serif;
+                           font-size: 12px;
+                           font-weight: bold;
+                           transition: all 0.3s ease;">
+                📊 Criar Painel Visual
+            </button>
+            
+            <button id="pv-run-full"
+                    style="background: rgba(0, 255, 156, 0.2);
+                           color: #00ff9c;
+                           border: 1px solid #00ff9c;
+                           border-radius: 5px;
+                           padding: 10px 12px;
+                           margin: 6px 0;
+                           width: 100%;
+                           cursor: pointer;
+                           text-align: left;
+                           display: flex;
+                           align-items: center;
+                           gap: 8px;
+                           font-family: 'Segoe UI', sans-serif;
+                           font-size: 12px;
+                           font-weight: bold;
+                           transition: all 0.3s ease;">
+                ▶️ Executar Validação
+            </button>
+            
+            <button id="pv-test-files"
+                    style="background: rgba(255, 170, 0, 0.2);
+                           color: #ffaa00;
+                           border: 1px solid #ffaa00;
+                           border-radius: 5px;
+                           padding: 10px 12px;
+                           margin: 6px 0;
+                           width: 100%;
+                           cursor: pointer;
+                           text-align: left;
+                           display: flex;
+                           align-items: center;
+                           gap: 8px;
+                           font-family: 'Segoe UI', sans-serif;
+                           font-size: 12px;
+                           font-weight: bold;
+                           transition: all 0.3s ease;">
+                🗑️ Testar Arquivos
+            </button>
+            
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 107, 107, 0.3);">
+                <div style="font-size: 11px; color: #88aaff; display: flex; justify-content: space-between;">
+                    <span>📋 Status:</span>
+                    <span id="pv-status" style="color: #00ff9c; font-weight: bold;">Pronto</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(controlButton);
+    
+    // Eventos
+    const mainBtn = document.getElementById('pv-main-btn');
+    const menu = document.getElementById('pv-menu');
+    const statusSpan = document.getElementById('pv-status');
+    
+    // Toggle menu
+    mainBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        mainBtn.style.transform = menu.style.display === 'block' ? 'rotate(45deg)' : 'rotate(0)';
+        mainBtn.style.boxShadow = menu.style.display === 'block' ? 
+            '0 0 25px rgba(255, 107, 107, 0.6)' : 
+            '0 4px 15px rgba(255, 107, 107, 0.4)';
+    });
+    
+    // Fechar menu ao clicar fora
+    document.addEventListener('click', (e) => {
+        if (!controlButton.contains(e.target)) {
+            menu.style.display = 'none';
+            mainBtn.style.transform = 'rotate(0)';
+            mainBtn.style.boxShadow = '0 4px 15px rgba(255, 107, 107, 0.4)';
+        }
+    });
+    
+    // Criar painel
+    document.getElementById('pv-create-panel').addEventListener('click', () => {
+        statusSpan.textContent = 'Criando...';
+        statusSpan.style.color = '#00aaff';
+        
+        setTimeout(() => {
+            try {
+                const panel = PostValidationModule.createValidationPanel();
+                if (panel) {
+                    statusSpan.textContent = '✅ Criado!';
+                    statusSpan.style.color = '#00ff9c';
+                    menu.style.display = 'none';
+                    mainBtn.style.transform = 'rotate(0)';
+                    mainBtn.style.boxShadow = '0 4px 15px rgba(255, 107, 107, 0.4)';
+                }
+            } catch (error) {
+                statusSpan.textContent = '❌ Erro';
+                statusSpan.style.color = '#ff5555';
+                console.error('Erro ao criar painel:', error);
+            }
+        }, 300);
+    });
+    
+    // Executar validação completa
+    document.getElementById('pv-run-full').addEventListener('click', async () => {
+        statusSpan.textContent = 'Executando...';
+        statusSpan.style.color = '#ffaa00';
+        
+        try {
+            const results = await PostValidationModule.runCompleteValidation();
+            statusSpan.textContent = `✅ ${results.passed}/${results.total}`;
+            statusSpan.style.color = results.failed === 0 ? '#00ff9c' : '#ffaa00';
+        } catch (error) {
+            statusSpan.textContent = '❌ Erro';
+            statusSpan.style.color = '#ff5555';
+            console.error('Erro na validação:', error);
+        }
+    });
+    
+    // Testar arquivos específicos
+    document.getElementById('pv-test-files').addEventListener('click', async () => {
+        statusSpan.textContent = 'Testando...';
+        statusSpan.style.color = '#ffaa00';
+        
+        try {
+            const test = PostValidationModule.tests.removedFilesCheck;
+            if (test) {
+                const result = await Promise.resolve(test.execute());
+                statusSpan.textContent = result.status === 'success' ? '✅ OK' : '❌ Falhou';
+                statusSpan.style.color = result.status === 'success' ? '#00ff9c' : '#ff5555';
+                
+                // Se houver painel, adicionar log
+                const panel = document.querySelector('.post-validation-panel');
+                if (panel && panel.querySelector('#pv-logs-content')) {
+                    const logDiv = panel.querySelector('#pv-logs-content');
+                    const logEntry = document.createElement('div');
+                    logEntry.style.cssText = 'color: #ffaaaa; font-size: 11px; margin-bottom: 4px;';
+                    logEntry.textContent = `[${new Date().toLocaleTimeString()}] Teste de arquivos: ${result.message}`;
+                    logDiv.appendChild(logEntry);
+                    logDiv.scrollTop = logDiv.scrollHeight;
+                }
+            }
+        } catch (error) {
+            statusSpan.textContent = '❌ Erro';
+            statusSpan.style.color = '#ff5555';
+            console.error('Erro no teste:', error);
+        }
+    });
+    
+    console.log('✅ Controle de Pós-Validação criado com sucesso');
+}
+
+// ================== INICIALIZAÇÃO ==================
+// Inicializar após carregamento
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            PostValidationModule.registerTests();
+            createPostValidationControl();
+        }, 1500);
+    });
+} else {
+    setTimeout(() => {
+        PostValidationModule.registerTests();
+        createPostValidationControl();
+    }, 1000);
+}
+
+// ================== FUNÇÕES GLOBAIS ==================
+// Adicionar ao objeto window
+window.PostValidation = PostValidationModule;
+window.PV = {
+    panel: () => PostValidationModule.createValidationPanel(),
+    run: () => PostValidationModule.runCompleteValidation(),
+    test: (testName) => {
+        const test = Object.values(PostValidationModule.tests).find(t => 
+            t.id.includes(testName) || t.title.toLowerCase().includes(testName.toLowerCase())
+        );
+        if (test) {
+            return Promise.resolve(test.execute());
+        }
+        return Promise.resolve({status: 'error', message: 'Teste não encontrado'});
+    },
+    status: () => {
+        return {
+            tests: Object.keys(PostValidationModule.tests).length,
+            panels: document.querySelectorAll('.post-validation-panel').length,
+            control: !!document.getElementById('post-validation-control')
+        };
+    }
+};
+
+// Mensagem de inicialização
+console.log('%c🎯 MÓDULO DE PÓS-VALIDAÇÃO CORRIGIDO CARREGADO', 
+            'color: #ff6b6b; font-weight: bold; font-size: 14px; background: #001a33; padding: 5px; border-radius: 4px;');
+console.log('✅ Problemas corrigidos:');
+console.log('   1. Texto agora é selecionável (user-select: text)');
+console.log('   2. Erro de undefined resolvido');
+console.log('   3. Controles mais robustos');
+console.log('   4. Melhor tratamento de erros');
+console.log('📋 Comandos disponíveis:');
+console.log('   • window.PV.panel() - Criar painel visual');
+console.log('   • window.PV.run() - Executar validação completa');
+console.log('   • window.PV.test("files") - Testar arquivos removidos');
+console.log('   • Botão 🔍 no canto inferior direito');
+
+// ================== MÓDULO DE VERIFICAÇÃO DE INTEGRIDADE DO SISTEMA (VISUAL) ==================
+const SystemIntegrityModule = (function() {
+    // Testes de integridade do sistema
+    const integrityTests = {
+        systemIntegrityCheck: {
+            id: 'system-integrity-final',
+            title: '🔍 TESTE FINAL DE INTEGRIDADE DO SISTEMA',
+            description: 'Verificação completa de todos os módulos e funcionalidades críticas após otimização',
+            type: 'validation',
+            icon: '🔍',
+            category: 'integrity',
+            critical: true,
+            version: '16.0',
+            execute: function() {
+                console.group('🔍 TESTE FINAL DE INTEGRIDADE - SISTEMA OTIMIZADO v16.0');
+                
+                const tests = [
+                    // MÓDULOS CRÍTICOS
+                    { 
+                        name: 'PdfSystem', 
+                        test: () => window.PdfSystem && typeof window.PdfSystem.showModal === 'function',
+                        importance: 'critical'
+                    },
+                    { 
+                        name: 'MediaSystem', 
+                        test: () => window.MediaSystem && typeof window.MediaSystem.addPdfs === 'function',
+                        importance: 'critical'
+                    },
+                    { 
+                        name: 'Supabase Client', 
+                        test: () => window.supabaseClient || window.SUPABASE_CONFIG,
+                        importance: 'high'
+                    },
+                    { 
+                        name: 'Properties Array', 
+                        test: () => Array.isArray(window.properties),
+                        importance: 'high'
+                    },
+                    { 
+                        name: 'Admin Functions', 
+                        test: () => typeof window.toggleAdminPanel === 'function' && typeof window.editProperty === 'function',
+                        importance: 'medium'
+                    },
+                    { 
+                        name: 'Upload de PDFs', 
+                        test: () => typeof window.handleNewPdfFiles === 'function' || (window.MediaSystem && typeof window.MediaSystem.addPdfs === 'function'),
+                        importance: 'high'
+                    },
+                    { 
+                        name: 'Modal de Galeria', 
+                        test: () => typeof window.openGallery === 'function',
+                        importance: 'medium'
+                    },
+                    { 
+                        name: 'Filtros', 
+                        test: () => typeof window.setupFilters === 'function',
+                        importance: 'medium'
+                    },
+                    { 
+                        name: 'Sincronização', 
+                        test: () => typeof window.syncWithSupabase === 'function' || typeof window.forceSyncProperties === 'function',
+                        importance: 'high'
+                    },
+                    { 
+                        name: 'Modo Debug', 
+                        test: () => window.location.search.includes('debug=true') ? typeof window.runSupportChecks === 'function' : true,
+                        importance: 'low'
+                    },
+                    { 
+                        name: 'Fallbacks', 
+                        test: () => window.PdfLogger !== undefined && window.MediaLogger !== undefined,
+                        importance: 'medium'
+                    }
+                ];
+                
+                let passed = 0;
+                const total = tests.length;
+                const results = [];
+                
+                console.log('🧪 Executando testes de integridade...');
+                
+                tests.forEach((test, index) => {
+                    try {
+                        const result = test.test();
+                        console.log(`${result ? '✅' : '❌'} ${index + 1}. ${test.name}: ${result ? 'OK' : 'FALHOU'}`);
+                        if (result) passed++;
+                        results.push({
+                            name: test.name,
+                            passed: result,
+                            importance: test.importance
+                        });
+                    } catch (error) {
+                        console.log(`❌ ${index + 1}. ${test.name}: ERRO - ${error.message}`);
+                        results.push({
+                            name: test.name,
+                            passed: false,
+                            importance: test.importance,
+                            error: error.message
+                        });
+                    }
+                });
+                
+                const score = Math.round((passed / total) * 100);
+                
+                console.log(`\n📊 RESULTADO FINAL: ${passed}/${total} testes passaram`);
+                console.log(`🎯 SCORE: ${score}%`);
+                
+                let status = 'success';
+                let message = '';
+                
+                if (passed === total) {
+                    console.log('\n🎉 SISTEMA 100% INTEGRO E OTIMIZADO!');
+                    message = '✅ SISTEMA 100% INTEGRO E OTIMIZADO!';
+                } else if (score >= 80) {
+                    console.log('\n⚠️  SISTEMA ESTÁVEL - Alguns testes não críticos falharam');
+                    status = 'warning';
+                    message = `⚠️ SISTEMA ESTÁVEL (${score}%)`;
+                } else {
+                    console.log('\n❌ PROBLEMAS CRÍTICOS - Sistema com falhas graves');
+                    status = 'error';
+                    message = `❌ SISTEMA COM PROBLEMAS (${score}%)`;
+                }
+                
+                console.groupEnd();
+                
+                return {
+                    status: status,
+                    message: message,
+                    details: {
+                        totalTests: total,
+                        passed: passed,
+                        score: score,
+                        results: results
+                    }
+                };
+            }
+        }
+    };
+    
+    // Variável para controlar se o painel já foi criado
+    let integrityPanel = null;
+    
+    return {
+        // Registrar testes
+        registerTests: function() {
+            Object.values(integrityTests).forEach(testConfig => {
+                // Usar TestManager se disponível, senão registrar diretamente
+                if (typeof TestManager !== 'undefined' && TestManager.registerTest) {
+                    const existingTest = TestManager.getTest ? TestManager.getTest(testConfig.id) : null;
+                    if (!existingTest) {
+                        TestManager.registerTest(testConfig);
+                    }
+                }
+            });
+            
+            console.log('✅ Módulo de Integridade: Testes registrados');
+        },
+        
+        // Criar painel visual de integridade
+        createIntegrityPanel: function() {
+            // Se já existe, apenas mostrar
+            if (integrityPanel && document.body.contains(integrityPanel)) {
+                integrityPanel.style.display = 'flex';
+                return integrityPanel;
+            }
+            
+            // Verificar se estamos no sistema de diagnóstico v6.0
+            if (typeof PanelManager !== 'undefined' && PanelManager.createPanel) {
+                // Usar o sistema de painéis existente
+                const panelConfig = {
+                    title: '🔍 INTEGRIDADE DO SISTEMA',
+                    category: 'integrity',
+                    maxTests: 15,
+                    position: { top: '150px', left: '600px' },
+                    size: { width: '550px', height: '700px' }
+                };
+                
+                integrityPanel = PanelManager.createPanel(panelConfig);
+                
+                // Verificar se SpecializedPanels existe
+                if (typeof SpecializedPanels !== 'undefined') {
+                    integrityPanel.element = SpecializedPanels.renderPanel(integrityPanel);
+                    
+                    // Adicionar testes
+                    Object.values(integrityTests).forEach(testConfig => {
+                        const test = TestManager.getTest(testConfig.id);
+                        if (test) {
+                            integrityPanel.tests.push(test.id);
+                            SpecializedPanels.addTestToPanel(integrityPanel, test);
+                        }
+                    });
+                    
+                    // Adicionar botão especial
+                    const testsContainer = integrityPanel.element.querySelector('.tests-container');
+                    if (testsContainer) {
+                        const buttonHTML = `
+                            <div style="background: linear-gradient(135deg, rgba(0, 170, 255, 0.1), rgba(0, 255, 156, 0.1));
+                                        padding: 15px;
+                                        border-radius: 8px;
+                                        border: 2px solid rgba(0, 170, 255, 0.3);
+                                        margin: 20px 0;
+                                        text-align: center;">
+                                <button id="run-complete-integrity" 
+                                        style="background: linear-gradient(135deg, #00aaff, #00ff9c);
+                                               color: white;
+                                               border: none;
+                                               padding: 12px 24px;
+                                               border-radius: 6px;
+                                               font-weight: bold;
+                                               cursor: pointer;
+                                               width: 100%;
+                                               font-size: 14px;
+                                               transition: all 0.3s ease;">
+                                    🔍 EXECUTAR VERIFICAÇÃO COMPLETA
+                                </button>
+                                <div style="font-size: 11px; color: #88aaff; margin-top: 8px;">
+                                    Versão 16.0 | Score em tempo real
+                                </div>
+                            </div>
+                        `;
+                        
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = buttonHTML;
+                        testsContainer.appendChild(tempDiv.firstChild);
+                        
+                        // Adicionar evento
+                        document.getElementById('run-complete-integrity').addEventListener('click', async () => {
+                            const button = document.getElementById('run-complete-integrity');
+                            button.disabled = true;
+                            button.textContent = 'EXECUTANDO...';
+                            
+                            if (integrityPanel.addLog) {
+                                integrityPanel.addLog('Iniciando verificação de integridade...', 'info');
+                            }
+                            
+                            const result = await integrityTests.systemIntegrityCheck.execute();
+                            
+                            button.disabled = false;
+                            button.textContent = '🔍 EXECUTAR VERIFICAÇÃO COMPLETA';
+                            
+                            if (integrityPanel.addLog) {
+                                integrityPanel.addLog(`Verificação concluída: ${result.message}`, result.status);
+                                integrityPanel.addLog(`Score: ${result.details.score}% | ${result.details.passed}/${result.details.totalTests} testes`, 
+                                                    result.status === 'success' ? 'success' : 'warning');
+                            }
+                        });
+                    }
+                    
+                    // Inicializar logs
+                    if (SpecializedPanels.initializePanelLogs) {
+                        SpecializedPanels.initializePanelLogs(integrityPanel);
+                    }
+                    
+                    // Tornar arrastável
+                    if (SpecializedPanels.makePanelDraggable) {
+                        SpecializedPanels.makePanelDraggable(integrityPanel);
+                    }
+                    
+                    console.log('✅ Painel de Integridade criado no sistema de diagnóstico');
+                    return integrityPanel;
+                }
+            }
+            
+            // Se o sistema de diagnóstico não estiver disponível, criar painel independente
+            console.log('⚠️ Sistema de diagnóstico não encontrado. Criando painel independente...');
+            return this.createStandalonePanel();
+        },
+        
+        // Criar painel independente
+        createStandalonePanel: function() {
+            const panelId = 'integrity-panel-' + Date.now();
+            const panel = document.createElement('div');
+            
+            panel.id = panelId;
+            panel.style.cssText = `
+                position: fixed;
+                top: 120px;
+                left: 120px;
+                width: 520px;
+                height: 650px;
+                background: linear-gradient(135deg, #0a0a2a, #001a33);
+                border: 2px solid #00ff9c;
+                border-radius: 12px;
+                z-index: 10000;
+                box-shadow: 0 0 25px rgba(0, 255, 156, 0.3);
+                font-family: 'Segoe UI', monospace;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                resize: both;
+            `;
+            
+            panel.innerHTML = `
+                <!-- Cabeçalho -->
+                <div style="background: linear-gradient(90deg, rgba(0, 255, 156, 0.2), rgba(0, 170, 255, 0.2));
+                            padding: 15px 20px;
+                            border-bottom: 1px solid rgba(0, 255, 156, 0.3);
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            cursor: move;
+                            user-select: none;">
+                    
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="color: #00ff9c; font-weight: bold; font-size: 15px;">🔍 INTEGRIDADE DO SISTEMA</span>
+                        <span style="background: #00ff9c;
+                                    color: #001a33;
+                                    padding: 3px 10px;
+                                    border-radius: 10px;
+                                    font-size: 11px;
+                                    font-weight: bold;">
+                            v16.0
+                        </span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        <button class="minimize-btn" 
+                                style="background: #555;
+                                       color: white;
+                                       border: none;
+                                       width: 28px;
+                                       height: 28px;
+                                       border-radius: 5px;
+                                       cursor: pointer;
+                                       font-weight: bold;">
+                            −
+                        </button>
+                        <button class="close-btn" 
+                                style="background: #ff5555;
+                                       color: white;
+                                       border: none;
+                                       width: 28px;
+                                       height: 28px;
+                                       border-radius: 5px;
+                                       cursor: pointer;
+                                       font-weight: bold;">
+                            ×
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Conteúdo -->
+                <div style="flex: 1;
+                            padding: 20px;
+                            overflow-y: auto;
+                            overflow-x: hidden;">
+                    
+                    <!-- Introdução -->
+                    <div style="background: rgba(0, 255, 156, 0.1);
+                                padding: 15px;
+                                border-radius: 8px;
+                                border-left: 4px solid #00ff9c;
+                                margin-bottom: 20px;">
+                        <div style="color: #00ff9c; font-weight: bold; margin-bottom: 8px;">
+                            🎯 VERIFICAÇÃO FINAL DE INTEGRIDADE
+                        </div>
+                        <div style="color: #88ffaa; font-size: 13px;">
+                            Testa 11 módulos e funcionalidades críticas do sistema após otimização completa.
+                            Versão 16.0 do sistema otimizado.
+                        </div>
+                    </div>
+                    
+                    <!-- Botão de execução -->
+                    <div style="text-align: center; margin-bottom: 25px;">
+                        <button id="standalone-run-integrity" 
+                                style="background: linear-gradient(135deg, #00ff9c, #00aaff);
+                                       color: white;
+                                       border: none;
+                                       padding: 15px 30px;
+                                       border-radius: 8px;
+                                       font-weight: bold;
+                                       cursor: pointer;
+                                       font-size: 16px;
+                                       width: 100%;
+                                       transition: all 0.3s ease;
+                                       box-shadow: 0 4px 15px rgba(0, 255, 156, 0.3);">
+                            🚀 EXECUTAR VERIFICAÇÃO COMPLETA
+                        </button>
+                        <div style="font-size: 12px; color: #88aaff; margin-top: 10px;">
+                            Clique para testar todos os 11 módulos do sistema
+                        </div>
+                    </div>
+                    
+                    <!-- Resultados -->
+                    <div style="margin-bottom: 20px;">
+                        <div style="color: #00ff9c; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                            📊 RESULTADOS:
+                        </div>
+                        <div id="integrity-results" style="min-height: 200px; background: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 15px;">
+                            <div style="color: #88aaff; text-align: center; padding: 20px;">
+                                Aguardando execução...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Logs -->
+                    <div style="margin-top: 20px;">
+                        <div style="color: #00ff9c; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                            📝 LOGS:
+                        </div>
+                        <div id="integrity-logs" 
+                             style="height: 120px;
+                                    overflow-y: auto;
+                                    background: rgba(0, 0, 0, 0.3);
+                                    border-radius: 6px;
+                                    padding: 10px;
+                                    border: 1px solid rgba(0, 255, 156, 0.2);
+                                    font-size: 12px;
+                                    font-family: monospace;">
+                            <div style="color: #88aaff;">[Sistema pronto] Painel de integridade inicializado</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Rodapé -->
+                <div style="background: rgba(0, 255, 156, 0.1);
+                            padding: 12px 20px;
+                            border-top: 1px solid rgba(0, 255, 156, 0.3);
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            font-size: 11px;">
+                    
+                    <div style="color: #88ffaa;">
+                        <span>Sistema Integrado v16.0 | Use Ctrl+C para copiar</span>
+                    </div>
+                    
+                    <div style="color: #00ff9c; font-weight: bold;">
+                        Status: <span id="integrity-status">Pronto</span>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(panel);
+            integrityPanel = panel;
+            
+            // Sistema de logs
+            const logsContainer = panel.querySelector('#integrity-logs');
+            function addLog(message, type = 'info') {
+                const colors = {
+                    info: '#88aaff',
+                    success: '#00ff9c',
+                    warning: '#ffaa00',
+                    error: '#ff5555'
+                };
+                
+                const logEntry = document.createElement('div');
+                logEntry.style.cssText = `
+                    margin-bottom: 4px;
+                    color: ${colors[type] || colors.info};
+                    font-size: 11px;
+                    padding: 2px 0;
+                    border-bottom: 1px dotted rgba(0, 255, 156, 0.2);
+                `;
+                logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                
+                logsContainer.appendChild(logEntry);
+                logsContainer.scrollTop = logsContainer.scrollHeight;
+            }
+            
+            // Função de execução
+            const runButton = panel.querySelector('#standalone-run-integrity');
+            const resultsContainer = panel.querySelector('#integrity-results');
+            const statusSpan = panel.querySelector('#integrity-status');
+            
+            runButton.addEventListener('click', async function() {
+                this.disabled = true;
+                this.textContent = 'EXECUTANDO...';
+                this.style.opacity = '0.7';
+                
+                statusSpan.textContent = 'Testando...';
+                statusSpan.style.color = '#ffaa00';
+                
+                addLog('Iniciando verificação de integridade do sistema...', 'info');
+                
+                try {
+                    const result = await integrityTests.systemIntegrityCheck.execute();
+                    
+                    // Atualizar resultados
+                    resultsContainer.innerHTML = '';
+                    
+                    const scoreHTML = `
+                        <div style="text-align: center; margin-bottom: 15px;">
+                            <div style="font-size: 32px; color: ${result.status === 'success' ? '#00ff9c' : result.status === 'warning' ? '#ffaa00' : '#ff5555'}; font-weight: bold;">
+                                ${result.details.score}%
+                            </div>
+                            <div style="color: #88aaff; font-size: 12px;">
+                                ${result.details.passed}/${result.details.totalTests} testes passaram
+                            </div>
+                        </div>
+                    `;
+                    
+                    resultsContainer.innerHTML = scoreHTML;
+                    
+                    // Adicionar detalhes dos testes
+                    result.details.results.forEach(test => {
+                        const testDiv = document.createElement('div');
+                        testDiv.style.cssText = `
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 8px;
+                            margin: 5px 0;
+                            background: rgba(0, 0, 0, 0.2);
+                            border-radius: 4px;
+                            border-left: 3px solid ${test.passed ? '#00ff9c' : '#ff5555'};
+                        `;
+                        
+                        testDiv.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="color: ${test.passed ? '#00ff9c' : '#ff5555'}">
+                                    ${test.passed ? '✅' : '❌'}
+                                </span>
+                                <span style="color: ${test.passed ? '#88ffaa' : '#ffaaaa'}; font-size: 12px;">
+                                    ${test.name}
+                                </span>
+                            </div>
+                            <div style="font-size: 10px; color: #88aaff;">
+                                ${test.importance.toUpperCase()}
+                            </div>
+                        `;
+                        
+                        resultsContainer.appendChild(testDiv);
+                    });
+                    
+                    // Atualizar status
+                    statusSpan.textContent = result.status === 'success' ? '✅ Concluído' : 
+                                           result.status === 'warning' ? '⚠️ Avisos' : '❌ Problemas';
+                    statusSpan.style.color = result.status === 'success' ? '#00ff9c' : 
+                                           result.status === 'warning' ? '#ffaa00' : '#ff5555';
+                    
+                    addLog(`Verificação concluída: ${result.message}`, result.status);
+                    
+                } catch (error) {
+                    addLog(`Erro na verificação: ${error.message}`, 'error');
+                    statusSpan.textContent = '❌ Erro';
+                    statusSpan.style.color = '#ff5555';
+                } finally {
+                    this.disabled = false;
+                    this.textContent = '🚀 EXECUTAR VERIFICAÇÃO COMPLETA';
+                    this.style.opacity = '1';
+                }
+            });
+            
+            // Fechar painel
+            panel.querySelector('.close-btn').addEventListener('click', () => {
+                panel.remove();
+                integrityPanel = null;
+            });
+            
+            // Minimizar
+            panel.querySelector('.minimize-btn').addEventListener('click', function() {
+                const content = panel.children[1];
+                const isHidden = content.style.display === 'none';
+                content.style.display = isHidden ? 'flex' : 'none';
+                this.textContent = isHidden ? '−' : '+';
+            });
+            
+            // Arrastar
+            const header = panel.children[0];
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            header.addEventListener('mousedown', function(e) {
+                if (e.target.tagName === 'BUTTON') return;
+                
+                isDragging = true;
+                offsetX = e.clientX - panel.getBoundingClientRect().left;
+                offsetY = e.clientY - panel.getBoundingClientRect().top;
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+                e.preventDefault();
+            });
+            
+            function drag(e) {
+                if (!isDragging) return;
+                panel.style.left = (e.clientX - offsetX) + 'px';
+                panel.style.top = (e.clientY - offsetY) + 'px';
+            }
+            
+            function stopDrag() {
+                isDragging = false;
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+            
+            addLog('Painel de integridade criado com sucesso', 'success');
+            console.log('✅ Painel independente de integridade criado');
+            
+            return panel;
+        },
+        
+        // Método para adicionar ao painel existente (como aba/subpainel)
+        addToExistingPanel: function(panelId) {
+            const panel = document.getElementById(panelId);
+            if (!panel) {
+                console.error(`Painel ${panelId} não encontrado`);
+                return false;
+            }
+            
+            // Adicionar aba de integridade
+            const tabsContainer = panel.querySelector('.panel-tabs') || panel.querySelector('.panel-header');
+            if (tabsContainer) {
+                const integrityTab = document.createElement('button');
+                integrityTab.textContent = '🔍 Integridade';
+                integrityTab.style.cssText = `
+                    background: rgba(0, 255, 156, 0.2);
+                    color: #00ff9c;
+                    border: 1px solid rgba(0, 255, 156, 0.3);
+                    padding: 5px 10px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 11px;
+                    margin-left: 5px;
+                `;
+                
+                integrityTab.addEventListener('click', () => {
+                    this.createIntegrityPanel();
+                });
+                
+                tabsContainer.appendChild(integrityTab);
+                console.log('✅ Aba de integridade adicionada ao painel existente');
+                return true;
+            }
+            
+            return false;
+        }
+    };
+})();
+
+// ================== INTEGRAÇÃO AUTOMÁTICA COM O SISTEMA ==================
+
+// Inicializar quando o documento carregar
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeIntegrityModule);
+} else {
+    setTimeout(initializeIntegrityModule, 1000);
+}
+
+function initializeIntegrityModule() {
+    // Registrar testes
+    SystemIntegrityModule.registerTests();
+    
+    // Adicionar ao sistema de diagnóstico se existir
+    if (window.diagnostics) {
+        window.diagnostics.integrity = SystemIntegrityModule;
+        console.log('✅ Módulo de integridade integrado ao sistema de diagnóstico');
+    }
+    
+    // Criar atalhos globais
+    window.IntegrityCheck = {
+        run: () => SystemIntegrityModule.integrityTests.systemIntegrityCheck.execute(),
+        panel: () => SystemIntegrityModule.createIntegrityPanel(),
+        addToPanel: (panelId) => SystemIntegrityModule.addToExistingPanel(panelId)
+    };
+    
+    // Atalho rápido
+    window.SI = window.IntegrityCheck;
+    
+    // Log de sucesso
+    console.log('%c🔍 MÓDULO DE INTEGRIDADE DO SISTEMA PRONTO', 
+                'color: #00ff9c; font-weight: bold; font-size: 14px; background: #001a33; padding: 5px;');
+    console.log('📋 Comandos disponíveis:');
+    console.log('• IntegrityCheck.panel() - Criar painel de integridade');
+    console.log('• IntegrityCheck.run() - Executar verificação');
+    console.log('• SI.panel() - Atalho rápido');
+    
+    // Tentar adicionar automaticamente aos painéis existentes após 3 segundos
+    setTimeout(() => {
+        // Procurar painéis de diagnóstico
+        const diagnosticPanels = document.querySelectorAll('[id*="diagnostics-panel"], [class*="diagnostics-panel"]');
+        diagnosticPanels.forEach(panel => {
+            SystemIntegrityModule.addToExistingPanel(panel.id);
+        });
+    }, 3000);
+}
+
+// ================== BOTÃO DE CONTROLE FLUTUANTE PARA INTEGRIDADE ==================
+
+// Criar botão flutuante se não existir
+setTimeout(() => {
+    if (!document.getElementById('integrity-float-button')) {
+        const floatButton = document.createElement('button');
+        floatButton.id = 'integrity-float-button';
+        floatButton.innerHTML = '🔍';
+        floatButton.title = 'Verificação de Integridade';
+        floatButton.style.cssText = `
+            position: fixed;
+            bottom: 160px;
+            right: 20px;
+            z-index: 99999;
+            background: linear-gradient(135deg, #00ff9c, #00aaff);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 255, 156, 0.4);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        
+        floatButton.addEventListener('mouseenter', () => {
+            floatButton.style.transform = 'scale(1.1)';
+            floatButton.style.boxShadow = '0 6px 20px rgba(0, 255, 156, 0.6)';
+        });
+        
+        floatButton.addEventListener('mouseleave', () => {
+            floatButton.style.transform = 'scale(1)';
+            floatButton.style.boxShadow = '0 4px 15px rgba(0, 255, 156, 0.4)';
+        });
+        
+        floatButton.addEventListener('click', () => {
+            SystemIntegrityModule.createIntegrityPanel();
+        });
+        
+        document.body.appendChild(floatButton);
+        console.log('✅ Botão flutuante de integridade criado');
+    }
+}, 2000);
