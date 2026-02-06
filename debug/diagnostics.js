@@ -7340,3 +7340,293 @@ function showRollbackReport(results) {
         }
     });
 }
+
+/* ================== MONITOR CONTÍNUO DE REGRESSÕES ================== */
+// Adicionar monitor periódico (compatível com admin.js)
+(function setupRegressionMonitor() {
+    // Executar apenas em modo diagnóstico ou debug
+    if (!DEBUG_MODE && !DIAGNOSTICS_MODE) return;
+    
+    console.log('🔧 Configurando monitor de regressões PDF...');
+    
+    let lastCheck = null;
+    let regressionCount = 0;
+    
+    // Função de verificação periódica
+    function checkForRegressions() {
+        const orphanFiles = [
+            'pdf-ui.js',
+            'pdf-core.js', 
+            'pdf-integration.js',
+            'media-core.js',
+            'media-ui.js',
+            'media-integration.js'
+        ];
+        
+        let currentOrphans = [];
+        
+        orphanFiles.forEach(file => {
+            if (document.querySelector(`script[src*="${file}"]`)) {
+                currentOrphans.push(file);
+            }
+        });
+        
+        // Se encontrou novos órfãos desde a última verificação
+        if (currentOrphans.length > 0 && (!lastCheck || JSON.stringify(lastCheck) !== JSON.stringify(currentOrphans))) {
+            regressionCount++;
+            
+            console.error(`❌ REGRESSÃO DETECTADA (${regressionCount})! Scripts órfãos recarregados:`, currentOrphans);
+            
+            // Log no painel
+            if (typeof window.logToPanel === 'function') {
+                window.logToPanel(`⚠️ Regressão ${regressionCount}: ${currentOrphans.length} script(s) órfão(s) recarregado(s)`, 'error');
+            }
+            
+            // Ação recomendada
+            if (regressionCount >= 3) {
+                console.warn('🚨 MÚLTIPLAS REGRESSÕES DETECTADAS! Verificar carregamento dinâmico de scripts.');
+                if (typeof window.logToPanel === 'function') {
+                    window.logToPanel('🚨 Múltiplas regressões! Verificar carregamento de scripts.', 'error');
+                }
+            }
+            
+            lastCheck = currentOrphans;
+        }
+        
+        // Verificar também event listeners duplicados periodicamente
+        const criticalElements = ['pdfModal', 'pdfPassword', 'pdfUploadArea', 'pdfFileInput'];
+        criticalElements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                // Monitorar mudanças no onclick
+                if (element._lastOnClick !== element.onclick) {
+                    if (element._lastOnClick && element.onclick) {
+                        console.warn(`⚠️ Event listener alterado no elemento ${id}`);
+                    }
+                    element._lastOnClick = element.onclick;
+                }
+            }
+        });
+    }
+    
+    // Executar verificação a cada 30 segundos
+    setInterval(checkForRegressions, 30000);
+    
+    // Executar primeira verificação após 10 segundos
+    setTimeout(checkForRegressions, 10000);
+    
+    console.log('✅ Monitor de regressões configurado (30s interval)');
+})();
+
+/* ================== VERIFICAÇÃO FINAL DE INTEGRIDADE (COMPLEMENTAR) ================== */
+window.finalPdfSystemValidation = function() {
+    console.group('🔍 VERIFICAÇÃO FINAL - SISTEMA DE PDF UNIFICADO (v5.5)');
+    
+    const validation = {
+        // Sistema ativo
+        MediaSystem_Ativo: !!window.MediaSystem,
+        PdfSystem_Ativo: !!window.PdfSystem,
+        
+        // Funções críticas
+        MediaSystem_TemProcessPDFs: typeof window.MediaSystem?.processAndSavePdfs === 'function',
+        PdfSystem_TemProcessPDFs: typeof window.PdfSystem?.processAndSavePdfs === 'function',
+        
+        // Referências no DOM
+        pdfUploadArea_Existe: !!document.getElementById('pdfUploadArea'),
+        pdfFileInput_Existe: !!document.getElementById('pdfFileInput'),
+        
+        // Elementos essenciais
+        pdfModal_Existe: !!document.getElementById('pdfModal'),
+        pdfPassword_Existe: !!document.getElementById('pdfPassword'),
+        pdfPassword_Visivel: (() => {
+            const element = document.getElementById('pdfPassword');
+            if (!element) return false;
+            return element.style.display !== 'none' && 
+                   getComputedStyle(element).display !== 'none' &&
+                   element.style.visibility !== 'hidden' &&
+                   getComputedStyle(element).visibility !== 'hidden';
+        })(),
+        
+        // Event listeners (estimativa)
+        eventListeners_Modal: document.getElementById('pdfModal')?.onclick ? 1 : 0,
+        eventListeners_Password: document.getElementById('pdfPassword')?.onchange ? 1 : 0,
+        
+        // Arquivos órfãos
+        arquivosOrfaos_Carregados: Array.from(document.scripts).filter(s => 
+            s.src && (s.src.includes('pdf-ui.js') || s.src.includes('pdf-core.js'))
+        ).length,
+        
+        // Sistemas de diagnóstico
+        testPdfSystem_Disponivel: typeof window.testPdfSystem === 'function',
+        interactivePdfTest_Disponivel: typeof window.interactivePdfTest === 'function',
+        diagnosePdfIconProblem_Disponivel: typeof window.diagnosePdfIconProblem === 'function',
+        monitorPdfPostCorrection_Disponivel: typeof window.monitorPdfPostCorrection === 'function',
+        verifyRollbackCompatibility_Disponivel: typeof window.verifyRollbackCompatibility === 'function',
+        finalPdfSystemValidation_Disponivel: true, // Esta função
+        version: '5.5'
+    };
+    
+    console.table(validation);
+    
+    // RECOMENDAÇÕES FINAIS
+    const recommendations = [];
+    
+    if (validation.arquivosOrfaos_Carregados > 0) {
+        recommendations.push('❌ CÓDIGO ÓRFÃO AINDA CARREGADO! Recomendado: EXCLUSÃO IMEDIATA');
+    }
+    
+    if (validation.MediaSystem_TemProcessPDFs && validation.PdfSystem_TemProcessPDFs) {
+        recommendations.push('⚠️ DOIS SISTEMAS DE PDF ATIVOS! Recomendado: Desativar PdfSystem para uploads');
+    }
+    
+    if (!validation.pdfPassword_Visivel && validation.pdfPassword_Existe) {
+        recommendations.push('🔧 Campo de senha PDF existe mas está oculto - verificar se deve estar visível');
+    }
+    
+    if (!validation.MediaSystem_Ativo && !validation.PdfSystem_Ativo) {
+        recommendations.push('🚨 NENHUM SISTEMA PDF ATIVO! Recomendado: Criar fallback imediatamente');
+    }
+    
+    if (recommendations.length > 0) {
+        console.warn('📋 RECOMENDAÇÕES FINAIS:');
+        recommendations.forEach((rec, idx) => console.log(`${idx + 1}. ${rec}`));
+    }
+    
+    console.log('✅ Verificação final completa - Sistema pronto para análise');
+    
+    // Log no painel
+    if (typeof window.logToPanel === 'function') {
+        const successCount = Object.values(validation).filter(v => v === true || (typeof v === 'number' && v > 0)).length;
+        const totalCount = Object.keys(validation).length;
+        const score = Math.round((successCount / totalCount) * 100);
+        
+        window.logToPanel(`📊 Verificação final PDF: ${score}% (${successCount}/${totalCount})`, 
+                         score >= 80 ? 'success' : 'warning');
+    }
+    
+    console.groupEnd();
+    
+    return {
+        validation,
+        recommendations,
+        timestamp: new Date().toISOString(),
+        score: Math.round((Object.values(validation).filter(v => v === true || (typeof v === 'number' && v > 0)).length / 
+                          Object.keys(validation).length) * 100)
+    };
+};
+
+/* ================== INTEGRAÇÃO COM O SISTEMA EXISTENTE ================== */
+// Adicionar novas funções aos objetos globais
+(function integrateNewFunctions() {
+    // Adicionar ao objeto diag global
+    if (window.diag) {
+        window.diag.pdf = window.diag.pdf || {};
+        
+        // Adicionar novas funções sem sobrescrever existentes
+        const newFunctions = {
+            monitor: window.monitorPdfPostCorrection,
+            verifyRollback: window.verifyRollbackCompatibility,
+            finalValidation: window.finalPdfSystemValidation
+        };
+        
+        Object.entries(newFunctions).forEach(([key, func]) => {
+            if (!window.diag.pdf[key]) {
+                window.diag.pdf[key] = func;
+            }
+        });
+    }
+    
+    // Adicionar ao console.diag se existir
+    if (console.diag) {
+        console.diag.pdf = console.diag.pdf || {};
+        console.diag.pdf.monitor = window.monitorPdfPostCorrection;
+        console.diag.pdf.verifyRollback = window.verifyRollbackCompatibility;
+        console.diag.pdf.finalValidation = window.finalPdfSystemValidation;
+    }
+    
+    // Adicionar botões ao painel de diagnóstico existente
+    function addNewButtonsToPanel() {
+        // Tentar adicionar após o painel ser criado
+        const checkPanel = setInterval(() => {
+            const panel = document.getElementById('diagnostics-panel-complete');
+            if (panel) {
+                clearInterval(checkPanel);
+                
+                // Adicionar botão de monitoramento
+                const mainButtons = panel.querySelector('div:nth-child(3)');
+                if (mainButtons && !document.getElementById('pdf-monitor-btn-v5-5')) {
+                    const monitorBtn = document.createElement('button');
+                    monitorBtn.id = 'pdf-monitor-btn-v5-5';
+                    monitorBtn.innerHTML = '🔍 MONITOR PÓS-CORREÇÃO v5.5';
+                    monitorBtn.style.cssText = `
+                        background: linear-gradient(45deg, #ff5500, #ffaa00); 
+                        color: #000; border: none;
+                        padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; flex: 1; margin: 5px;
+                        transition: all 0.2s;
+                    `;
+                    monitorBtn.addEventListener('click', window.monitorPdfPostCorrection);
+                    
+                    const finalBtn = document.createElement('button');
+                    finalBtn.id = 'pdf-final-validation-btn-v5-5';
+                    finalBtn.innerHTML = '📊 VERIFICAÇÃO FINAL v5.5';
+                    finalBtn.style.cssText = `
+                        background: linear-gradient(45deg, #00aaff, #0088cc); 
+                        color: white; border: none;
+                        padding: 8px 12px; cursor: pointer; border-radius: 4px;
+                        font-weight: bold; flex: 1; margin: 5px;
+                        transition: all 0.2s;
+                    `;
+                    finalBtn.addEventListener('click', window.finalPdfSystemValidation);
+                    
+                    mainButtons.appendChild(monitorBtn);
+                    mainButtons.appendChild(finalBtn);
+                    
+                    console.log('✅ Botões de verificação adicionados ao painel (v5.5)');
+                }
+            }
+        }, 1000);
+    }
+    
+    // Executar após carregamento
+    if (DEBUG_MODE || DIAGNOSTICS_MODE) {
+        setTimeout(addNewButtonsToPanel, 2000);
+        
+        // Executar verificação final após 15 segundos (automático em modo diagnóstico)
+        setTimeout(() => {
+            if (window.finalPdfSystemValidation) {
+                console.log('🔄 Executando verificação final automática...');
+                window.finalPdfSystemValidation();
+            }
+        }, 15000);
+    }
+})();
+
+/* ================== EXECUÇÃO AUTOMÁTICA DE MONITORAMENTO ================== */
+// Executar monitoramento se em modo debug (compatível com admin.js)
+(function autoRunMonitoring() {
+    const shouldMonitor = DEBUG_MODE || DIAGNOSTICS_MODE || PDF_DEBUG;
+    
+    if (shouldMonitor) {
+        console.log('🔧 Configurando monitoramento automático PDF (12 segundos)...');
+        
+        // Executar após 12 segundos
+        setTimeout(() => {
+            if (window.monitorPdfPostCorrection) {
+                console.log('🔄 Executando monitoramento pós-correção...');
+                window.monitorPdfPostCorrection();
+            }
+            
+            // Executar verificação de rollback após 17 segundos
+            setTimeout(() => {
+                if (window.verifyRollbackCompatibility) {
+                    console.log('🔄 Executando verificação de rollback...');
+                    window.verifyRollbackCompatibility();
+                }
+            }, 5000);
+            
+        }, 12000);
+    }
+})();
+
+console.log('✅ Módulos de monitoramento e verificação PDF v5.5 adicionados (integrados)');
