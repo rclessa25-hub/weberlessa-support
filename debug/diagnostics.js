@@ -7097,3 +7097,246 @@ function applyAutoCorrections(issues) {
     
     return corrections;
 }
+
+/* ================== VERIFICAÇÃO DE ROLLBACK (COMPATIBILIDADE) ================== */
+window.verifyRollbackCompatibility = function() {
+    console.group('🔄 VERIFICAÇÃO DE COMPATIBILIDADE DE ROLLBACK');
+    
+    const requiredFiles = [
+        'pdf-unified.js',
+        'media-unified.js',
+        'pdf-placeholders.js' // Importante para compatibilidade
+    ];
+    
+    const results = {
+        requiredFiles: {},
+        systemsAvailable: {},
+        recommendations: [],
+        isRollbackSafe: true,
+        timestamp: new Date().toISOString()
+    };
+    
+    console.log('🔍 Verificando arquivos essenciais para rollback...');
+    
+    // Verificar arquivos carregados
+    requiredFiles.forEach(file => {
+        const found = Array.from(document.scripts).some(s => 
+            s.src && s.src.includes(file)
+        );
+        
+        results.requiredFiles[file] = found;
+        console.log(`${file}: ${found ? '✅ OK' : '❌ FALTANDO'}`);
+        
+        if (!found) {
+            results.recommendations.push(`📦 Garantir que ${file} esteja carregado para rollback`);
+            results.isRollbackSafe = false;
+        }
+    });
+    
+    // Teste funcional básico
+    console.log('🧪 Testando sistemas principais...');
+    
+    const systems = {
+        MediaSystem: window.MediaSystem,
+        PdfSystem: window.PdfSystem,
+        processAndSavePdfs: typeof window.processAndSavePdfs === 'function',
+        showPdfModal: typeof window.showPdfModal === 'function',
+        testPdfSystem: typeof window.testPdfSystem === 'function'
+    };
+    
+    results.systemsAvailable = systems;
+    
+    Object.entries(systems).forEach(([name, available]) => {
+        console.log(`${name}: ${available ? '✅ DISPONÍVEL' : '❌ AUSENTE'}`);
+        
+        if (!available && (name === 'MediaSystem' || name === 'processAndSavePdfs')) {
+            results.recommendations.push(`🔧 Recriar ${name} para compatibilidade`);
+            results.isRollbackSafe = false;
+        }
+    });
+    
+    // Verificar se há módulos antigos ainda carregados
+    const oldModules = [
+        'pdf-ui.js',
+        'pdf-core.js',
+        'pdf-integration.js',
+        'media-core.js',
+        'media-ui.js'
+    ];
+    
+    let oldModulesFound = [];
+    oldModules.forEach(module => {
+        const found = Array.from(document.scripts).some(s => 
+            s.src && s.src.includes(module)
+        );
+        if (found) {
+            oldModulesFound.push(module);
+            console.warn(`⚠️ Módulo antigo ainda carregado: ${module}`);
+        }
+    });
+    
+    if (oldModulesFound.length > 0) {
+        results.recommendations.push(`🗑️ Remover módulos antigos: ${oldModulesFound.join(', ')}`);
+    }
+    
+    console.log('📊 Resultado da verificação de rollback:');
+    console.log('- Arquivos essenciais:', Object.values(results.requiredFiles).filter(v => v).length, '/', requiredFiles.length);
+    console.log('- Sistemas disponíveis:', Object.values(results.systemsAvailable).filter(v => v).length, '/', Object.keys(systems).length);
+    console.log('- Rollback seguro:', results.isRollbackSafe ? '✅ SIM' : '❌ NÃO');
+    
+    // Mostrar relatório
+    if (!window.diagnosticsSilentMode) {
+        showRollbackReport(results);
+    }
+    
+    console.groupEnd();
+    
+    return results;
+};
+
+/* ================== RELATÓRIO DE ROLLBACK ================== */
+function showRollbackReport(results) {
+    const alertId = 'rollback-report-v5-5';
+    
+    const existingAlert = document.getElementById(alertId);
+    if (existingAlert) existingAlert.remove();
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.id = alertId;
+    alertDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: ${results.isRollbackSafe ? 'linear-gradient(135deg, #001a00, #000a1a)' : 'linear-gradient(135deg, #1a0000, #000a0a)'};
+        color: ${results.isRollbackSafe ? '#00ff9c' : '#ff5555'};
+        padding: 25px;
+        border: 3px solid ${results.isRollbackSafe ? '#00ff9c' : '#ff5555'};
+        border-radius: 10px;
+        z-index: 1000009;
+        max-width: 600px;
+        width: 90%;
+        box-shadow: 0 0 40px ${results.isRollbackSafe ? 'rgba(0, 255, 156, 0.5)' : 'rgba(255, 0, 0, 0.5)'};
+        backdrop-filter: blur(10px);
+    `;
+    
+    let html = `
+        <div style="font-size: 20px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <span>${results.isRollbackSafe ? '✅' : '⚠️'}</span>
+            <span>VERIFICAÇÃO DE ROLLBACK v5.5</span>
+        </div>
+        
+        <div style="background: ${results.isRollbackSafe ? 'rgba(0, 255, 156, 0.1)' : 'rgba(255, 0, 0, 0.1)'}; 
+                    padding: 20px; border-radius: 6px; margin-bottom: 20px; 
+                    border: 1px solid ${results.isRollbackSafe ? 'rgba(0, 255, 156, 0.3)' : 'rgba(255, 0, 0, 0.3)'};">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div>
+                    <div style="font-size: 11px; color: #888;">STATUS ROLLBACK</div>
+                    <div style="font-size: 24px; color: ${results.isRollbackSafe ? '#00ff9c' : '#ff5555'}">
+                        ${results.isRollbackSafe ? '✅ SEGURO' : '❌ RISCO'}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #888;">ARQUIVOS</div>
+                    <div style="font-size: 24px; color: ${Object.values(results.requiredFiles).filter(v => v).length === Object.keys(results.requiredFiles).length ? '#00ff9c' : '#ffaa00'}">
+                        ${Object.values(results.requiredFiles).filter(v => v).length}/${Object.keys(results.requiredFiles).length}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: #888;">SISTEMAS</div>
+                    <div style="font-size: 24px; color: ${Object.values(results.systemsAvailable).filter(v => v).length === Object.keys(results.systemsAvailable).length ? '#00ff9c' : '#ffaa00'}">
+                        ${Object.values(results.systemsAvailable).filter(v => v).length}/${Object.keys(results.systemsAvailable).length}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Detalhes dos arquivos
+    html += `
+        <div style="margin-bottom: 20px;">
+            <h4 style="color: ${results.isRollbackSafe ? '#00ff9c' : '#ff5555'}; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;">
+                📁 ARQUIVOS ESSENCIAIS
+            </h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+    `;
+    
+    Object.entries(results.requiredFiles).forEach(([file, available]) => {
+        html += `
+            <div style="padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; 
+                        border-left: 3px solid ${available ? '#00ff9c' : '#ff5555'};">
+                <div style="font-size: 11px; color: #888;">${file}</div>
+                <div style="color: ${available ? '#00ff9c' : '#ff5555'}; font-weight: bold;">
+                    ${available ? '✅ PRESENTE' : '❌ AUSENTE'}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `
+            </div>
+        </div>
+    `;
+    
+    // Recomendações se houver problemas
+    if (results.recommendations.length > 0) {
+        html += `
+            <div style="background: rgba(255, 170, 0, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 20px; 
+                        border: 1px solid rgba(255, 170, 0, 0.3);">
+                <h4 style="color: #ffaa00; margin-bottom: 10px;">💡 RECOMENDAÇÕES</h4>
+                <div style="max-height: 150px; overflow-y: auto;">
+        `;
+        
+        results.recommendations.forEach((rec, index) => {
+            html += `
+                <div style="margin-bottom: 6px; padding: 8px; background: rgba(255, 170, 0, 0.1); border-radius: 4px;">
+                    <span style="color: #ffaa00;">${index + 1}.</span>
+                    <span style="color: #ffcc88; margin-left: 8px;">${rec}</span>
+                </div>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    }
+    
+    // Botões de ação
+    html += `
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button id="close-rollback-report-v5-5" style="
+                background: ${results.isRollbackSafe ? '#00ff9c' : '#ff5555'}; 
+                color: ${results.isRollbackSafe ? '#000' : 'white'}; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1; transition: all 0.2s;">
+                FECHAR
+            </button>
+            <button id="run-complete-diagnostic-v5-5" style="
+                background: #0088cc; color: white; border: none;
+                padding: 12px 24px; cursor: pointer; border-radius: 5px;
+                font-weight: bold; flex: 1; transition: all 0.2s;">
+                🔍 DIAGNÓSTICO COMPLETO
+            </button>
+        </div>
+        
+        <div style="font-size: 11px; color: #888; text-align: center; margin-top: 15px;">
+            Verificação de compatibilidade reversível - v5.5
+        </div>
+    `;
+    
+    alertDiv.innerHTML = html;
+    document.body.appendChild(alertDiv);
+    
+    // Configurar eventos
+    document.getElementById('close-rollback-report-v5-5')?.addEventListener('click', () => {
+        document.body.removeChild(alertDiv);
+    });
+    
+    document.getElementById('run-complete-diagnostic-v5-5')?.addEventListener('click', () => {
+        document.body.removeChild(alertDiv);
+        if (window.runDiagnostics) {
+            window.runDiagnostics();
+        }
+    });
+}
