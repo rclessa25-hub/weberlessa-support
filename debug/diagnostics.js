@@ -5737,3 +5737,23 @@ window.fetch = function(...args) {
         throw error;
     });
 };
+
+    // Inicialização automática se em modo debug
+    if (PDF_DEBUG || location.search.includes('debug=pdf')) {
+        setTimeout(() => {
+            console.log('🔧 Modo debug PDF ativado - inicializando diagnóstico v5.4');
+            window.enhanceDevTools();
+            
+            if (typeof window.interactivePdfTest === 'function') {
+                setTimeout(() => {
+                    window.interactivePdfTest();
+                }, 1500);
+            }
+            
+            if (typeof window.diagnosePdfIconProblem === 'function') {
+                setTimeout(() => {
+                    window.diagnosePdfIconProblem();
+                }, 2500);
+            }
+        }, 1000);
+    }
