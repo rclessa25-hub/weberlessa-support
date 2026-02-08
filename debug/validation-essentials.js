@@ -1,352 +1,301 @@
 // weberlessa-support/debug/validation-essentials.js
-// MÓDULO DE VALIDAÇÕES ESSENCIAIS - VERSÃO ATUALIZADA COM PDF
-// Arquivo consolidado: Inclui validações de galeria, sistema completo E migração PDF
-// Não foi necessário criar novo arquivo - funcionalidades foram integradas aqui
+// MÓDULO DE VALIDAÇÕES ESSENCIAIS - VERSÃO DEFINITIVA CORRIGIDA
+// Compatível com o sistema atual - funções existentes apenas no support system
 
 (function() {
     'use strict';
     
-    console.log('🔧 [SUPORTE] validation-essentials.js carregado (versão consolidada com PDF)');
+    console.log('🔧 [SUPORTE] validation-essentials.js carregado - Módulo de suporte independente');
     
     const isDebugMode = 
         window.location.search.includes('debug=true') ||
         window.location.hostname.includes('localhost');
     
-    // ========== VALIDAÇÃO DE GALERIA COMPLETA ==========
-    window.validateGalleryModule = function() {
-        if (isDebugMode) {
-            console.group('🔍 [SUPORTE] Validação Avançada da Galeria');
-        }
-        
+    // ========== VERIFICAÇÕES DO SISTEMA ATUAL ==========
+    
+    // Função 1: Verificar sistema de galeria
+    window.checkGallerySystem = function() {
         const checks = {
             'openGallery function': typeof window.openGallery === 'function',
             'closeGallery function': typeof window.closeGallery === 'function',
             'currentGalleryImages array': Array.isArray(window.currentGalleryImages),
             'gallery styles loaded': !!document.querySelector('[href*="gallery.css"]'),
-            'touch handlers ready': typeof window.handleTouchStart === 'function',
-            'keyboard support ready': typeof window.handleGalleryKeyboard === 'function',
             'modal element exists': !!document.getElementById('propertyGalleryModal'),
             'image count function': typeof window.showGalleryImage === 'function'
         };
         
-        const allValid = Object.values(checks).every(check => check === true);
-        const validCount = Object.values(checks).filter(v => v).length;
-        
         if (isDebugMode) {
+            console.group('🔍 [SUPORTE] Verificação do Sistema de Galeria');
             console.table(checks);
+            const validCount = Object.values(checks).filter(v => v).length;
             console.log(`📊 Resultado: ${validCount}/${Object.keys(checks).length} OK`);
-            console.log(`✅ Sistema de Galeria: ${allValid ? 'FUNCIONAL' : 'COM PROBLEMAS'}`);
             console.groupEnd();
         }
         
-        return {
-            success: allValid,
-            score: validCount / Object.keys(checks).length,
-            checks: checks,
-            timestamp: new Date().toISOString()
-        };
+        return checks;
     };
     
-    // ========== VALIDAÇÃO DO SISTEMA PDF ==========
-    window.validatePdfMigration = function() {
-        if (isDebugMode) {
-            console.group('🧪 VALIDAÇÃO PDF UNIFICADO');
-        }
+    // Função 2: Verificar sistema PDF atual
+    window.checkPdfSystem = function() {
+        console.group('🧪 [SUPORTE] Verificação do Sistema PDF');
         
-        const tests = [
-            {
-                name: 'PdfSystem disponível',
-                test: () => typeof window.PdfSystem !== 'undefined',
-                critical: true
-            },
-            {
-                name: 'Função showModal',
-                test: () => typeof window.PdfSystem?.showModal === 'function',
-                critical: true
-            },
-            {
-                name: 'Função processAndSavePdfs',
-                test: () => typeof window.PdfSystem?.processAndSavePdfs === 'function',
-                critical: true
-            },
-            {
-                name: 'Admin.js integrado',
-                test: () => typeof window.processAndSavePdfs === 'function',
-                critical: true
-            },
-            {
-                name: 'Modal no DOM',
-                test: () => !!document.getElementById('pdfModal'),
-                critical: false
-            },
-            {
-                name: 'Campo senha',
-                test: () => !!document.getElementById('pdfPassword'),
-                critical: false
-            },
-            {
-                name: 'Botão admin funciona',
-                test: () => {
-                    const btn = document.querySelector('.admin-toggle');
-                    return btn && typeof btn.onclick !== 'undefined';
-                },
-                critical: true
-            },
-            {
-                name: 'PDF handlers configurados',
-                test: () => typeof window.showPdfModal === 'function',
-                critical: true
+        const tests = {
+            'PdfSystem object exists': typeof window.PdfSystem !== 'undefined',
+            'showModal function': typeof window.PdfSystem?.showModal === 'function',
+            'Modal in DOM': !!document.getElementById('pdfModal'),
+            'Password field': !!document.getElementById('pdfPassword'),
+            'Properties with PDFs': () => {
+                const props = window.properties?.filter(p => p.pdfs && p.pdfs !== 'EMPTY') || [];
+                return props.length > 0;
             }
-        ];
+        };
         
+        const results = {};
         let passed = 0;
-        let criticalPassed = 0;
-        let totalCritical = 0;
         
-        tests.forEach(({ name, test, critical }) => {
-            if (critical) totalCritical++;
-            
+        Object.entries(tests).forEach(([name, test]) => {
             try {
-                const result = test();
-                if (isDebugMode) {
-                    console.log(`${result ? '✅' : '❌'} ${name}: ${result}`);
-                }
-                
-                if (result) {
-                    passed++;
-                    if (critical) criticalPassed++;
-                }
+                const result = typeof test === 'function' ? test() : test;
+                results[name] = result;
+                if (result) passed++;
+                console.log(`${result ? '✅' : '⚠️'} ${name}: ${result}`);
             } catch (e) {
-                if (isDebugMode) {
-                    console.log(`❌ ${name}: ERRO - ${e.message}`);
-                }
+                results[name] = false;
+                console.log(`❌ ${name}: ERRO`);
             }
         });
         
-        const total = tests.length;
+        const total = Object.keys(tests).length;
         const score = Math.round((passed / total) * 100);
-        const criticalScore = totalCritical > 0 ? 
-            Math.round((criticalPassed / totalCritical) * 100) : 100;
         
-        const result = {
+        console.log(`📊 Resultado: ${passed}/${total} (${score}%)`);
+        
+        if (score === 100) {
+            console.log('🎉 Sistema PDF completamente funcional!');
+            console.log('💡 Para testar: window.PdfSystem.showModal(propertyId)');
+            console.log('🔑 Senha: doc123');
+        } else if (score >= 80) {
+            console.log('⚠️ Sistema PDF funcional com pequenos problemas');
+        } else {
+            console.log('❌ Sistema PDF com problemas significativos');
+        }
+        
+        console.groupEnd();
+        
+        return {
             score,
-            criticalScore,
             passed,
             total,
-            criticalPassed,
-            totalCritical,
-            allCriticalPassed: criticalScore === 100,
+            results,
             timestamp: new Date().toISOString()
         };
-        
-        if (isDebugMode) {
-            console.log(`📊 Resultado: ${passed}/${total} (${score}%)`);
-            console.log(`📊 Críticos: ${criticalPassed}/${totalCritical} (${criticalScore}%)`);
-            
-            if (criticalScore === 100) {
-                console.log('🎉 Migração PDF CRÍTICA bem-sucedida!');
-            } else if (criticalScore >= 80) {
-                console.log('⚠️  Migração PDF com problemas menores');
-            } else {
-                console.error('❌ Migração PDF COM PROBLEMAS CRÍTICOS');
-            }
-            
-            console.groupEnd();
-        }
-        
-        // Exportar resultado para debug
-        window.pdfMigrationResult = result;
-        
-        return result;
     };
     
-    // ========== SISTEMA DE VALIDAÇÃO COMPLETO ==========
-    window.ValidationSystem = {
-        // Validação rápida do sistema (INCLUINDO PDF)
-        quickSystemCheck: function() {
-            return {
-                properties: !!window.properties,
-                propertiesCount: window.properties ? window.properties.length : 0,
-                supabaseReady: !!window.supabaseClient,
-                adminReady: typeof window.toggleAdminPanel === 'function',
-                galleryReady: typeof window.openGallery === 'function',
-                pdfSystemReady: typeof window.PdfSystem !== 'undefined',
-                pdfModalReady: typeof window.showPdfModal === 'function',
-                pdfProcessingReady: typeof window.processAndSavePdfs === 'function',
-                timestamp: new Date().toISOString()
-            };
-        },
+    // Função 3: Verificar sistema completo
+    window.verifyCompleteSystem = function() {
+        console.group('🔍 [SUPORTE] Verificação Completa do Sistema');
         
-        // Validação completa do sistema
-        fullSystemCheck: async function() {
-            const results = {
-                basic: this.quickSystemCheck(),
-                gallery: window.validateGalleryModule ? window.validateGalleryModule() : null,
-                pdf: window.validatePdfMigration ? window.validatePdfMigration() : null,
-                storage: await this.checkLocalStorage(),
-                performance: this.measurePerformance(),
-                errors: this.collectErrors()
-            };
+        const checks = {
+            // Core functions
+            'window.properties array': Array.isArray(window.properties),
+            'Properties count': window.properties?.length || 0,
+            'loadPropertiesData function': typeof window.loadPropertiesData === 'function',
+            'renderProperties function': typeof window.renderProperties === 'function',
             
-            // Status consolidado
-            results.overallStatus = this.calculateOverallStatus(results);
+            // Admin functions
+            'toggleAdminPanel function': typeof window.toggleAdminPanel === 'function',
+            'editProperty function': typeof window.editProperty === 'function',
+            'deleteProperty function': typeof window.deleteProperty === 'function',
             
-            return results;
-        },
-        
-        // Calcular status geral
-        calculateOverallStatus: function(results) {
-            const criticalTests = [
-                results.basic.properties,
-                results.basic.supabaseReady,
-                results.basic.adminReady,
-                results.pdf ? results.pdf.allCriticalPassed : true,
-                results.gallery ? results.gallery.success : true
-            ];
+            // Media functions
+            'MediaSystem object': typeof window.MediaSystem !== 'undefined',
+            'MediaSystem.addFiles': typeof window.MediaSystem?.addFiles === 'function',
+            'MediaSystem.uploadAll': typeof window.MediaSystem?.uploadAll === 'function',
             
-            const allCriticalPassed = criticalTests.every(test => test === true);
-            const passedCount = criticalTests.filter(test => test === true).length;
+            // PDF functions
+            'PdfSystem object': typeof window.PdfSystem !== 'undefined',
+            'PdfSystem.showModal': typeof window.PdfSystem?.showModal === 'function',
             
-            return {
-                allCriticalPassed,
-                criticalScore: Math.round((passedCount / criticalTests.length) * 100),
-                timestamp: new Date().toISOString()
-            };
-        },
-        
-        // Verificação de localStorage
-        checkLocalStorage: async function() {
-            return new Promise(resolve => {
+            // Storage
+            'LocalStorage available': () => {
                 try {
-                    const testKey = 'validation_test_' + Date.now();
-                    localStorage.setItem(testKey, 'test');
-                    const exists = localStorage.getItem(testKey) === 'test';
-                    localStorage.removeItem(testKey);
-                    
-                    resolve({
-                        available: exists,
-                        weberlessa_properties: !!localStorage.getItem('weberlessa_properties'),
-                        pdf_data: !!localStorage.getItem('pdf_data'),
-                        supportLoaded: !!localStorage.getItem('support_modules_loaded')
-                    });
-                } catch (e) {
-                    resolve({ available: false, error: e.message });
+                    localStorage.setItem('test', 'test');
+                    localStorage.removeItem('test');
+                    return true;
+                } catch {
+                    return false;
                 }
-            });
-        },
+            },
+            'Properties in localStorage': !!localStorage.getItem('properties')
+        };
         
-        // Medição de performance
-        measurePerformance: function() {
-            return {
-                memory: performance.memory ? {
-                    usedJSHeapSize: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) + 'MB',
-                    totalJSHeapSize: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024) + 'MB'
-                } : null,
-                timing: performance.timing ? {
-                    loadTime: performance.timing.loadEventEnd - performance.timing.navigationStart,
-                    domReady: performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart
-                } : null,
-                now: performance.now()
-            };
-        },
+        const results = {};
+        let passed = 0;
         
-        // Coleta de erros
-        collectErrors: function() {
-            return {
-                consoleErrors: window.consoleErrors || [],
-                unhandledErrors: window.unhandledErrors || [],
-                pdfErrors: window.pdfErrors || []
-            };
-        },
+        Object.entries(checks).forEach(([name, test]) => {
+            try {
+                const result = typeof test === 'function' ? test() : test;
+                results[name] = result;
+                if (result !== false && result !== 0) passed++; // 0 is valid for count
+                console.log(`${result !== false && result !== 0 ? '✅' : '⚠️'} ${name}: ${result}`);
+            } catch (e) {
+                results[name] = false;
+                console.log(`❌ ${name}: ERRO - ${e.message}`);
+            }
+        });
         
-        // Validação específica de PDF (método rápido)
-        validatePdfSystemQuick: function() {
-            const checks = {
-                'PdfSystem object': typeof window.PdfSystem !== 'undefined',
-                'showModal function': typeof window.showPdfModal === 'function',
-                'process function': typeof window.processAndSavePdfs === 'function',
-                'Modal in DOM': !!document.getElementById('pdfModal'),
-                'Password field': !!document.getElementById('pdfPassword')
-            };
+        const total = Object.keys(checks).length;
+        const score = Math.round((passed / total) * 100);
+        
+        console.log(`📊 Sistema Geral: ${passed}/${total} (${score}%)`);
+        
+        // Status summary
+        if (score >= 90) {
+            console.log('🎉 SISTEMA COMPLETAMENTE FUNCIONAL!');
+        } else if (score >= 70) {
+            console.log('⚠️ Sistema funcional com algumas limitações');
+        } else {
+            console.log('❌ Sistema com problemas críticos');
+        }
+        
+        console.groupEnd();
+        
+        return {
+            score,
+            passed,
+            total,
+            results,
+            timestamp: new Date().toISOString(),
+            status: score >= 90 ? 'excellent' : score >= 70 ? 'good' : 'needs_attention'
+        };
+    };
+    
+    // Função 4: Teste prático do PDF (apenas debug mode)
+    window.testPdfFunctionality = function() {
+        if (!isDebugMode) {
+            console.log('🔒 Teste PDF disponível apenas em modo debug');
+            return { available: false, mode: 'production' };
+        }
+        
+        console.group('🧪 [SUPORTE] Teste Prático do Sistema PDF');
+        
+        try {
+            // 1. Encontrar imóvel com PDFs
+            const propertyWithPdf = window.properties?.find(p => 
+                p.pdfs && p.pdfs !== 'EMPTY' && p.pdfs.trim() !== ''
+            );
             
-            if (isDebugMode) {
-                console.table(checks);
+            if (!propertyWithPdf) {
+                console.log('ℹ️ Nenhum imóvel com PDFs encontrado');
+                console.log('💡 Adicione um imóvel com PDFs pelo painel admin');
+                console.groupEnd();
+                return { test: 'skipped', reason: 'no_pdfs' };
             }
             
-            return {
-                success: Object.values(checks).every(v => v === true),
-                checks: checks,
-                timestamp: new Date().toISOString()
-            };
+            console.log(`📄 Imóvel encontrado: ID ${propertyWithPdf.id} - "${propertyWithPdf.title}"`);
+            
+            const pdfCount = propertyWithPdf.pdfs.split(',').filter(p => p.trim()).length;
+            console.log(`📊 ${pdfCount} PDF(s) disponível(eis)`);
+            
+            // 2. Testar função showModal
+            if (typeof window.PdfSystem?.showModal === 'function') {
+                console.log('🚀 Executando window.PdfSystem.showModal()...');
+                
+                // Pequeno delay para visualização
+                setTimeout(() => {
+                    window.PdfSystem.showModal(propertyWithPdf.id);
+                    console.log('✅ Modal aberto com sucesso!');
+                    console.log('🔑 Digite a senha: doc123');
+                }, 1000);
+                
+                console.groupEnd();
+                return { 
+                    test: 'success', 
+                    propertyId: propertyWithPdf.id,
+                    pdfCount,
+                    action: 'modal_opened'
+                };
+            } else {
+                console.error('❌ window.PdfSystem.showModal() não disponível');
+                console.groupEnd();
+                return { test: 'failed', reason: 'showModal_not_available' };
+            }
+        } catch (error) {
+            console.error('❌ Erro no teste:', error);
+            console.groupEnd();
+            return { test: 'error', error: error.message };
         }
     };
     
-    // ========== FALLBACKS ESSENCIAIS SILENCIOSOS ==========
-    const setupFallbacks = function() {
-        const isProduction = !isDebugMode && 
-                           window.location.hostname.includes('github.io') &&
-                           !window.location.search.includes('debug=true');
-        
-        if (isProduction) {
-            // Fallbacks SILENCIOSOS para produção
-            if (typeof window.validateGalleryModule === 'undefined') {
-                window.validateGalleryModule = function() {
-                    return typeof window.openGallery === 'function';
-                };
-            }
-            
-            if (typeof window.validatePdfMigration === 'undefined') {
-                window.validatePdfMigration = function() {
-                    return {
-                        allCriticalPassed: typeof window.PdfSystem !== 'undefined',
-                        score: typeof window.PdfSystem !== 'undefined' ? 100 : 0,
-                        timestamp: new Date().toISOString()
-                    };
-                };
-            }
-            
-            if (typeof window.ValidationSystem === 'undefined') {
-                window.ValidationSystem = {
-                    quickSystemCheck: function() {
-                        return {
-                            properties: !!window.properties,
-                            propertiesCount: window.properties ? window.properties.length : 0,
-                            pdfSystemReady: typeof window.PdfSystem !== 'undefined',
-                            timestamp: new Date().toISOString()
-                        };
-                    }
-                };
-            }
-        }
-    };
-    
-    // Executar validações automáticas em debug mode
+    // ========== AUTO-VALIDAÇÃO EM DEBUG MODE ==========
     if (isDebugMode) {
         setTimeout(() => {
-            console.log('🚀 [SUPORTE] Executando validações automáticas...');
+            console.log('🚀 [SUPORTE] Iniciando auto-validação do sistema...');
             
-            // Executar validação rápida
-            const quickCheck = window.ValidationSystem.quickSystemCheck();
-            console.log('📋 Quick System Check:', quickCheck);
-            
-            // Executar validação PDF específica
-            if (window.validatePdfMigration) {
-                const pdfResult = window.validatePdfMigration();
-                console.log('📄 PDF Migration Result:', pdfResult);
+            // Esperar carregamento completo
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    setTimeout(runAutoValidation, 1000);
+                });
+            } else {
+                setTimeout(runAutoValidation, 1000);
             }
             
-            console.log('✅ validation-essentials.js: Todas validações disponíveis');
-            console.log('📌 Funções disponíveis:');
-            console.log('  - validateGalleryModule() - Validação completa da galeria');
-            console.log('  - validatePdfMigration() - Validação unificada do sistema PDF');
-            console.log('  - ValidationSystem.quickSystemCheck() - Verificação rápida');
-            console.log('  - ValidationSystem.fullSystemCheck() - Verificação completa');
-            console.log('  - ValidationSystem.validatePdfSystemQuick() - Verificação rápida PDF');
-            console.log('  - Fallbacks silenciosos para produção');
-            
+            function runAutoValidation() {
+                // Executar verificações
+                const galleryCheck = window.checkGallerySystem();
+                const pdfCheck = window.checkPdfSystem();
+                const systemCheck = window.verifyCompleteSystem();
+                
+                // Resumo final
+                console.group('📋 [SUPORTE] RESUMO DO SISTEMA');
+                console.log('🏠 Propriedades:', window.properties?.length || 0);
+                console.log('🔧 PDF System:', typeof window.PdfSystem !== 'undefined' ? '✅ Disponível' : '❌ Indisponível');
+                console.log('🖼️ Gallery System:', typeof window.openGallery === 'function' ? '✅ Disponível' : '❌ Indisponível');
+                console.log('👨‍💼 Admin System:', typeof window.toggleAdminPanel === 'function' ? '✅ Disponível' : '❌ Indisponível');
+                console.log('💾 LocalStorage:', typeof localStorage !== 'undefined' ? '✅ Disponível' : '❌ Indisponível');
+                console.groupEnd();
+                
+                // Instruções
+                console.log('💡 INSTRUÇÕES DE USO:');
+                console.log('1. window.checkGallerySystem() - Verificar galeria');
+                console.log('2. window.checkPdfSystem() - Verificar sistema PDF');
+                console.log('3. window.verifyCompleteSystem() - Verificação completa');
+                console.log('4. window.testPdfFunctionality() - Teste prático (debug only)');
+                console.log('5. window.PdfSystem.showModal(ID) - Abrir documentos de um imóvel');
+            }
         }, 2000);
     }
     
-    // Executar fallbacks após 3 segundos
-    setTimeout(setupFallbacks, 3000);
+    // ========== COMPATIBILIDADE SILENCIOSA ==========
+    // Garantir que funções existam (mesmo que vazias) em produção
+    setTimeout(() => {
+        if (!isDebugMode) {
+            // Funções stub para produção (não fazem nada)
+            if (typeof window.checkGallerySystem === 'undefined') {
+                window.checkGallerySystem = function() {
+                    return { production: true, timestamp: new Date().toISOString() };
+                };
+            }
+            
+            if (typeof window.checkPdfSystem === 'undefined') {
+                window.checkPdfSystem = function() {
+                    return { production: true, timestamp: new Date().toISOString() };
+                };
+            }
+            
+            if (typeof window.verifyCompleteSystem === 'undefined') {
+                window.verifyCompleteSystem = function() {
+                    return { production: true, timestamp: new Date().toISOString() };
+                };
+            }
+            
+            if (typeof window.testPdfFunctionality === 'undefined') {
+                window.testPdfFunctionality = function() {
+                    return { production: true, available: false };
+                };
+            }
+        }
+    }, 3000);
+    
 })();
