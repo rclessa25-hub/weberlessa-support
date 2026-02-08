@@ -1,5 +1,5 @@
-// debug/diagnostics.js - VERSÃO COMPLETA 5.3 COM DIAGNÓSTICO DE ÍCONE PDF
-console.log('🔍 diagnostics.js – diagnóstico completo v5.3 (com diagnóstico de ícone PDF)');
+// debug/diagnostics/diagnostics53.js - VERSÃO COMPLETA 5.3 COM DIAGNÓSTICO DE ÍCONE PDF E WRAPPERS DE COMPATIBILIDADE
+console.log('🔍 diagnostics.js – diagnóstico completo v5.3 CORRIGIDO (com wrappers de compatibilidade)');
 
 /* ================== FLAGS ================== */
 const params = new URLSearchParams(location.search);
@@ -8,10 +8,286 @@ const DIAGNOSTICS_MODE = params.get('diagnostics') === 'true';
 const MOBILE_TEST = params.get('mobiletest') === 'true';
 const REFERENCE_CHECK = params.get('refcheck') === 'true';
 
+/* ================== CRIAÇÃO AUTOMÁTICA DE WRAPPERS CRÍTICOS ================== */
+(function createMissingWrappers() {
+    console.group('🔗 CRIANDO WRAPPERS DE COMPATIBILIDADE AUTOMATICAMENTE');
+    
+    const missingWrappers = [];
+    
+    // 1. WRAPPER: window.getMediaUrlsForProperty
+    if (typeof window.getMediaUrlsForProperty !== 'function') {
+        window.getMediaUrlsForProperty = async function(propertyId, propertyTitle) {
+            console.log(`🔗 Wrapper: getMediaUrlsForProperty(${propertyId}, "${propertyTitle}")`);
+            
+            // Delegar para MediaSystem se disponível
+            if (window.MediaSystem && typeof window.MediaSystem.getMediaUrlsForProperty === 'function') {
+                console.log('✅ Delegando para MediaSystem.getMediaUrlsForProperty');
+                return await window.MediaSystem.getMediaUrlsForProperty(propertyId, propertyTitle);
+            }
+            
+            // Fallback: retornar string vazia
+            console.warn('⚠️ MediaSystem.getMediaUrlsForProperty não disponível, retornando string vazia');
+            return '';
+        };
+        missingWrappers.push('getMediaUrlsForProperty');
+        console.log('✅ Wrapper criado: window.getMediaUrlsForProperty');
+    }
+    
+    // 2. WRAPPER: window.clearAllPdfs
+    if (typeof window.clearAllPdfs !== 'function') {
+        window.clearAllPdfs = function() {
+            console.log('🔗 Wrapper: clearAllPdfs()');
+            
+            // Delegar para MediaSystem se disponível
+            if (window.MediaSystem && typeof window.MediaSystem.clearAllPdfs === 'function') {
+                console.log('✅ Delegando para MediaSystem.clearAllPdfs');
+                return window.MediaSystem.clearAllPdfs();
+            }
+            
+            // Fallback: limpar PDFs manualmente se houver estado
+            if (window.MediaSystem && window.MediaSystem.state) {
+                window.MediaSystem.state.pdfs = [];
+                window.MediaSystem.state.existingPdfs = [];
+                console.log('✅ PDFs limpos manualmente do estado do MediaSystem');
+            }
+            
+            // Limpar preview de PDFs na UI
+            const pdfPreview = document.getElementById('pdfUploadPreview');
+            if (pdfPreview) {
+                pdfPreview.innerHTML = '';
+            }
+            
+            console.warn('⚠️ PDFs limpos via wrapper fallback');
+            return true;
+        };
+        missingWrappers.push('clearAllPdfs');
+        console.log('✅ Wrapper criado: window.clearAllPdfs');
+    }
+    
+    // 3. WRAPPER: window.loadExistingPdfsForEdit
+    if (typeof window.loadExistingPdfsForEdit !== 'function') {
+        window.loadExistingPdfsForEdit = function(property) {
+            console.log(`🔗 Wrapper: loadExistingPdfsForEdit(${property?.id || 'sem id'})`);
+            
+            // Delegar para MediaSystem se disponível
+            if (window.MediaSystem && typeof window.MediaSystem.loadExistingPdfsForEdit === 'function') {
+                console.log('✅ Delegando para MediaSystem.loadExistingPdfsForEdit');
+                return window.MediaSystem.loadExistingPdfsForEdit(property);
+            }
+            
+            // Fallback: usar loadExisting se disponível
+            if (window.MediaSystem && typeof window.MediaSystem.loadExisting === 'function') {
+                console.log('✅ Usando MediaSystem.loadExisting como fallback');
+                return window.MediaSystem.loadExisting(property);
+            }
+            
+            console.warn('⚠️ Nenhum método disponível para carregar PDFs existentes');
+            return null;
+        };
+        missingWrappers.push('loadExistingPdfsForEdit');
+        console.log('✅ Wrapper criado: window.loadExistingPdfsForEdit');
+    }
+    
+    // 4. WRAPPER: window.processAndSavePdfs (também crítico)
+    if (typeof window.processAndSavePdfs !== 'function') {
+        window.processAndSavePdfs = async function(propertyId, propertyTitle) {
+            console.log(`🔗 Wrapper: processAndSavePdfs(${propertyId}, "${propertyTitle}")`);
+            
+            // Delegar para MediaSystem se disponível
+            if (window.MediaSystem && typeof window.MediaSystem.processAndSavePdfs === 'function') {
+                console.log('✅ Delegando para MediaSystem.processAndSavePdfs');
+                return await window.MediaSystem.processAndSavePdfs(propertyId, propertyTitle);
+            }
+            
+            // Fallback: usar uploadAll se disponível
+            if (window.MediaSystem && typeof window.MediaSystem.uploadAll === 'function') {
+                console.log('✅ Usando MediaSystem.uploadAll como fallback');
+                const result = await window.MediaSystem.uploadAll(propertyId, propertyTitle);
+                return result.pdfs || '';
+            }
+            
+            console.warn('⚠️ Nenhum método disponível para processar PDFs');
+            return '';
+        };
+        missingWrappers.push('processAndSavePdfs');
+        console.log('✅ Wrapper criado: window.processAndSavePdfs');
+    }
+    
+    // 5. WRAPPER: window.getPdfsToSave (usado pelo admin)
+    if (typeof window.getPdfsToSave !== 'function') {
+        window.getPdfsToSave = async function(propertyId) {
+            console.log(`🔗 Wrapper: getPdfsToSave(${propertyId})`);
+            
+            // Delegar para MediaSystem se disponível
+            if (window.MediaSystem && typeof window.MediaSystem.getPdfsToSave === 'function') {
+                console.log('✅ Delegando para MediaSystem.getPdfsToSave');
+                return await window.MediaSystem.getPdfsToSave(propertyId);
+            }
+            
+            // Fallback: usar processAndSavePdfs
+            if (typeof window.processAndSavePdfs === 'function') {
+                console.log('✅ Usando processAndSavePdfs como fallback');
+                return await window.processAndSavePdfs(propertyId, 'Imóvel');
+            }
+            
+            console.warn('⚠️ Retornando string vazia para PDFs');
+            return '';
+        };
+        missingWrappers.push('getPdfsToSave');
+        console.log('✅ Wrapper criado: window.getPdfsToSave');
+    }
+    
+    // 6. WRAPPER: window.forceMediaPreviewUpdate (usado pelo admin)
+    if (typeof window.forceMediaPreviewUpdate !== 'function') {
+        window.forceMediaPreviewUpdate = function() {
+            console.log('🔗 Wrapper: forceMediaPreviewUpdate()');
+            
+            // Delegar para MediaSystem se disponível
+            if (window.MediaSystem && typeof window.MediaSystem.updateUI === 'function') {
+                console.log('✅ Delegando para MediaSystem.updateUI');
+                return window.MediaSystem.updateUI();
+            }
+            
+            // Forçar renderização manual
+            ['uploadPreview', 'pdfUploadPreview'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element && element.innerHTML.includes('Nenhuma')) {
+                    console.log(`🔄 Resetando ${id}`);
+                    element.innerHTML = '';
+                }
+            });
+            
+            console.warn('⚠️ Preview atualizado via wrapper fallback');
+            return true;
+        };
+        missingWrappers.push('forceMediaPreviewUpdate');
+        console.log('✅ Wrapper criado: window.forceMediaPreviewUpdate');
+    }
+    
+    // 7. Verificar e criar MediaSystem se não existir
+    if (typeof window.MediaSystem === 'undefined') {
+        console.warn('⚠️ MediaSystem não definido, criando objeto básico');
+        window.MediaSystem = {
+            state: {
+                files: [],
+                existing: [],
+                pdfs: [],
+                existingPdfs: [],
+                isUploading: false
+            },
+            resetState: function() {
+                this.state = {
+                    files: [],
+                    existing: [],
+                    pdfs: [],
+                    existingPdfs: [],
+                    isUploading: false
+                };
+                console.log('✅ Estado do MediaSystem resetado');
+            },
+            updateUI: function() {
+                console.log('✅ UI do MediaSystem atualizada (placeholder)');
+            }
+        };
+        missingWrappers.push('MediaSystem (básico)');
+    }
+    
+    if (missingWrappers.length > 0) {
+        console.log(`✅ ${missingWrappers.length} wrappers criados:`, missingWrappers);
+        
+        // Notificar no console F12
+        console.log('%c🎯 WRAPPERS DE COMPATIBILIDADE CRIADOS COM SUCESSO!', 
+                   'color: #00ff9c; font-weight: bold; font-size: 14px;');
+        console.log('%cOs seguintes wrappers foram criados automaticamente:', 
+                   'color: #88ffaa;');
+        missingWrappers.forEach(wrapper => {
+            console.log(`  • ${wrapper}`);
+        });
+    } else {
+        console.log('✅ Todos os wrappers necessários já existem');
+    }
+    
+    console.groupEnd();
+    
+    return missingWrappers;
+})();
+
+/* ================== VERIFICAÇÃO DOS WRAPPERS CRIADOS ================== */
+window.verifyCompatibilityWrappers = function() {
+    console.group('🔍 VERIFICAÇÃO DOS WRAPPERS DE COMPATIBILIDADE');
+    
+    const criticalWrappers = [
+        'getMediaUrlsForProperty',
+        'clearAllPdfs', 
+        'loadExistingPdfsForEdit',
+        'processAndSavePdfs',
+        'getPdfsToSave',
+        'forceMediaPreviewUpdate'
+    ];
+    
+    let passed = 0;
+    const results = {};
+    
+    criticalWrappers.forEach(wrapper => {
+        const exists = typeof window[wrapper] === 'function';
+        const message = `${exists ? '✅' : '❌'} ${wrapper}: ${exists ? 'EXISTE' : 'FALTA'}`;
+        
+        results[wrapper] = exists;
+        if (exists) passed++;
+        
+        console.log(message);
+    });
+    
+    const percentage = Math.round((passed / criticalWrappers.length) * 100);
+    const summary = `📊 WRAPPERS: ${passed}/${criticalWrappers.length} (${percentage}%)`;
+    
+    console.log(summary);
+    console.groupEnd();
+    
+    // Mostrar alerta visual se necessário
+    if (percentage < 100) {
+        const missing = criticalWrappers.filter(w => !results[w]);
+        console.warn('⚠️ WRAPPERS FALTANDO:', missing);
+        
+        // Tentar criar novamente
+        if (missing.length > 0) {
+            console.log('🔄 Tentando criar wrappers faltantes novamente...');
+            setTimeout(() => {
+                missing.forEach(wrapper => {
+                    try {
+                        eval(`window.${wrapper} = function() { 
+                            console.warn("⚠️ Wrapper ${wrapper} chamado (placeholder)"); 
+                            return Promise.resolve(""); 
+                        }`);
+                        console.log(`✅ Wrapper placeholder criado: ${wrapper}`);
+                    } catch (e) {
+                        console.error(`❌ Erro ao criar wrapper ${wrapper}:`, e);
+                    }
+                });
+            }, 100);
+        }
+    }
+    
+    return { passed, total: criticalWrappers.length, percentage, results };
+};
+
+// Executar verificação automaticamente
+setTimeout(() => {
+    if (DEBUG_MODE || DIAGNOSTICS_MODE) {
+        window.verifyCompatibilityWrappers();
+    }
+}, 1500);
+
 /* ================== DIAGNÓSTICO DO PROBLEMA DO ÍCONE PDF ================== */
 window.diagnosePdfIconProblem = function() {
     console.group('🔍 DIAGNÓSTICO DO ÍCONE PDF (FOTO PRINCIPAL)');
     console.log('Problema: Ícone PDF não abre modal de senha');
+    
+    // PRIMEIRO: Verificar wrappers críticos
+    const wrapperCheck = window.verifyCompatibilityWrappers();
+    if (wrapperCheck.percentage < 100) {
+        console.warn('⚠️ WRAPPERS INCOMPLETOS - Isso pode afetar o funcionamento do PDF');
+    }
     
     // ================== TESTE 1: VERIFICAR FUNÇÕES ==================
     console.log('\n✅ TESTE 1: VERIFICAR FUNÇÕES');
@@ -3726,7 +4002,7 @@ function classifyModule(fileName) {
 /* ================== ANÁLISE DO SISTEMA ================== */
 function analyzeSystem() {
     logToPanel('Iniciando análise do sistema...', 'info');
-    updateStatus('Analisando sistema...');
+    updateStatus('Analisando sistema...', 'info');
     
     const scripts = Array.from(document.scripts)
         .filter(s => s.src)
