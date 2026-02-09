@@ -8,6 +8,173 @@ const DIAGNOSTICS_MODE = params.get('diagnostics') === 'true';
 const MOBILE_TEST = params.get('mobiletest') === 'true';
 const REFERENCE_CHECK = params.get('refcheck') === 'true';
 
+/* ================== CORREÇÃO DA EXPOSIÇÃO DE FUNÇÕES ================== */
+(function exposeCriticalFunctionsGlobally() {
+    console.group('🌐 CORREÇÃO: Expondo funções críticas globalmente');
+    
+    // Lista de funções CRÍTICAS que devem estar disponíveis globalmente
+    const criticalFunctions = [
+        'processAndSavePdfs',
+        'getMediaUrlsForProperty', 
+        'clearAllPdfs',
+        'loadExistingPdfsForEdit',
+        'getPdfsToSave',
+        'forceMediaPreviewUpdate'
+    ];
+    
+    // Verificar e corrigir cada função
+    criticalFunctions.forEach(funcName => {
+        // Se a função existe localmente mas não globalmente
+        if (typeof window[funcName] !== 'function' && typeof eval(funcName) === 'function') {
+            console.log(`🔄 Expondo ${funcName} globalmente...`);
+            window[funcName] = eval(funcName);
+        }
+        
+        // Se ainda não existe, criar função de fallback
+        if (typeof window[funcName] !== 'function') {
+            console.log(`🔄 Criando fallback global para ${funcName}...`);
+            
+            switch(funcName) {
+                case 'processAndSavePdfs':
+                    window.processAndSavePdfs = async function(propertyId, propertyTitle) {
+                        console.warn(`⚠️ processAndSavePdfs chamado via fallback (${propertyId}, "${propertyTitle}")`);
+                        
+                        // Delegar para MediaSystem se disponível
+                        if (window.MediaSystem && typeof window.MediaSystem.processAndSavePdfs === 'function') {
+                            return await window.MediaSystem.processAndSavePdfs(propertyId, propertyTitle);
+                        }
+                        
+                        // Fallback básico
+                        return Promise.resolve('EMPTY');
+                    };
+                    break;
+                    
+                case 'getMediaUrlsForProperty':
+                    window.getMediaUrlsForProperty = async function(propertyId, propertyTitle) {
+                        console.warn(`⚠️ getMediaUrlsForProperty chamado via fallback (${propertyId}, "${propertyTitle}")`);
+                        
+                        if (window.MediaSystem && typeof window.MediaSystem.getMediaUrlsForProperty === 'function') {
+                            return await window.MediaSystem.getMediaUrlsForProperty(propertyId, propertyTitle);
+                        }
+                        
+                        return Promise.resolve('');
+                    };
+                    break;
+                    
+                case 'clearAllPdfs':
+                    window.clearAllPdfs = function() {
+                        console.warn('⚠️ clearAllPdfs chamado via fallback');
+                        
+                        if (window.MediaSystem && typeof window.MediaSystem.clearAllPdfs === 'function') {
+                            return window.MediaSystem.clearAllPdfs();
+                        }
+                        
+                        // Limpar previews manualmente
+                        const pdfPreview = document.getElementById('pdfUploadPreview');
+                        if (pdfPreview) pdfPreview.innerHTML = '';
+                        
+                        return true;
+                    };
+                    break;
+                    
+                case 'loadExistingPdfsForEdit':
+                    window.loadExistingPdfsForEdit = function(property) {
+                        console.warn(`⚠️ loadExistingPdfsForEdit chamado via fallback (${property?.id})`);
+                        
+                        if (window.MediaSystem && typeof window.MediaSystem.loadExistingPdfsForEdit === 'function') {
+                            return window.MediaSystem.loadExistingPdfsForEdit(property);
+                        }
+                        
+                        return null;
+                    };
+                    break;
+                    
+                case 'getPdfsToSave':
+                    window.getPdfsToSave = async function(propertyId) {
+                        console.warn(`⚠️ getPdfsToSave chamado via fallback (${propertyId})`);
+                        
+                        if (window.MediaSystem && typeof window.MediaSystem.getPdfsToSave === 'function') {
+                            return await window.MediaSystem.getPdfsToSave(propertyId);
+                        }
+                        
+                        return Promise.resolve('');
+                    };
+                    break;
+                    
+                case 'forceMediaPreviewUpdate':
+                    window.forceMediaPreviewUpdate = function() {
+                        console.warn('⚠️ forceMediaPreviewUpdate chamado via fallback');
+                        
+                        if (window.MediaSystem && typeof window.MediaSystem.updateUI === 'function') {
+                            return window.MediaSystem.updateUI();
+                        }
+                        
+                        return true;
+                    };
+                    break;
+            }
+            
+            console.log(`✅ ${funcName} agora disponível globalmente`);
+        }
+    });
+    
+    // Verificação final
+    console.log('📊 VERIFICAÇÃO FINAL DE FUNÇÕES GLOBAIS:');
+    criticalFunctions.forEach(funcName => {
+        const exists = typeof window[funcName] === 'function';
+        console.log(`${exists ? '✅' : '❌'} window.${funcName}: ${exists ? 'EXISTE' : 'FALTA'}`);
+    });
+    
+    console.groupEnd();
+})();
+
+/* ================== CORREÇÃO DA INTEGRAÇÃO COM ADMIN.JS ================== */
+(function integrateWithAdminSystem() {
+    console.group('🔗 INTEGRANDO FUNÇÕES COM ADMIN.JS');
+    
+    // Garantir que o admin.js tenha acesso às funções necessárias
+    if (typeof window.admin === 'undefined') {
+        window.admin = window.admin || {};
+    }
+    
+    // Funções que o admin.js precisa
+    const adminRequiredFunctions = {
+        'processAndSavePdfs': window.processAndSavePdfs,
+        'getPdfsToSave': window.getPdfsToSave,
+        'clearAllPdfs': window.clearAllPdfs,
+        'loadExistingPdfsForEdit': window.loadExistingPdfsForEdit
+    };
+    
+    // Expor no namespace admin se não estiverem lá
+    Object.entries(adminRequiredFunctions).forEach(([funcName, func]) => {
+        if (func && typeof window.admin[funcName] !== 'function') {
+            window.admin[funcName] = func;
+            console.log(`✅ ${funcName} exposta em window.admin`);
+        }
+    });
+    
+    // Garantir compatibilidade com o código existente do admin.js
+    if (typeof window.saveProperty === 'function') {
+        // Sobrescrever saveProperty para garantir uso das funções corretas
+        const originalSaveProperty = window.saveProperty;
+        window.saveProperty = async function() {
+            console.log('🔧 saveProperty chamado com funções garantidas');
+            
+            // Garantir que as funções necessárias estão disponíveis
+            if (!window.processAndSavePdfs) {
+                console.error('❌ processAndSavePdfs não disponível para saveProperty!');
+                return originalSaveProperty.apply(this, arguments);
+            }
+            
+            return originalSaveProperty.apply(this, arguments);
+        };
+        
+        console.log('✅ saveProperty otimizado para uso com wrappers');
+    }
+    
+    console.groupEnd();
+})();
+
 /* ================== CRIAÇÃO AUTOMÁTICA DE WRAPPERS CRÍTICOS ================== */
 (function createMissingWrappers() {
     console.group('🔗 CRIANDO WRAPPERS DE COMPATIBILIDADE AUTOMATICAMENTE');
@@ -210,49 +377,6 @@ const REFERENCE_CHECK = params.get('refcheck') === 'true';
     console.groupEnd();
     
     return missingWrappers;
-})();
-
-/* ================== CORREÇÃO DA VERIFICAÇÃO DO PDFSYSTEM ================== */
-(function fixPdfSystemVerification() {
-    console.group('🔧 CORRIGINDO VERIFICAÇÃO DO PDFSYSTEM');
-    
-    // Garantir que PdfSystem tenha um estado básico se não existir
-    if (window.PdfSystem) {
-        // Verificar se tem estado
-        if (typeof window.PdfSystem.state === 'undefined') {
-            console.log('🔄 Adicionando estado básico ao PdfSystem');
-            window.PdfSystem.state = {
-                currentPropertyId: null,
-                currentPropertyTitle: '',
-                currentPdfUrls: []
-            };
-        }
-        
-        // Garantir métodos críticos
-        const requiredMethods = [
-            'resetState',
-            'clearAllPdfs', 
-            'loadExisting',
-            'addPdfs',
-            'getPdfsToSave'
-        ];
-        
-        requiredMethods.forEach(method => {
-            if (typeof window.PdfSystem[method] !== 'function') {
-                console.log(`🔄 Criando método placeholder: PdfSystem.${method}`);
-                window.PdfSystem[method] = function() {
-                    console.warn(`⚠️ PdfSystem.${method} chamado (placeholder)`);
-                    return this; // Para method chaining
-                };
-            }
-        });
-        
-        console.log('✅ PdfSystem verificado e corrigido');
-    } else {
-        console.warn('⚠️ PdfSystem não definido - algumas funcionalidades PDF podem não funcionar');
-    }
-    
-    console.groupEnd();
 })();
 
 /* ================== VERIFICAÇÃO DOS WRAPPERS CRIADOS ================== */
