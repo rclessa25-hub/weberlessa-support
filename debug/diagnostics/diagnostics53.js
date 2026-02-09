@@ -14,22 +14,6 @@ const REFERENCE_CHECK = params.get('refcheck') === 'true';
     
     const missingWrappers = [];
     
-    // 1. WRAPPER: window// debug/diagnostics/diagnostics53.js - VERSÃO COMPLETA 5.3 COM DIAGNÓSTICO DE ÍCONE PDF E WRAPPERS DE COMPATIBILIDADE
-console.log('🔍 diagnostics.js – diagnóstico completo v5.3 CORRIGIDO (com wrappers de compatibilidade e correção PdfSystem)');
-
-/* ================== FLAGS ================== */
-const params = new URLSearchParams(location.search);
-const DEBUG_MODE = params.get('debug') === 'true';
-const DIAGNOSTICS_MODE = params.get('diagnostics') === 'true';
-const MOBILE_TEST = params.get('mobiletest') === 'true';
-const REFERENCE_CHECK = params.get('refcheck') === 'true';
-
-/* ================== CRIAÇÃO AUTOMÁTICA DE WRAPPERS CRÍTICOS ================== */
-(function createMissingWrappers() {
-    console.group('🔗 CRIANDO WRAPPERS DE COMPATIBILIDADE AUTOMATICAMENTE');
-    
-    const missingWrappers = [];
-    
     // 1. WRAPPER: window.getMediaUrlsForProperty
     if (typeof window.getMediaUrlsForProperty !== 'function') {
         window.getMediaUrlsForProperty = async function(propertyId, propertyTitle) {
@@ -343,7 +327,7 @@ window.diagnosePdfIconProblem = function() {
     console.log('Problema: Ícone PDF não abre modal de senha');
     
     // PRIMEIRO: Verificar wrappers críticos
-    const wrapperCheck = window.verifyCompatibilityWrappers();
+    const wrapperCheck = window.verifyCompatibilityWrappers ? window.verifyCompatibilityWrappers() : { percentage: 100 };
     if (wrapperCheck.percentage < 100) {
         console.warn('⚠️ WRAPPERS INCOMPLETOS - Isso pode afetar o funcionamento do PDF');
     }
@@ -368,73 +352,71 @@ window.diagnosePdfIconProblem = function() {
     // ================== TESTE 2: ELEMENTOS DO ÍCONE PDF ==================
     console.log('\n✅ TESTE 2: ELEMENTOS DO ÍCONE PDF NO DOM');
     
-    // Procurar todos os elementos que podem ser ícones PDF
-    const pdfIcons = document.querySelectorAll([
-        '.pdf-icon',
-        '.icon-pdf',
-        '[onclick*="pdf"]',
-        '[onclick*="Pdf"]',
-        '[onclick*="PDF"]',
-        '[data-action*="pdf"]',
-        'button[class*="pdf"]',
-        'i[class*="pdf"]',
-        'img[src*="pdf"]',
-        'img[alt*="pdf"]',
-        'img[alt*="PDF"]'
-    ].join(','));
-    
-    console.log(`Encontrados ${pdfIcons.length} elementos PDF no DOM`);
-    
-    pdfIcons.forEach((icon, index) => {
-        console.log(`\n🔍 ÍCONE ${index + 1}:`);
-        console.log('- Tag:', icon.tagName);
-        console.log('- Classe:', icon.className);
-        console.log('- ID:', icon.id || 'sem ID');
-        console.log('- onclick:', icon.onclick ? 'SIM' : 'NÃO');
-        console.log('- onclick atributo:', icon.getAttribute('onclick') || 'nenhum');
-        console.log('- HTML:', icon.outerHTML.substring(0, 200) + '...');
+    // CORREÇÃO CRÍTICA: Usar Array.from para garantir que seja iterável
+    let pdfIcons = [];
+    try {
+        const iconSelectors = [
+            '.pdf-icon',
+            '.icon-pdf',
+            '[onclick*="pdf"]',
+            '[onclick*="Pdf"]',
+            '[onclick*="PDF"]',
+            '[data-action*="pdf"]',
+            'button[class*="pdf"]',
+            'i[class*="pdf"]',
+            'img[src*="pdf"]',
+            'img[alt*="pdf"]',
+            'img[alt*="PDF"]'
+        ];
         
-        // Verificar se tem event listener
-        const listeners = getEventListeners(icon);
-        console.log('- Event listeners:', Object.keys(listeners).length > 0 ? Object.keys(listeners) : 'nenhum');
+        // Buscar elementos de forma segura
+        pdfIcons = [];
+        iconSelectors.forEach(selector => {
+            try {
+                const elements = document.querySelectorAll(selector);
+                if (elements && elements.length > 0) {
+                    pdfIcons = pdfIcons.concat(Array.from(elements));
+                }
+            } catch (e) {
+                console.warn(`⚠️ Seletor inválido: ${selector}`, e.message);
+            }
+        });
         
-        // Testar clique manualmente
-        console.log('- Teste de clique:');
-        try {
-            const originalOnClick = icon.onclick;
-            icon.onclick = function(e) {
-                console.log('   ✅ Clique capturado no diagnóstico');
-                if (originalOnClick) originalOnClick.call(this, e);
-            };
+        console.log(`Encontrados ${pdfIcons.length} elementos PDF no DOM`);
+        
+        pdfIcons.forEach((icon, index) => {
+            console.log(`\n🔍 ÍCONE ${index + 1}:`);
+            console.log('- Tag:', icon.tagName);
+            console.log('- Classe:', icon.className);
+            console.log('- ID:', icon.id || 'sem ID');
+            console.log('- onclick:', icon.onclick ? 'SIM' : 'NÃO');
+            console.log('- onclick atributo:', icon.getAttribute('onclick') || 'nenhum');
             
-            // Criar evento de teste
-            const clickEvent = new MouseEvent('click', {
-                view: window,
-                bubbles: true,
-                cancelable: true
-            });
-            
-            console.log('   Disparando evento de clique...');
-            icon.dispatchEvent(clickEvent);
-            
-            // Restaurar onclick original
-            icon.onclick = originalOnClick;
-        } catch (error) {
-            console.log('   ❌ Erro ao testar clique:', error.message);
-        }
-    });
+            // Testar clique manualmente
+            console.log('- Teste de clique:');
+            try {
+                const originalOnClick = icon.onclick;
+                icon.onclick = function(e) {
+                    console.log('   ✅ Clique capturado no diagnóstico');
+                    if (originalOnClick) originalOnClick.call(this, e);
+                };
+                
+                // Restaurar onclick original
+                setTimeout(() => {
+                    icon.onclick = originalOnClick;
+                }, 100);
+                
+            } catch (error) {
+                console.log('   ❌ Erro ao testar clique:', error.message);
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Erro ao buscar elementos PDF:', error);
+    }
     
-    // ================== TESTE 3: EVENT LISTENERS NO DOCUMENT ==================
-    console.log('\n✅ TESTE 3: EVENT LISTENERS NO DOCUMENT');
-    
-    // Verificar event listeners globais
-    const globalClickHandlers = [];
-    document.addEventListener('click', function(e) {
-        console.log('Clique global capturado no:', e.target.tagName, e.target.className);
-    }, true);
-    
-    // ================== TESTE 4: TESTAR FUNÇÃO DIRETAMENTE ==================
-    console.log('\n✅ TESTE 4: TESTAR FUNÇÃO showPdfModal DIRETAMENTE');
+    // ================== TESTE 3: TESTAR FUNÇÃO DIRETAMENTE ==================
+    console.log('\n✅ TESTE 3: TESTAR FUNÇÃO showPdfModal DIRETAMENTE');
     
     if (typeof window.showPdfModal === 'function') {
         console.log('Testando showPdfModal com ID 101...');
@@ -478,8 +460,8 @@ window.diagnosePdfIconProblem = function() {
         }
     }
     
-    // ================== TESTE 5: TESTAR PdfSystem.showModal ==================
-    console.log('\n✅ TESTE 5: TESTAR PdfSystem.showModal');
+    // ================== TESTE 4: TESTAR PdfSystem.showModal ==================
+    console.log('\n✅ TESTE 4: TESTAR PdfSystem.showModal');
     
     if (window.PdfSystem && typeof window.PdfSystem.showModal === 'function') {
         console.log('Testando PdfSystem.showModal()...');
@@ -503,8 +485,8 @@ window.diagnosePdfIconProblem = function() {
         console.log('❌ PdfSystem.showModal não disponível');
     }
     
-    // ================== TESTE 6: CRIAR ÍCONE DE TESTE ==================
-    console.log('\n✅ TESTE 6: CRIAR ÍCONE PDF DE TESTE');
+    // ================== TESTE 5: CRIAR ÍCONE DE TESTE ==================
+    console.log('\n✅ TESTE 5: CRIAR ÍCONE PDF DE TESTE');
     
     const testIconId = 'pdf-diagnostic-test-icon';
     let testIcon = document.getElementById(testIconId);
@@ -555,24 +537,46 @@ window.diagnosePdfIconProblem = function() {
         console.log('✅ Ícone de teste já existe');
     }
     
-    // ================== TESTE 7: VERIFICAR PROPERTY ID ==================
-    console.log('\n✅ TESTE 7: VERIFICAR PROPERTY ID');
+    // ================== TESTE 6: VERIFICAR PROPERTY ID (CORRIGIDO) ==================
+    console.log('\n✅ TESTE 6: VERIFICAR PROPERTY ID');
     
-    // Procurar elementos que podem ter property ID
-    const propertyElements = document.querySelectorAll([
-        '[data-property-id]',
-        '[data-id]',
-        '.property-item',
-        '.photo-item',
-        '.gallery-item'
-    ].join(','));
-    
-    console.log(`Elementos com possível property ID: ${propertyElements.length}`);
-    
-    propertyElements.slice(0, 5).forEach((el, idx) => {
-        const dataId = el.getAttribute('data-property-id') || el.getAttribute('data-id');
-        console.log(`Elemento ${idx + 1}: data-property-id="${dataId}"`, el.className);
-    });
+    // CORREÇÃO: Usar try-catch e verificar se é iterável
+    let propertyElements = [];
+    try {
+        const selectors = [
+            '[data-property-id]',
+            '[data-id]',
+            '.property-item',
+            '.photo-item',
+            '.gallery-item'
+        ];
+        
+        selectors.forEach(selector => {
+            try {
+                const elements = document.querySelectorAll(selector);
+                if (elements && elements.length > 0) {
+                    propertyElements = propertyElements.concat(Array.from(elements));
+                }
+            } catch (e) {
+                console.warn(`Seletor inválido: ${selector}`);
+            }
+        });
+        
+        console.log(`Elementos com possível property ID: ${propertyElements.length}`);
+        
+        // CORREÇÃO: Verificar se é array antes de usar slice
+        if (Array.isArray(propertyElements) && propertyElements.length > 0) {
+            propertyElements.slice(0, 5).forEach((el, idx) => {
+                const dataId = el.getAttribute('data-property-id') || el.getAttribute('data-id');
+                console.log(`Elemento ${idx + 1}: data-property-id="${dataId}"`, el.className);
+            });
+        } else {
+            console.log('ℹ️ Nenhum elemento com property ID encontrado');
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao buscar property elements:', error);
+    }
     
     // ================== SOLUÇÃO AUTOMÁTICA ==================
     console.log('\n🛠️ APLICANDO SOLUÇÕES AUTOMÁTICAS');
@@ -665,45 +669,49 @@ window.diagnosePdfIconProblem = function() {
     
     let iconsFixed = 0;
     pdfIconSelectors.forEach(selector => {
-        const icons = document.querySelectorAll(selector);
-        icons.forEach(icon => {
-            if (!icon.hasAttribute('data-diagnostic-fixed')) {
-                const originalOnClick = icon.onclick;
-                
-                icon.onclick = function(e) {
-                    console.log('🔍 Ícone PDF clicado (via diagnóstico)');
+        try {
+            const icons = document.querySelectorAll(selector);
+            icons.forEach(icon => {
+                if (!icon.hasAttribute('data-diagnostic-fixed')) {
+                    const originalOnClick = icon.onclick;
                     
-                    // Tentar extrair propertyId do elemento
-                    let propertyId = 101; // Default
+                    icon.onclick = function(e) {
+                        console.log('🔍 Ícone PDF clicado (via diagnóstico)');
+                        
+                        // Tentar extrair propertyId do elemento
+                        let propertyId = 101; // Default
+                        
+                        // Tentar obter do data attribute
+                        const dataId = this.getAttribute('data-property-id') || 
+                                       this.getAttribute('data-id') ||
+                                       this.closest('[data-property-id]')?.getAttribute('data-property-id');
+                        
+                        if (dataId) {
+                            propertyId = parseInt(dataId) || propertyId;
+                        }
+                        
+                        console.log(`Property ID detectado: ${propertyId}`);
+                        
+                        // Chamar showPdfModal
+                        if (window.showPdfModal) {
+                            window.showPdfModal(propertyId);
+                        }
+                        
+                        // Manter comportamento original se existir
+                        if (originalOnClick) {
+                            return originalOnClick.call(this, e);
+                        }
+                        
+                        return false;
+                    };
                     
-                    // Tentar obter do data attribute
-                    const dataId = this.getAttribute('data-property-id') || 
-                                   this.getAttribute('data-id') ||
-                                   this.closest('[data-property-id]')?.getAttribute('data-property-id');
-                    
-                    if (dataId) {
-                        propertyId = parseInt(dataId) || propertyId;
-                    }
-                    
-                    console.log(`Property ID detectado: ${propertyId}`);
-                    
-                    // Chamar showPdfModal
-                    if (window.showPdfModal) {
-                        window.showPdfModal(propertyId);
-                    }
-                    
-                    // Manter comportamento original se existir
-                    if (originalOnClick) {
-                        return originalOnClick.call(this, e);
-                    }
-                    
-                    return false;
-                };
-                
-                icon.setAttribute('data-diagnostic-fixed', 'true');
-                iconsFixed++;
-            }
-        });
+                    icon.setAttribute('data-diagnostic-fixed', 'true');
+                    iconsFixed++;
+                }
+            });
+        } catch (e) {
+            console.warn(`Erro ao processar seletor ${selector}:`, e.message);
+        }
     });
     
     if (iconsFixed > 0) {
@@ -755,48 +763,6 @@ window.diagnosePdfIconProblem = function() {
     if (solutions.length > 0) {
         console.log('\n🛠️ SOLUÇÕES APLICADAS:');
         solutions.forEach((sol, idx) => console.log(`${idx + 1}. ${sol}`));
-        
-        // Mostrar alerta visual
-        const alertDiv = document.createElement('div');
-        alertDiv.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #001a00;
-            color: #00ff9c;
-            padding: 15px;
-            border: 2px solid #00ff9c;
-            border-radius: 8px;
-            z-index: 1000000;
-            max-width: 400px;
-            box-shadow: 0 0 20px rgba(0, 255, 156, 0.5);
-            font-family: monospace;
-        `;
-        
-        alertDiv.innerHTML = `
-            <div style="font-weight:bold;margin-bottom:10px;">🔍 DIAGNÓSTICO PDF COMPLETO</div>
-            <div style="font-size:12px;margin-bottom:5px;">✅ ${solutions.length} soluções aplicadas</div>
-            <div style="font-size:11px;color:#88ffaa;">
-                ${solutions.map(s => `• ${s}`).join('<br>')}
-            </div>
-            <div style="margin-top:10px;font-size:10px;color:#00aaff;">
-                Ícone de teste criado no canto inferior direito
-            </div>
-            <button onclick="this.parentElement.remove()" style="
-                margin-top:10px; padding:5px 10px; background:#00ff9c; 
-                color:#000; border:none; cursor:pointer; font-size:10px;">
-                FECHAR
-            </button>
-        `;
-        
-        document.body.appendChild(alertDiv);
-        
-        // Auto-remover após 10 segundos
-        setTimeout(() => {
-            if (alertDiv.parentElement) {
-                alertDiv.remove();
-            }
-        }, 10000);
     }
     
     console.groupEnd();
@@ -5595,6 +5561,7 @@ function exportReport() {
     logToPanel('📊 Relatório exportado como JSON (v5.3)', 'success');
 }
 
+/* ================== FUNÇÕES PRINCIPAIS (CONTINUAÇÃO) ================== */
 function runPdfMobileDiagnosis() {
     logToPanel('📱 Iniciando diagnóstico mobile PDF...', 'mobile');
     updateStatus('Analisando layout mobile PDF...', 'mobile');
