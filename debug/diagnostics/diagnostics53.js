@@ -6119,4 +6119,3 @@ window.addPdfDiagnosticButton = addPdfDiagnosticButton;
 
 console.log('%c🎯 DIAGNÓSTICOS v5.3 - CARREGADO E PRONTO PARA USO!', 
            'color: #00ff9c; font-weight: bold; font-size: 18px; background: #000; padding: 10px;');
-})();
