@@ -1,4 +1,4 @@
-// debug/diagnostics/diagnostics53.js - VERSÃO COMPLETA 5.3 CORRIGIDA COM WRAPPER processAndSavePdfs
+// debug/diagnostics/diagnostics53.js - VERSÃO COMPLETA 5.3 CORRIGIDA (wrapper processAndSavePdfs)
 console.log('🔍 diagnostics.js – diagnóstico completo v5.3 CORRIGIDO (wrapper processAndSavePdfs)');
 
 /* ================== FLAGS ================== */
@@ -5203,7 +5203,7 @@ window.testPdfIcon = function() {
 
 window.runDiagnostics = runCompleteDiagnosis;
 window.diagnosticsLoaded = true;
-console.log('✅ diagnostics.js v5.3 carregado com sucesso! (com wrapper processAndSavePdfs)');
+console.log('✅ diagnostics.js v5.3 carregado com sucesso! (com diagnóstico de ícone PDF e correção do PdfSystem)');
 
 // Adicionar listener para capturar erros 404 em tempo real
 window.addEventListener('error', function(e) {
@@ -5279,6 +5279,5 @@ window.runPdfMobileDiagnosis = runPdfMobileDiagnosis;
 window.createDiagnosticsPanel = createDiagnosticsPanel;
 window.addPdfDiagnosticButton = addPdfDiagnosticButton;
 
-console.log('%c🎯 DIAGNÓSTICOS v5.3 CORRIGIDO - CARREGADO E PRONTO PARA USO!', 
+console.log('%c🎯 DIAGNÓSTICOS v5.3 - CARREGADO E PRONTO PARA USO!', 
            'color: #00ff9c; font-weight: bold; font-size: 18px; background: #000; padding: 10px;');
-})();
