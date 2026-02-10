@@ -5648,8 +5648,9 @@ function addPdfDiagnosticButton() {
 // Monitorar erros de clique em elementos PDF
 document.addEventListener('click', function(e) {
     const target = e.target;
-    const isPdfElement = target.matches?.('.pdf-icon, .icon-pdf, [onclick*="pdf"], [onclick*="Pdf"], [onclick*="PDF"]') ||
-                        target.closest?.('.pdf-icon, .icon-pdf, [onclick*="pdf"], [onclick*="Pdf"], [onclick*="PDF"]);
+    const isPdfElement = target.matches && (target.matches('.pdf-icon') || target.matches('.icon-pdf') || 
+                     target.getAttribute('onclick') && target.getAttribute('onclick').toLowerCase().includes('pdf') ||
+                     target.closest && (target.closest('.pdf-icon') || target.closest('.icon-pdf')));
     
     if (isPdfElement) {
         console.log('🔍 Clique em elemento PDF detectado:', {
