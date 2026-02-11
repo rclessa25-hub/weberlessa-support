@@ -1,14 +1,14 @@
-// debug/diagnostics/diagnostics54.js - SISTEMA DE DIAGNÓSTICO DEFINITIVO v5.4.5
-// CORREÇÃO DEFINITIVA: Botão Fechar agora SEMPRE encontra o elemento DOM correto
-// PROBLEMA RESOLVIDO: Referência de objeto desatualizada - agora busca o elemento a cada chamada
-console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CORRIGIDA v5.4.5)');
+// debug/diagnostics/diagnostics54.js - SISTEMA DE DIAGNÓSTICO DEFINITIVO v5.4.6
+// CORREÇÃO DEFINITIVA: Impede reabertura automática após fechamento manual
+// PROBLEMA RESOLVIDO: Timeout de abertura automática agora é cancelado quando usuário fecha manualmente
+console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CORRIGIDA v5.4.6)');
 
 (function() {
     'use strict';
     
     // ========== CONFIGURAÇÕES PRIVADAS ==========
     const CONFIG = {
-        version: '5.4.5',
+        version: '5.4.6',
         namespace: 'DiagnosticsV54',
         containerId: 'diagnostics-container-v54',
         floatingBtnId: 'diagnostics-floating-btn-v54',
@@ -24,7 +24,11 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
         startTime: Date.now(),
         hasInitialized: false,
         uiCreated: false,
-        checkCount: 0
+        checkCount: 0,
+        // ✅ NOVO: Controle de abertura automática
+        autoOpenTimer: null,
+        manuallyClosed: false,
+        autoOpenAttempts: 0
     };
     
     // ========== ELEMENTOS DO DOM ==========
@@ -382,9 +386,18 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
     }
     
     // ========== FUNÇÃO PARA OBTER CONTAINER DO DOM ==========
-    // ✅ CORREÇÃO CRÍTICA: Sempre buscar do DOM, nunca usar cache
     function getContainer() {
         return document.getElementById(CONFIG.containerId);
+    }
+    
+    // ========== FUNÇÃO PARA CANCELAR ABERTURA AUTOMÁTICA ==========
+    // ✅ NOVA: Cancela qualquer timeout de abertura automática pendente
+    function cancelAutoOpen() {
+        if (state.autoOpenTimer) {
+            clearTimeout(state.autoOpenTimer);
+            state.autoOpenTimer = null;
+            log('info', '⏱️ Timeout de abertura automática cancelado');
+        }
     }
     
     // ========== CRIAÇÃO DO BOTÃO FLUTUANTE ==========
@@ -403,6 +416,10 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
         elements.floatingBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
+            
+            // ✅ Quando usuário abre manualmente, resetar flag de fechamento manual
+            state.manuallyClosed = false;
+            
             if (window.DiagnosticsV54 && typeof window.DiagnosticsV54.show === 'function') {
                 window.DiagnosticsV54.show();
             }
@@ -634,7 +651,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
         document.body.appendChild(container);
         state.uiCreated = true;
         
-        // ✅ CONFIGURAR EVENTOS APÓS CRIAR UI
+        // Configurar eventos
         setupEvents();
         setupTabs();
         
@@ -659,12 +676,18 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
                 e.stopPropagation();
                 console.log('[DiagnosticsV54] Botão FECHAR clicado');
                 
+                // ✅ MARCA QUE O USUÁRIO FECHOU MANUALMENTE
+                state.manuallyClosed = true;
+                
+                // ✅ CANCELA QUALQUER TIMEOUT DE ABERTURA AUTOMÁTICA
+                cancelAutoOpen();
+                
                 // ✅ CHAMADA DIRETA COM VERIFICAÇÃO DUPLA
                 if (window.DiagnosticsV54 && typeof window.DiagnosticsV54.hide === 'function') {
                     window.DiagnosticsV54.hide();
                 } else {
                     // Fallback: esconder diretamente buscando do DOM
-                    const container = document.getElementById(CONFIG.containerId);
+                    const container = getContainer();
                     if (container) {
                         container.style.display = 'none';
                         state.isVisible = false;
@@ -1132,6 +1155,12 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
     window[CONFIG.namespace] = {
         // Controle da UI
         show: function() {
+            // ✅ SE O USUÁRIO FECHOU MANUALMENTE, NÃO ABRIR AUTOMATICAMENTE
+            if (state.manuallyClosed) {
+                log('info', '🚫 Usuário fechou manualmente - ignorando abertura automática');
+                return false;
+            }
+            
             log('info', '🎛️ Abrindo painel de diagnóstico...');
             
             // Criar UI se necessário
@@ -1144,7 +1173,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
                 createFloatingButton();
             }
             
-            // ✅ SEMPRE BUSCAR CONTAINER DO DOM, NUNCA USAR CACHE
+            // Buscar container do DOM
             const container = getContainer();
             
             if (container) {
@@ -1162,28 +1191,31 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
                 }, 100);
                 
                 log('success', '✅ Painel de diagnóstico VISÍVEL na tela');
+                return true;
             } else {
                 log('error', '❌ Container não encontrado - recriando...');
                 createMainUI();
                 setTimeout(() => this.show(), 300);
+                return false;
             }
-            
-            return true;
         },
         
         hide: function() {
             log('info', '🎛️ Fechando painel de diagnóstico...');
             
-            // ✅ SOLUÇÃO DEFINITIVA: SEMPRE BUSCAR CONTAINER DO DOM
+            // ✅ CANCELA QUALQUER TIMEOUT DE ABERTURA AUTOMÁTICA
+            cancelAutoOpen();
+            
+            // Buscar container do DOM
             const container = getContainer();
             
             if (container) {
-                // Forçar display none com múltiplas propriedades
+                // Forçar display none
                 container.style.display = 'none';
                 container.style.visibility = 'hidden';
                 container.style.opacity = '0';
                 
-                // Garantir que não há estilos inline conflitantes
+                // Resetar estilos extras após um tempo
                 setTimeout(() => {
                     container.style.visibility = '';
                     container.style.opacity = '';
@@ -1202,16 +1234,20 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
                     }
                 }, 50);
                 
+                return true;
             } else {
                 log('error', '❌ Container não encontrado no DOM');
                 
-                // Tentar criar novamente?
+                // Tentar fallback
                 const possibleContainer = document.getElementById(CONFIG.containerId);
                 if (possibleContainer) {
                     possibleContainer.style.display = 'none';
                     state.isVisible = false;
                     log('success', '✅ Painel fechado via fallback (getElementById)');
+                    return true;
                 }
+                
+                return false;
             }
         },
         
@@ -1219,8 +1255,17 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
             if (state.isVisible) {
                 this.hide();
             } else {
+                // ✅ Quando usuário abre manualmente, resetar flag de fechamento manual
+                state.manuallyClosed = false;
                 this.show();
             }
+        },
+        
+        // ✅ NOVA FUNÇÃO: Resetar estado de fechamento manual
+        resetManualClose: function() {
+            state.manuallyClosed = false;
+            log('info', '🔄 Estado de fechamento manual resetado');
+            return true;
         },
         
         // Testes principais
@@ -1322,18 +1367,22 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
             };
         },
         
-        // ✅ FUNÇÃO DE DIAGNÓSTICO PARA VERIFICAR O PROBLEMA
+        // Função de diagnóstico
         debug: function() {
             console.group('[DiagnosticsV54] DEBUG DO PAINEL');
             console.log('Container no DOM:', getContainer());
             console.log('state.isVisible:', state.isVisible);
+            console.log('state.manuallyClosed:', state.manuallyClosed);
             console.log('uiCreated:', state.uiCreated);
+            console.log('autoOpenTimer:', state.autoOpenTimer);
             console.log('Todos os elementos com ID:', Array.from(document.querySelectorAll('[id]')).map(el => el.id));
             console.groupEnd();
             return {
                 container: getContainer(),
                 isVisible: state.isVisible,
-                uiCreated: state.uiCreated
+                manuallyClosed: state.manuallyClosed,
+                uiCreated: state.uiCreated,
+                autoOpenTimer: state.autoOpenTimer
             };
         }
     };
@@ -1356,15 +1405,22 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
         if (shouldAutoOpen && CONFIG.autoStart) {
             log('info', '🚀 Abertura automática detectada...');
             
-            // Aguardar um pouco para o sistema carregar
-            setTimeout(() => {
-                window[CONFIG.namespace].show();
+            // ✅ ARMAZENAR TIMEOUT PARA PODER CANCELAR DEPOIS
+            state.autoOpenTimer = setTimeout(() => {
+                // ✅ VERIFICAR SE NÃO FOI FECHADO MANUALMENTE
+                if (!state.manuallyClosed) {
+                    window[CONFIG.namespace].show();
+                    
+                    // Executar verificações iniciais
+                    setTimeout(() => {
+                        verifyModules();
+                        checkPerformance();
+                    }, 1000);
+                } else {
+                    log('info', '🚫 Usuário já fechou manualmente - ignorando abertura automática');
+                }
                 
-                // Executar verificações iniciais
-                setTimeout(() => {
-                    verifyModules();
-                    checkPerformance();
-                }, 1000);
+                state.autoOpenTimer = null;
             }, 1500);
         }
         
@@ -1373,6 +1429,12 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
             // Ctrl+Shift+D
             if (e.ctrlKey && e.shiftKey && e.key === 'D') {
                 e.preventDefault();
+                
+                // ✅ Quando usuário abre via hotkey, resetar flag de fechamento manual
+                if (!state.isVisible) {
+                    state.manuallyClosed = false;
+                }
+                
                 window[CONFIG.namespace].toggle();
                 log('info', '⌨️ Hotkey Ctrl+Shift+D acionada');
             }
@@ -1389,6 +1451,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
         log('success', `✅ ${CONFIG.namespace} v${CONFIG.version} carregado e pronto!`);
         console.log(`🎛️ Clique no botão 🔍 (canto inferior direito) ou use: DiagnosticsV54.show()`);
         console.log(`🎛️ Hotkeys: Ctrl+Shift+D (abrir/fechar), Ctrl+Shift+T (testar tudo)`);
+        console.log(`🔄 Para resetar estado de fechamento manual: DiagnosticsV54.resetManualClose()`);
     }
     
     // Iniciar quando o DOM estiver pronto
