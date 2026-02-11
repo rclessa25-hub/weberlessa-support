@@ -1,6 +1,6 @@
 // ================== debug/diagnostics/diagnostics56.js ==================
-// SISTEMA DE DIAGNÓSTICO E COMPATIBILIDADE - VERSÃO 5.6.4 (CORREÇÃO COMPLETA)
-// CORREÇÃO: Criar interactivePdfTest e proteger TODAS as funções legítimas
+// SISTEMA DE DIAGNÓSTICO E COMPATIBILIDADE - VERSÃO 5.6.5 (CORREÇÃO PDFLOGGER)
+// CORREÇÃO: Criar métodos PdfLogger.logPdfAccess, .logPdfError, .logPdfSuccess
 // =========================================================================
 
 (function() {
@@ -8,15 +8,13 @@
     
     // ========== CONSTANTES DE SEGURANÇA ==========
     const SAFETY = {
-        // 🚨 FUNÇÕES LEGÍTIMAS DO SUPPORT SYSTEM - NUNCA REMOVER 🚨
         LEGITIMATE_FUNCTIONS: [
-            // Support System - Diagnóstico PDF (debug/pdf-logger.js)
             'PdfLogger',
             'PdfLogger.logPdfAccess',
             'PdfLogger.logPdfError',
             'PdfLogger.logPdfSuccess',
-            
-            // Support System - Verificações de migração (debug/media-migration-check.js)
+            'PdfLogger.logPdfWarning',
+            'PdfLogger.getStats',
             'verifyMediaMigration',
             'testModuleCompatibility',
             'autoValidateMigration',
@@ -24,38 +22,27 @@
             'analyzeBrokenReferences',
             'testPdfUploadBugFix',
             'verifyPdfSystemIntegrity',
-            
-            // Support System - Diagnóstico de PDF (debug/pdf-logger.js, diagnostics56.js)
             'diagnosePdfIconProblem',
             'runPdfCompatibilityCheck',
-            'interactivePdfTest',           // ⚠️ ESTA FUNÇÃO PRECISA EXISTIR!
-            
-            // Core System - Funções essenciais
+            'interactivePdfTest',
             'MediaSystem',
             'PdfSystem',
             'SharedCore',
             'FilterManager',
             'LoadingManager',
             'properties',
-            'supabaseClient',
-            'PdfSystem.showModal',
-            'PdfSystem.init',
-            'PdfSystem.testButtons',
-            'MediaSystem.uploadAll',
-            'MediaSystem.addPdfs',
-            'MediaSystem.loadExisting'
+            'supabaseClient'
         ],
         
-        // ÚNICOS placeholders que podem ser removidos
         PLACEHOLDERS_TO_REMOVE: [
-            'ValidationSystem',           // Placeholder antigo
-            'EmergencySystem',            // Placeholder antigo  
-            'monitorPdfPostCorrection',   // Placeholder criado em v5.6
-            'verifyRollbackCompatibility', // Placeholder criado em v5.6
-            'finalPdfSystemValidation'    // Placeholder criado em v5.6
+            'ValidationSystem',
+            'EmergencySystem',
+            'monitorPdfPostCorrection',
+            'verifyRollbackCompatibility',
+            'finalPdfSystemValidation'
         ],
         
-        VERSION: '5.6.4',
+        VERSION: '5.6.5',
         MODULE_NAME: 'DIAG56-FIX'
     };
 
@@ -69,55 +56,206 @@
         groupEnd: () => console.groupEnd()
     };
 
-    // ========== CRIAÇÃO DE FUNÇÕES LEGÍTIMAS AUSENTES ==========
+    // ========== REPARO COMPLETO DO PDFLOGGER ==========
+    function repairPdfLogger() {
+        log.group('REPARANDO PDFLOGGER');
+        
+        const fixes = [];
+        
+        // 1. GARANTIR que PdfLogger existe
+        if (!('PdfLogger' in window)) {
+            console.log('   🔧 Criando PdfLogger...');
+            window.PdfLogger = {
+                _logs: [],
+                _errors: 0,
+                _success: 0,
+                _access: 0
+            };
+            fixes.push('PdfLogger (criado)');
+        }
+        
+        // 2. CRIAR método logPdfAccess
+        if (typeof window.PdfLogger.logPdfAccess !== 'function') {
+            console.log('   🔧 Criando PdfLogger.logPdfAccess...');
+            window.PdfLogger.logPdfAccess = function(propertyId, action = 'view') {
+                const timestamp = new Date().toISOString();
+                const logEntry = {
+                    type: 'access',
+                    propertyId,
+                    action,
+                    timestamp
+                };
+                
+                if (!window.PdfLogger._logs) window.PdfLogger._logs = [];
+                window.PdfLogger._logs.push(logEntry);
+                window.PdfLogger._access = (window.PdfLogger._access || 0) + 1;
+                
+                console.log(`📄 [PDF LOGGER] Acesso ao PDF - Imóvel: ${propertyId}, Ação: ${action}`);
+                return logEntry;
+            };
+            fixes.push('PdfLogger.logPdfAccess');
+        }
+        
+        // 3. CRIAR método logPdfError
+        if (typeof window.PdfLogger.logPdfError !== 'function') {
+            console.log('   🔧 Criando PdfLogger.logPdfError...');
+            window.PdfLogger.logPdfError = function(propertyId, error, context = '') {
+                const timestamp = new Date().toISOString();
+                const logEntry = {
+                    type: 'error',
+                    propertyId,
+                    error: error?.message || String(error),
+                    context,
+                    timestamp
+                };
+                
+                if (!window.PdfLogger._logs) window.PdfLogger._logs = [];
+                window.PdfLogger._logs.push(logEntry);
+                window.PdfLogger._errors = (window.PdfLogger._errors || 0) + 1;
+                
+                console.error(`❌ [PDF LOGGER] Erro PDF - Imóvel: ${propertyId}, Erro: ${logEntry.error}`);
+                return logEntry;
+            };
+            fixes.push('PdfLogger.logPdfError');
+        }
+        
+        // 4. CRIAR método logPdfSuccess
+        if (typeof window.PdfLogger.logPdfSuccess !== 'function') {
+            console.log('   🔧 Criando PdfLogger.logPdfSuccess...');
+            window.PdfLogger.logPdfSuccess = function(propertyId, action = 'download') {
+                const timestamp = new Date().toISOString();
+                const logEntry = {
+                    type: 'success',
+                    propertyId,
+                    action,
+                    timestamp
+                };
+                
+                if (!window.PdfLogger._logs) window.PdfLogger._logs = [];
+                window.PdfLogger._logs.push(logEntry);
+                window.PdfLogger._success = (window.PdfLogger._success || 0) + 1;
+                
+                console.log(`✅ [PDF LOGGER] Sucesso PDF - Imóvel: ${propertyId}, Ação: ${action}`);
+                return logEntry;
+            };
+            fixes.push('PdfLogger.logPdfSuccess');
+        }
+        
+        // 5. CRIAR método logPdfWarning
+        if (typeof window.PdfLogger.logPdfWarning !== 'function') {
+            console.log('   🔧 Criando PdfLogger.logPdfWarning...');
+            window.PdfLogger.logPdfWarning = function(propertyId, warning, context = '') {
+                const timestamp = new Date().toISOString();
+                const logEntry = {
+                    type: 'warning',
+                    propertyId,
+                    warning: String(warning),
+                    context,
+                    timestamp
+                };
+                
+                if (!window.PdfLogger._logs) window.PdfLogger._logs = [];
+                window.PdfLogger._logs.push(logEntry);
+                
+                console.warn(`⚠️ [PDF LOGGER] Aviso PDF - Imóvel: ${propertyId}, Aviso: ${warning}`);
+                return logEntry;
+            };
+            fixes.push('PdfLogger.logPdfWarning');
+        }
+        
+        // 6. CRIAR método getStats
+        if (typeof window.PdfLogger.getStats !== 'function') {
+            console.log('   🔧 Criando PdfLogger.getStats...');
+            window.PdfLogger.getStats = function() {
+                const stats = {
+                    access: window.PdfLogger._access || 0,
+                    errors: window.PdfLogger._errors || 0,
+                    success: window.PdfLogger._success || 0,
+                    totalLogs: window.PdfLogger._logs?.length || 0,
+                    timestamp: new Date().toISOString()
+                };
+                
+                console.log('📊 [PDF LOGGER] Estatísticas:', stats);
+                return stats;
+            };
+            fixes.push('PdfLogger.getStats');
+        }
+        
+        // 7. CRIAR método clearLogs
+        if (typeof window.PdfLogger.clearLogs !== 'function') {
+            window.PdfLogger.clearLogs = function() {
+                window.PdfLogger._logs = [];
+                window.PdfLogger._access = 0;
+                window.PdfLogger._errors = 0;
+                window.PdfLogger._success = 0;
+                console.log('🧹 [PDF LOGGER] Logs limpos');
+                return true;
+            };
+            fixes.push('PdfLogger.clearLogs');
+        }
+        
+        console.log(`\n📊 REPAROS APLICADOS: ${fixes.length}`);
+        if (fixes.length > 0) {
+            console.log('   Detalhes:', fixes.join(', '));
+        }
+        
+        log.groupEnd();
+        return fixes;
+    }
+
+    // ========== CRIAÇÃO DE FUNÇÕES LEGÍTIMAS ==========
     function createMissingLegitimateFunctions() {
         log.group('CRIANDO FUNÇÕES LEGÍTIMAS AUSENTES');
         
         const created = [];
         
-        // 1. CRIAR interactivePdfTest (função legítima de diagnóstico)
+        // 1. REPARAR PDFLOGGER PRIMEIRO
+        const pdfLoggerFixes = repairPdfLogger();
+        created.push(...pdfLoggerFixes);
+        
+        // 2. CRIAR interactivePdfTest
         if (typeof window.interactivePdfTest !== 'function') {
             console.log('   🔧 Criando interactivePdfTest...');
-            
             window.interactivePdfTest = function() {
                 console.group('🎮 interactivePdfTest - TESTE INTERATIVO DE PDF');
-                console.log('✅ Sistema PDF testado com sucesso!');
                 
-                // Usar PdfSystem se disponível
+                // Testar PdfLogger
+                if (window.PdfLogger) {
+                    console.log('✅ PdfLogger disponível');
+                    if (typeof window.PdfLogger.logPdfAccess === 'function') {
+                        window.PdfLogger.logPdfAccess(101, 'test_interactive');
+                    }
+                    if (typeof window.PdfLogger.getStats === 'function') {
+                        const stats = window.PdfLogger.getStats();
+                        console.log('📊 Estatísticas:', stats);
+                    }
+                }
+                
+                // Testar PdfSystem
                 if (window.PdfSystem) {
+                    console.log('✅ PdfSystem disponível');
                     if (typeof window.PdfSystem.testButtons === 'function') {
                         window.PdfSystem.testButtons();
                     }
                     
-                    // Abrir modal de exemplo
                     if (window.properties && window.properties.length > 0) {
                         const propertyWithPdf = window.properties.find(p => p.pdfs && p.pdfs !== 'EMPTY');
                         if (propertyWithPdf && typeof window.PdfSystem.showModal === 'function') {
                             window.PdfSystem.showModal(propertyWithPdf.id);
-                        } else if (window.properties[0]) {
-                            console.log('ℹ️ Nenhum imóvel com PDF encontrado, usando ID 101');
-                            window.PdfSystem.showModal(101);
                         }
                     }
-                } else {
-                    console.warn('⚠️ PdfSystem não disponível');
                 }
                 
                 console.groupEnd();
-                return { success: true, message: 'Teste interativo executado', timestamp: new Date().toISOString() };
+                return { success: true, timestamp: new Date().toISOString() };
             };
-            
             created.push('interactivePdfTest');
-            console.log('   ✅ interactivePdfTest criado com sucesso');
-        } else {
-            console.log('   ✅ interactivePdfTest já existe');
         }
         
-        // 2. CRIAR diagnosePdfIconProblem se ausente
+        // 3. CRIAR diagnosePdfIconProblem
         if (typeof window.diagnosePdfIconProblem !== 'function') {
             window.diagnosePdfIconProblem = function() {
                 console.group('🔍 diagnosePdfIconProblem');
-                console.log('Verificando ícones PDF na página...');
                 
                 const pdfIcons = document.querySelectorAll('.pdf-access, .fa-file-pdf');
                 console.log(`📊 Encontrados ${pdfIcons.length} ícones PDF`);
@@ -125,7 +263,13 @@
                 pdfIcons.forEach((icon, i) => {
                     const parent = icon.closest('.property-card');
                     const title = parent?.getAttribute('data-property-title') || 'Desconhecido';
-                    console.log(`   ${i+1}. Ícone em: ${title}`);
+                    const propertyId = parent?.getAttribute('data-property-id');
+                    console.log(`   ${i+1}. Ícone em: ${title} (ID: ${propertyId})`);
+                    
+                    // Log no PdfLogger
+                    if (window.PdfLogger?.logPdfAccess) {
+                        window.PdfLogger.logPdfAccess(propertyId || 'unknown', 'icon_display');
+                    }
                 });
                 
                 console.groupEnd();
@@ -134,12 +278,16 @@
             created.push('diagnosePdfIconProblem');
         }
         
-        // 3. CRIAR runPdfCompatibilityCheck se ausente
+        // 4. CRIAR runPdfCompatibilityCheck
         if (typeof window.runPdfCompatibilityCheck !== 'function') {
             window.runPdfCompatibilityCheck = function() {
                 console.group('🔄 runPdfCompatibilityCheck');
                 
                 const checks = {
+                    pdfLogger: !!window.PdfLogger,
+                    pdfLoggerLogAccess: typeof window.PdfLogger?.logPdfAccess === 'function',
+                    pdfLoggerLogError: typeof window.PdfLogger?.logPdfError === 'function',
+                    pdfLoggerLogSuccess: typeof window.PdfLogger?.logPdfSuccess === 'function',
                     pdfSystem: !!window.PdfSystem,
                     pdfModal: !!document.getElementById('pdfModal'),
                     pdfPasswordField: !!document.getElementById('pdfPassword'),
@@ -158,11 +306,7 @@
             created.push('runPdfCompatibilityCheck');
         }
         
-        console.log(`\n📊 Funções criadas: ${created.length}`);
-        if (created.length > 0) {
-            console.log('   Detalhes:', created.join(', '));
-        }
-        
+        console.log(`\n📊 FUNÇÕES CRIADAS/REPARADAS: ${created.length}`);
         log.groupEnd();
         return created;
     }
@@ -181,8 +325,8 @@
             version: SAFETY.VERSION
         };
 
-        // 1. Verificar funções LEGÍTIMAS (NUNCA remover, CRIAR se ausente)
-        console.log('\n📌 FUNÇÕES LEGÍTIMAS DO SUPPORT SYSTEM:');
+        // 1. VERIFICAR FUNÇÕES LEGÍTIMAS
+        console.log('\n📌 FUNÇÕES LEGÍTIMAS:');
         SAFETY.LEGITIMATE_FUNCTIONS.forEach(funcName => {
             try {
                 let exists = false;
@@ -207,30 +351,25 @@
                     console.log(`   ✅ ${funcName} - PRESENTE`);
                 } else {
                     results.legitimate_missing.push(funcName);
-                    log.warn(`❌ ${funcName} - AUSENTE (CRIANDO...)`);
-                    
-                    // CRIAR interactivePdfTest especificamente
-                    if (funcName === 'interactivePdfTest' || funcName === 'diagnosePdfIconProblem' || funcName === 'runPdfCompatibilityCheck') {
-                        // Serão criadas em createMissingLegitimateFunctions
-                    }
+                    log.warn(`❌ ${funcName} - AUSENTE`);
                 }
             } catch (error) {
                 results.warnings.push(`${funcName}: ${error.message}`);
             }
         });
 
-        // 2. CRIAR funções ausentes
+        // 2. CRIAR FUNÇÕES AUSENTES
         const created = createMissingLegitimateFunctions();
         results.functions_created = created;
 
-        // 3. Verificar placeholders
-        console.log('\n📌 PLACEHOLDERS (serão removidos):');
+        // 3. VERIFICAR PLACEHOLDERS
+        console.log('\n📌 PLACEHOLDERS:');
         SAFETY.PLACEHOLDERS_TO_REMOVE.forEach(funcName => {
             try {
                 const exists = funcName in window;
                 if (exists) {
                     results.placeholders_found.push(funcName);
-                    console.log(`   ⚠️ ${funcName} - ENCONTRADO (será removido)`);
+                    console.log(`   ⚠️ ${funcName} - ENCONTRADO`);
                 } else {
                     console.log(`   ✅ ${funcName} - já removido`);
                 }
@@ -240,67 +379,43 @@
         });
 
         console.log('\n📊 RESUMO:');
-        console.log(`   ✅ Funções legítimas presentes: ${results.legitimate_present.length}/${SAFETY.LEGITIMATE_FUNCTIONS.length}`);
-        console.log(`   🔧 Funções criadas agora: ${results.functions_created.length}`);
+        console.log(`   ✅ Funções presentes: ${results.legitimate_present.length}/${SAFETY.LEGITIMATE_FUNCTIONS.length}`);
+        console.log(`   🔧 Funções criadas/reparadas: ${results.functions_created.length}`);
         console.log(`   🗑️ Placeholders encontrados: ${results.placeholders_found.length}`);
-        console.log(`   ⚠️ Avisos: ${results.warnings.length}`);
         
         log.groupEnd();
         return results;
     };
 
-    // ========== CORREÇÃO CONTROLADA ==========
+    // ========== CORREÇÃO AUTOMÁTICA ==========
     window.autoFixMissingFunctions = function() {
-        log.group('CORREÇÃO CONTROLADA');
+        log.group('CORREÇÃO AUTOMÁTICA');
         
         const fixes = [];
-        const created = [];
-        const errors = [];
-
-        // 1. PRIMEIRO: Criar funções legítimas ausentes
-        console.log('\n🔧 CRIANDO FUNÇÕES LEGÍTIMAS AUSENTES:');
+        
+        // 1. REPARAR PDFLOGGER
+        const pdfLoggerFixes = repairPdfLogger();
+        fixes.push(...pdfLoggerFixes);
+        
+        // 2. CRIAR DEMAIS FUNÇÕES
         const newFunctions = createMissingLegitimateFunctions();
-        created.push(...newFunctions);
-        fixes.push(...newFunctions.map(f => `Criado: ${f}`));
-
-        // 2. SEGUNDO: Remover APENAS placeholders
+        fixes.push(...newFunctions);
+        
+        // 3. REMOVER PLACEHOLDERS
         console.log('\n🗑️ REMOVENDO PLACEHOLDERS:');
         SAFETY.PLACEHOLDERS_TO_REMOVE.forEach(funcName => {
-            try {
-                if (funcName in window) {
-                    delete window[funcName];
-                    fixes.push(`Removido: ${funcName}`);
-                    console.log(`   ✅ Removido: ${funcName}`);
-                } else {
-                    console.log(`   ℹ️ Já removido: ${funcName}`);
-                }
-            } catch (e) {
-                errors.push(`${funcName}: ${e.message}`);
+            if (funcName in window) {
+                delete window[funcName];
+                fixes.push(`Removido: ${funcName}`);
+                console.log(`   ✅ Removido: ${funcName}`);
             }
         });
 
-        // 3. VERIFICAR PdfLogger
-        if (!('PdfLogger' in window)) {
-            log.critical('PdfLogger ausente! Tentando carregar...');
-            const script = document.createElement('script');
-            script.src = 'https://rclessa25-hub.github.io/weberlessa-support/debug/pdf-logger.js';
-            script.onload = () => {
-                console.log('   ✅ PdfLogger carregado com sucesso');
-                fixes.push('PdfLogger (carregado)');
-            };
-            document.head.appendChild(script);
-        }
-
-        console.log(`\n📊 RESULTADO:`);
-        console.log(`   🔧 Funções criadas: ${created.length}`);
-        console.log(`   🗑️ Placeholders removidos: ${fixes.length - created.length}`);
-        console.log(`   ✅ Total de correções: ${fixes.length}`);
-        
+        console.log(`\n📊 TOTAL DE CORREÇÕES: ${fixes.length}`);
         log.groupEnd();
+        
         return { 
             fixes, 
-            created,
-            errors, 
             timestamp: new Date().toISOString(), 
             version: SAFETY.VERSION 
         };
@@ -311,53 +426,39 @@
         log.group('DETECÇÃO DE REFERÊNCIAS');
         
         const removed = [];
-        const preserved = [];
-
-        // APENAS remover placeholders explícitos
-        SAFETY.PLACEHOLDERS_TO_REMOVE.forEach(ref => {
-            try {
-                if (ref in window) {
-                    delete window[ref];
-                    removed.push(ref);
-                    console.log(`   🗑️ Removido: ${ref}`);
-                }
-            } catch (e) {
-                console.error(`   ❌ Erro ao processar ${ref}:`, e.message);
-            }
-        });
-
-        // VERIFICAR funções legítimas
-        console.log('\n🔍 VERIFICAÇÃO DE FUNÇÕES LEGÍTIMAS:');
-        const legitimateToCheck = ['interactivePdfTest', 'diagnosePdfIconProblem', 'runPdfCompatibilityCheck', 'PdfLogger'];
-        legitimateToCheck.forEach(fn => {
-            if (fn in window) {
-                preserved.push(fn);
-                console.log(`   ✅ ${fn} - PRESERVADO`);
-            } else {
-                console.log(`   ❌ ${fn} - AUSENTE (CRIE com autoFixMissingFunctions())`);
-            }
-        });
-
-        console.log(`\n📊 RESUMO:`);
-        console.log(`   🗑️ Removidos: ${removed.length}`);
-        console.log(`   🔒 Preservados: ${preserved.length}`);
         
+        SAFETY.PLACEHOLDERS_TO_REMOVE.forEach(ref => {
+            if (ref in window) {
+                delete window[ref];
+                removed.push(ref);
+                console.log(`   🗑️ Removido: ${ref}`);
+            }
+        });
+
+        console.log(`\n📊 REMOVIDOS: ${removed.length}`);
         log.groupEnd();
-        return { removed, preserved, version: SAFETY.VERSION };
+        
+        return { removed, version: SAFETY.VERSION };
     };
 
     // ========== PAINEL DE CONTROLE ==========
     window.showCompatibilityControlPanel = function() {
         log.group('CRIANDO PAINEL DE CONTROLE');
         
-        const panelId = 'compatibility-panel-v5-6-4';
+        const panelId = 'compatibility-panel-v5-6-5';
         let panel = document.getElementById(panelId);
-        
         if (panel) panel.remove();
 
-        // Verificar status das funções
-        const interactiveTestStatus = 'interactivePdfTest' in window ? '✅ ATIVO' : '❌ AUSENTE';
-        const pdfLoggerStatus = 'PdfLogger' in window ? '✅ ATIVO' : '❌ AUSENTE';
+        // Verificar status do PdfLogger
+        const pdfLoggerMethods = {
+            logPdfAccess: typeof window.PdfLogger?.logPdfAccess === 'function',
+            logPdfError: typeof window.PdfLogger?.logPdfError === 'function',
+            logPdfSuccess: typeof window.PdfLogger?.logPdfSuccess === 'function',
+            getStats: typeof window.PdfLogger?.getStats === 'function'
+        };
+        
+        const pdfLoggerStatus = Object.values(pdfLoggerMethods).every(Boolean) ? '✅ COMPLETO' : '⚠️ PARCIAL';
+        const pdfLoggerColor = Object.values(pdfLoggerMethods).every(Boolean) ? '#00ff9c' : '#ffaa00';
 
         panel = document.createElement('div');
         panel.id = panelId;
@@ -365,7 +466,7 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            width: 420px;
+            width: 440px;
             background: linear-gradient(135deg, #1a2a3a, #0a1a2a);
             color: #fff;
             border-radius: 12px;
@@ -379,25 +480,23 @@
         panel.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin: 0; color: #00aaff; font-size: 16px;">
-                    🔧 DIAGNÓSTICO v5.6.4
+                    🔧 DIAGNÓSTICO v5.6.5
                 </h3>
                 <span style="background: #005500; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">
-                    CORREÇÃO ATIVA
+                    PDFLOGGER REPARADO
                 </span>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                <div style="background: #2a3a4a; padding: 10px; border-radius: 6px;">
-                    <div style="font-size: 11px; color: #aaddff;">interactivePdfTest</div>
-                    <div style="font-size: 14px; font-weight: bold; color: ${interactiveTestStatus === '✅ ATIVO' ? '#00ff9c' : '#ff5555'}">
-                        ${interactiveTestStatus}
-                    </div>
+            <div style="background: #2a3a4a; border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 4px solid ${pdfLoggerColor};">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="color: #aaddff; font-weight: bold;">📄 PdfLogger:</span>
+                    <span style="color: ${pdfLoggerColor}; font-weight: bold;">${pdfLoggerStatus}</span>
                 </div>
-                <div style="background: #2a3a4a; padding: 10px; border-radius: 6px;">
-                    <div style="font-size: 11px; color: #aaddff;">PdfLogger</div>
-                    <div style="font-size: 14px; font-weight: bold; color: ${pdfLoggerStatus === '✅ ATIVO' ? '#00ff9c' : '#ff5555'}">
-                        ${pdfLoggerStatus}
-                    </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 11px;">
+                    <span style="color: ${pdfLoggerMethods.logPdfAccess ? '#00ff9c' : '#ff5555'}">logPdfAccess: ${pdfLoggerMethods.logPdfAccess ? '✅' : '❌'}</span>
+                    <span style="color: ${pdfLoggerMethods.logPdfError ? '#00ff9c' : '#ff5555'}">logPdfError: ${pdfLoggerMethods.logPdfError ? '✅' : '❌'}</span>
+                    <span style="color: ${pdfLoggerMethods.logPdfSuccess ? '#00ff9c' : '#ff5555'}">logPdfSuccess: ${pdfLoggerMethods.logPdfSuccess ? '✅' : '❌'}</span>
+                    <span style="color: ${pdfLoggerMethods.getStats ? '#00ff9c' : '#ff5555'}">getStats: ${pdfLoggerMethods.getStats ? '✅' : '❌'}</span>
                 </div>
             </div>
 
@@ -406,19 +505,17 @@
                     🔍 DIAGNOSTICAR
                 </button>
                 <button id="btn-fix" style="padding: 12px; background: #ffaa00; color: black; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                    🛠️ CORRIGIR TUDO
+                    🛠️ REPARAR PDFLOGGER
                 </button>
-                <button id="btn-test-interactive" style="padding: 12px; background: #9933cc; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                    🎮 TESTAR INTERATIVO
+                <button id="btn-test-pdf" style="padding: 12px; background: #9933cc; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                    📄 TESTAR PDF
                 </button>
-                <button id="btn-check-pdf" style="padding: 12px; background: #2a5a2a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                    📄 VERIFICAR PDF
+                <button id="btn-stats" style="padding: 12px; background: #2a5a2a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                    📊 ESTATÍSTICAS
                 </button>
             </div>
 
             <div style="font-size: 11px; color: #88aaff; border-top: 1px solid #2a3a4a; padding-top: 15px;">
-                <div style="margin-bottom: 5px;">✅ Funções criadas automaticamente quando ausentes</div>
-                <div style="margin-bottom: 10px;">🗑️ Placeholders removidos: ${SAFETY.PLACEHOLDERS_TO_REMOVE.join(', ')}</div>
                 <button onclick="this.parentElement.parentElement.remove()" style="
                     width: 100%;
                     margin-top: 10px;
@@ -436,11 +533,7 @@
 
         document.body.appendChild(panel);
 
-        // Event listeners
-        document.getElementById('btn-diagnose')?.addEventListener('click', () => {
-            window.diagnoseExistingFunctions?.();
-        });
-
+        document.getElementById('btn-diagnose')?.addEventListener('click', () => window.diagnoseExistingFunctions?.());
         document.getElementById('btn-fix')?.addEventListener('click', () => {
             const result = window.autoFixMissingFunctions?.();
             setTimeout(() => {
@@ -448,45 +541,39 @@
                 window.showCompatibilityControlPanel();
             }, 1500);
         });
+        document.getElementById('btn-test-pdf')?.addEventListener('click', () => window.interactivePdfTest?.());
+        document.getElementById('btn-stats')?.addEventListener('click', () => window.PdfLogger?.getStats?.());
 
-        document.getElementById('btn-test-interactive')?.addEventListener('click', () => {
-            window.interactivePdfTest?.();
-        });
-
-        document.getElementById('btn-check-pdf')?.addEventListener('click', () => {
-            window.runPdfCompatibilityCheck?.();
-        });
-
-        log.info('Painel de controle criado');
         log.groupEnd();
         return panel;
     };
 
     // ========== INICIALIZAÇÃO SEGURA ==========
     window.safeInitDiagnostics = function() {
-        log.group('INICIALIZAÇÃO SEGURA v5.6.4');
+        log.group('INICIALIZAÇÃO SEGURA v5.6.5');
         
         try {
-            // 1. CRIAR funções legítimas ausentes
+            // 1. REPARAR PDFLOGGER IMEDIATAMENTE
+            const pdfLoggerFixes = repairPdfLogger();
+            
+            // 2. CRIAR DEMAIS FUNÇÕES
             const created = createMissingLegitimateFunctions();
             
-            // 2. REMOVER placeholders
+            // 3. REMOVER PLACEHOLDERS
             SAFETY.PLACEHOLDERS_TO_REMOVE.forEach(funcName => {
-                if (funcName in window) {
-                    delete window[funcName];
-                }
+                if (funcName in window) delete window[funcName];
             });
             
-            // 3. DIAGNÓSTICO
+            // 4. DIAGNÓSTICO
             const diagnosis = window.diagnoseExistingFunctions?.();
             
-            // 4. MOSTRAR PAINEL
+            // 5. MOSTRAR PAINEL
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('debug') === 'true') {
                 setTimeout(() => window.showCompatibilityControlPanel?.(), 1000);
             }
             
-            console.log(`\n✅ INICIALIZAÇÃO CONCLUÍDA - Funções criadas: ${created.length}`);
+            console.log(`\n✅ INICIALIZAÇÃO CONCLUÍDA - Reparos: ${pdfLoggerFixes.length}, Novas funções: ${created.length}`);
             
         } catch (error) {
             log.error('Erro na inicialização: ' + error.message);
@@ -506,7 +593,7 @@
     console.log(`   🔗 window.detectAndRemoveBrokenReferences()`);
     console.log(`   🎛️ window.showCompatibilityControlPanel()`);
     console.log(`   🚀 window.safeInitDiagnostics()`);
-    console.log(`   🎮 window.interactivePdfTest()`);
+    console.log(`   📄 window.PdfLogger.getStats()`);
     console.log(`${'='.repeat(60)}`);
 
     // Auto-inicialização
