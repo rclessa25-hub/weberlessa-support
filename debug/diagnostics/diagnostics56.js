@@ -34,7 +34,6 @@ window.diagnoseExistingFunctions = function(quiet = false) {
         brokenRefs: brokenReferences.filter(ref => ref in window)
     };
 
-    // Verificar funções críticas
     criticalFunctions.forEach(funcName => {
         let exists = false;
         let target = window;
@@ -72,21 +71,20 @@ window.diagnoseExistingFunctions = function(quiet = false) {
     return results;
 };
 
-// ========== 2. CORREÇÃO AUTOMÁTICA (SEM DUPLICAR LÓGICA EXISTENTE) ==========
+// ========== 2. CORREÇÃO AUTOMÁTICA ==========
 window.autoFixMissingFunctions = function() {
     console.group('🛠️ [DIAG56] CORREÇÃO AUTOMÁTICA DE COMPATIBILIDADE');
     
     const diagnosis = window.diagnoseExistingFunctions(true);
     const fixes = [];
     
-    // --- REGRA 1: Se não existe, DELEGAR para o PdfSystem/MediaSystem (NUNCA criar lógica nova) ---
+    // Delegar para PdfSystem/MediaSystem (NUNCA criar lógica nova)
     if (diagnosis.missing.includes('showPdfModal')) {
         window.showPdfModal = function(propertyId) {
             console.log(`📄 [COMPAT] showPdfModal → delegando para PdfSystem.showModal(${propertyId})`);
             if (window.PdfSystem?.showModal) {
                 return window.PdfSystem.showModal(propertyId);
             }
-            // Fallback: exibir modal existente
             const modal = document.getElementById('pdfModal');
             if (modal) { modal.style.display = 'flex'; return true; }
             return false;
@@ -103,7 +101,6 @@ window.autoFixMissingFunctions = function() {
     }
 
     if (diagnosis.missing.includes('interactivePdfTest')) {
-        // Função leve que apenas chama o diagnóstico, sem criar novo painel pesado
         window.interactivePdfTest = function() {
             console.log('🎮 [COMPAT] interactivePdfTest → executando diagnóstico');
             window.diagnoseExistingFunctions();
@@ -114,17 +111,14 @@ window.autoFixMissingFunctions = function() {
         fixes.push('interactivePdfTest (diagnóstico)');
     }
 
-    // --- REGRA 2: Remover referências obsoletas do escopo global (para limpar o console) ---
+    // Remover referências obsoletas do escopo global
     const obsoleteRefs = ['ValidationSystem', 'EmergencySystem', 'monitorPdfPostCorrection', 
-                          'verifyRollbackCompatibility', 'finalPdfSystemValidation'];
+                          'verifyRollbackCompatibility', 'finalPdfSystemValidation', 'PdfLogger'];
     
     obsoleteRefs.forEach(ref => {
-        if (ref in window && typeof window[ref] === 'undefined') {
-            // Se existe como propriedade undefined, deletar
+        if (ref in window) {
             delete window[ref];
             fixes.push(`🗑️ ${ref} removido`);
-        } else if (!(ref in window)) {
-            // Se não existe, não faz nada (já está limpo)
         }
     });
 
@@ -152,15 +146,12 @@ window.detectAndRemoveBrokenReferences = function() {
         const isFunction = exists && typeof window[ref] === 'function';
         
         if (exists && !isFunction) {
-            // É uma propriedade, mas não é função (provavelmente lixo)
             delete window[ref];
             broken.push(`${ref} (removido)`);
             console.warn(`   🗑️ ${ref} removido (não é função)`);
         } else if (exists) {
             working.push(ref);
             console.log(`   ✅ ${ref} (função válida)`);
-        } else {
-            // Não existe, silenciosamente ignorado
         }
     });
     
@@ -172,7 +163,6 @@ window.detectAndRemoveBrokenReferences = function() {
 
 // ========== 4. PAINEL DE CONTROLE ÚNICO ==========
 window.showCompatibilityControlPanel = function() {
-    // Se já existe um painel, remove-o antes de criar novo
     const existingPanel = document.getElementById('compat-panel-v56');
     if (existingPanel) {
         existingPanel.remove();
@@ -201,7 +191,6 @@ window.showCompatibilityControlPanel = function() {
 
     const diagnosis = window.diagnoseExistingFunctions(true);
     const missingCount = diagnosis.missing.length;
-    const brokenCount = diagnosis.brokenRefs?.length || 0;
 
     panel.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -261,11 +250,10 @@ window.showCompatibilityControlPanel = function() {
 
     document.body.appendChild(panel);
 
-    // Event Listeners
     document.getElementById('diag-btn-fix')?.addEventListener('click', () => {
         window.autoFixMissingFunctions();
         panel.remove();
-        window.showCompatibilityControlPanel(); // Recria com novo estado
+        window.showCompatibilityControlPanel();
     });
 
     document.getElementById('diag-btn-scan')?.addEventListener('click', () => {
@@ -289,7 +277,6 @@ window.showCompatibilityControlPanel = function() {
 
 // ========== 5. INICIALIZAÇÃO SEGURA (EXECUÇÃO ÚNICA) ==========
 window.safeInitDiagnostics = function() {
-    // Impedir execução se já foi iniciado
     if (window.__DIAG56_INIT__) {
         console.log('⏭️ [DIAG56] Inicialização já realizada. Ignorando.');
         return;
@@ -298,13 +285,10 @@ window.safeInitDiagnostics = function() {
 
     console.group('🚀 [DIAG56] INICIALIZAÇÃO SEGURA');
     
-    // 1. Remover referências obsoletas primeiro (limpa o console)
     window.detectAndRemoveBrokenReferences();
     
-    // 2. Diagnosticar funções
     const diagnosis = window.diagnoseExistingFunctions(true);
     
-    // 3. Corrigir automaticamente se necessário
     if (diagnosis.missing.length > 0) {
         console.log(`⚠️ ${diagnosis.missing.length} função(ões) ausentes. Aplicando correções...`);
         window.autoFixMissingFunctions();
@@ -312,7 +296,6 @@ window.safeInitDiagnostics = function() {
         console.log('✅ Nenhuma correção necessária.');
     }
     
-    // 4. Mostrar painel APENAS se estiver em modo debug explícito
     if (window.location.search.includes('diagnostics=true') || 
         window.location.search.includes('debug=true')) {
         setTimeout(() => {
@@ -325,7 +308,6 @@ window.safeInitDiagnostics = function() {
 };
 
 // ========== 6. GATILHO DE INICIALIZAÇÃO CONTROLADO ==========
-// Executar APENAS uma vez, quando o DOM estiver pronto e em modo debug
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         setTimeout(window.safeInitDiagnostics, 1200);
@@ -335,7 +317,6 @@ if (document.readyState === 'loading') {
 }
 
 // ========== 7. EXPOSIÇÃO CONTROLADA DE APIS ==========
-// Integrar com window.diag se existir, sem sobrescrever
 if (!window.diag) window.diag = {};
 window.diag.compat = {
     diagnose: window.diagnoseExistingFunctions,
