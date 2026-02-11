@@ -1,8 +1,6 @@
 // ================== debug/diagnostics/diagnostics56.js ==================
-// SISTEMA DE DIAGNÓSTICO E COMPATIBILIDADE - VERSÃO 5.6.2 (CORREÇÃO CRÍTICA)
-// PROIBIDO: Remover funções do Core System (PdfLogger, verifyMediaMigration, etc)
-// PROIBIDO: Modificar window.properties ou window.MediaSystem
-// PROIBIDO: Criar funções duplicadas já existentes no Core
+// SISTEMA DE DIAGNÓSTICO E COMPATIBILIDADE - VERSÃO 5.6.3 (CORREÇÃO DE REGRESSÃO)
+// CORREÇÃO CRÍTICA: PdfLogger NUNCA pode ser removido - é função legítima do Support System
 // =========================================================================
 
 (function() {
@@ -10,36 +8,50 @@
     
     // ========== CONSTANTES DE SEGURANÇA ==========
     const SAFETY = {
-        // Lista de funções do CORE que NUNCA podem ser removidas ou sobrescritas
-        CORE_PROTECTED: [
+        // 🚨🚨🚨 LISTA DE FUNÇÕES LEGÍTIMAS QUE NUNCA PODEM SER REMOVIDAS 🚨🚨🚨
+        // PdfLogger é uma função REAL do Support System (debug/pdf-logger.js)
+        // verifyMediaMigration, testModuleCompatibility, etc são funções REAIS de diagnóstico
+        PROTECTED_FUNCTIONS: [
+            // Support System - Funções legítimas de diagnóstico (NUNCA remover)
             'PdfLogger',
             'verifyMediaMigration',
-            'testModuleCompatibility',
+            'testModuleCompatibility', 
             'autoValidateMigration',
             'analyzePlaceholders',
             'analyzeBrokenReferences',
             'testPdfUploadBugFix',
             'verifyPdfSystemIntegrity',
+            'diagnosePdfIconProblem',
+            'runPdfCompatibilityCheck',
+            'interactivePdfTest',
+            
+            // Core System - Funções essenciais (NUNCA remover)
             'MediaSystem',
             'PdfSystem',
             'SharedCore',
             'FilterManager',
             'LoadingManager',
             'properties',
-            'supabaseClient'
+            'supabaseClient',
+            'PdfSystem.showModal',
+            'PdfSystem.init',
+            'PdfSystem.testButtons',
+            'MediaSystem.uploadAll',
+            'MediaSystem.addPdfs',
+            'MediaSystem.loadExisting'
         ],
         
-        // ÚNICAS funções que este módulo pode remover (placeholders próprios)
+        // ÚNICAS funções que podem ser removidas (placeholders CRIADOS por versões antigas)
         ALLOWED_REMOVAL: [
-            'ValidationSystem',
-            'EmergencySystem', 
-            'monitorPdfPostCorrection',
-            'verifyRollbackCompatibility',
-            'finalPdfSystemValidation'
+            'ValidationSystem',           // Placeholder antigo, nunca foi função real
+            'EmergencySystem',            // Placeholder antigo, nunca foi função real
+            'monitorPdfPostCorrection',   // Placeholder criado em versão 5.6, remover
+            'verifyRollbackCompatibility', // Placeholder criado em versão 5.6, remover
+            'finalPdfSystemValidation'    // Placeholder criado em versão 5.6, remover
         ],
         
-        VERSION: '5.6.2',
-        MODULE_NAME: 'DIAG56'
+        VERSION: '5.6.3',
+        MODULE_NAME: 'DIAG56-CRITICAL-FIX'
     };
 
     // ========== UTILITÁRIOS DE LOG ==========
@@ -47,28 +59,31 @@
         info: (msg) => console.log(`✅ ${SAFETY.MODULE_NAME} - ${msg}`),
         warn: (msg) => console.warn(`⚠️ ${SAFETY.MODULE_NAME} - ${msg}`),
         error: (msg) => console.error(`❌ ${SAFETY.MODULE_NAME} - ${msg}`),
+        critical: (msg) => console.error(`🚨🚨🚨 ${SAFETY.MODULE_NAME} - ${msg} 🚨🚨🚨`),
         group: (msg) => console.group(`🔍 ${SAFETY.MODULE_NAME} - ${msg}`),
         groupEnd: () => console.groupEnd()
     };
 
-    // ========== DIAGNÓSTICO NÃO INVASIVO ==========
+    // ========== DIAGNÓSTICO COMPLETO (MODO SEGURO) ==========
     window.diagnoseExistingFunctions = function() {
-        log.group('VERIFICAÇÃO DE FUNÇÕES (MODO SEGURO)');
+        log.group('VERIFICAÇÃO COMPLETA DE FUNÇÕES');
         
         const results = {
-            core: { present: [], missing: [] },
-            support: { present: [], missing: [] },
+            protected_found: [],
+            protected_missing: [],
+            placeholders_found: [],
             warnings: [],
             timestamp: new Date().toISOString(),
             version: SAFETY.VERSION
         };
 
-        // APENAS verificar, NUNCA modificar
-        const checkFunction = (name) => {
+        // 1. Verificar funções PROTEGIDAS (NUNCA remover)
+        console.log('\n📌 FUNÇÕES PROTEGIDAS (NUNCA REMOVER):');
+        SAFETY.PROTECTED_FUNCTIONS.forEach(funcName => {
             try {
                 let exists = false;
-                if (name.includes('.')) {
-                    const parts = name.split('.');
+                if (funcName.includes('.')) {
+                    const parts = funcName.split('.');
                     let current = window;
                     for (const part of parts) {
                         if (current && typeof current === 'object' && part in current) {
@@ -80,149 +95,198 @@
                     }
                     exists = current !== undefined;
                 } else {
-                    exists = name in window;
+                    exists = funcName in window;
                 }
-
-                const category = SAFETY.CORE_PROTECTED.includes(name) ? 'core' : 'support';
                 
                 if (exists) {
-                    results[category].present.push(name);
-                    console.log(`   ✅ ${name} (${category})`);
+                    results.protected_found.push(funcName);
+                    console.log(`   ✅ ${funcName} - PRESENTE (protegido)`);
                 } else {
-                    results[category].missing.push(name);
-                    if (category === 'core') {
-                        log.warn(`❌ FUNÇÃO CORE AUSENTE: ${name}`);
-                    } else {
-                        console.log(`   ℹ️ ${name} não encontrada (support)`);
-                    }
+                    results.protected_missing.push(funcName);
+                    log.warn(`❌ ${funcName} - AUSENTE (deveria existir!)`);
                 }
             } catch (error) {
-                results.warnings.push(`${name}: ${error.message}`);
+                results.warnings.push(`${funcName}: ${error.message}`);
             }
-        };
+        });
 
-        // Verificar funções CORE (devem existir SEMPRE)
-        log.info('Verificando funções CORE protegidas:');
-        SAFETY.CORE_PROTECTED.forEach(checkFunction);
+        // 2. Verificar placeholders (podem ser removidos)
+        console.log('\n📌 PLACEHOLDERS (podem ser removidos):');
+        SAFETY.ALLOWED_REMOVAL.forEach(funcName => {
+            try {
+                const exists = funcName in window;
+                if (exists) {
+                    results.placeholders_found.push(funcName);
+                    console.log(`   ⚠️ ${funcName} - ENCONTRADO (pode remover)`);
+                } else {
+                    console.log(`   ✅ ${funcName} - já removido`);
+                }
+            } catch (error) {
+                results.warnings.push(`${funcName}: ${error.message}`);
+            }
+        });
 
-        // Verificar funções de suporte (opcionais)
-        log.info('Verificando funções de SUPORTE:');
-        const supportFunctions = [
-            'diagnoseExistingFunctions',
-            'autoFixMissingFunctions',
-            'detectAndRemoveBrokenReferences',
-            'showCompatibilityControlPanel',
-            'safeInitDiagnostics'
-        ];
-        supportFunctions.forEach(checkFunction);
+        // 3. Verificação ESPECÍFICA do PdfLogger (CRÍTICO)
+        console.log('\n🚨 VERIFICAÇÃO CRÍTICA - PdfLogger:');
+        if ('PdfLogger' in window) {
+            console.log(`   ✅ PdfLogger - PRESENTE E PROTEGIDO`);
+            console.log(`      Tipo: ${typeof window.PdfLogger}`);
+            console.log(`      Funções disponíveis:`, 
+                Object.getOwnPropertyNames(window.PdfLogger).filter(p => typeof window.PdfLogger[p] === 'function'));
+        } else {
+            log.critical('PdfLogger NÃO ENCONTRADO! Verifique debug/pdf-logger.js');
+        }
 
         console.log('\n📊 RESUMO:');
-        console.log(`   Core functions: ${results.core.present.length}/${SAFETY.CORE_PROTECTED.length} presente`);
-        console.log(`   Support functions: ${results.support.present.length}/${supportFunctions.length} presente`);
-        console.log(`   ⚠️  Warnings: ${results.warnings.length}`);
+        console.log(`   ✅ Funções protegidas presentes: ${results.protected_found.length}/${SAFETY.PROTECTED_FUNCTIONS.length}`);
+        console.log(`   ⚠️ Funções protegidas ausentes: ${results.protected_missing.length}`);
+        console.log(`   🗑️ Placeholders encontrados: ${results.placeholders_found.length}`);
+        console.log(`   ⚠️ Avisos: ${results.warnings.length}`);
         
         log.groupEnd();
         return results;
     };
 
-    // ========== CORREÇÃO APENAS DE PLACEHOLDERS ==========
+    // ========== CORREÇÃO CONTROLADA (APENAS PLACEHOLDERS REAIS) ==========
     window.autoFixMissingFunctions = function() {
-        log.group('CORREÇÃO AUTOMÁTICA (APENAS PLACEHOLDERS)');
+        log.group('CORREÇÃO CONTROLADA - APENAS PLACEHOLDERS');
         
         const fixes = [];
+        const protectedSkipped = [];
         const errors = [];
 
-        // 1. REMOVER APENAS placeholders permitidos
+        // 🚨 PASSO 1: NUNCA REMOVER FUNÇÕES PROTEGIDAS
+        console.log('\n🔒 VERIFICANDO FUNÇÕES PROTEGIDAS (NENHUMA SERÁ REMOVIDA):');
+        SAFETY.PROTECTED_FUNCTIONS.forEach(funcName => {
+            const simpleName = funcName.split('.')[0];
+            if (simpleName in window) {
+                protectedSkipped.push(funcName);
+                console.log(`   🔒 PROTEGIDO: ${funcName} - NÃO REMOVIDO`);
+            }
+        });
+
+        // 🗑️ PASSO 2: REMOVER APENAS PLACEHOLDERS PERMITIDOS
+        console.log('\n🗑️ REMOVENDO PLACEHOLDERS:');
         SAFETY.ALLOWED_REMOVAL.forEach(funcName => {
             try {
                 if (funcName in window) {
-                    const type = typeof window[funcName];
-                    // Só remover se for função placeholder (não Core)
-                    if (type === 'function' && !SAFETY.CORE_PROTECTED.includes(funcName)) {
+                    // DUPLA VERIFICAÇÃO: NÃO é função protegida
+                    const isProtected = SAFETY.PROTECTED_FUNCTIONS.some(p => 
+                        p === funcName || p.split('.')[0] === funcName
+                    );
+                    
+                    if (!isProtected) {
                         delete window[funcName];
-                        fixes.push(`Removido: ${funcName}`);
-                        console.log(`   🗑️ Placeholder removido: ${funcName}`);
-                    } else if (type !== 'function') {
-                        delete window[funcName];
-                        fixes.push(`Removido (não função): ${funcName}`);
-                        console.log(`   🗑️ Propriedade não função removida: ${funcName}`);
+                        fixes.push(funcName);
+                        console.log(`   ✅ Removido: ${funcName}`);
+                    } else {
+                        console.log(`   🔒 PROTEGIDO (não removido): ${funcName}`);
                     }
+                } else {
+                    console.log(`   ℹ️ Já removido: ${funcName}`);
                 }
             } catch (e) {
                 errors.push(`${funcName}: ${e.message}`);
             }
         });
 
-        // 2. NUNCA criar funções que já existem no Core
-        //    Apenas garantir que a delegação existe se a Core falhar
-        if (typeof window.showPdfModal !== 'function' && 
-            !('showPdfModal' in SAFETY.CORE_PROTECTED)) {
-            
-            window.showPdfModal = function(propertyId) {
-                // DELEGAR para PdfSystem (NUNCA implementar lógica própria)
-                if (window.PdfSystem?.showModal) {
-                    return window.PdfSystem.showModal(propertyId);
-                }
-                log.warn('PdfSystem.showModal não disponível');
-                return false;
-            };
-            fixes.push('showPdfModal (delegação)');
-            console.log('   ✅ showPdfModal criada como delegação');
+        // ✅ PASSO 3: VERIFICAR SE PdfLogger AINDA EXISTE
+        console.log('\n🔍 VERIFICAÇÃO PÓS-REMOÇÃO:');
+        if ('PdfLogger' in window) {
+            console.log(`   ✅ PdfLogger - PRESERVADO com sucesso`);
+        } else {
+            log.critical('PdfLogger FOI REMOVIDO! Tentando restaurar...');
+            // Tentar recarregar o módulo PdfLogger
+            const script = document.createElement('script');
+            script.src = 'https://rclessa25-hub.github.io/weberlessa-support/debug/pdf-logger.js';
+            script.onload = () => console.log('   ✅ PdfLogger restaurado com sucesso');
+            document.head.appendChild(script);
+            fixes.push('PdfLogger (restaurado)');
         }
 
-        console.log(`\n📊 CORREÇÕES: ${fixes.length} aplicada(s)`);
-        if (fixes.length > 0) {
-            console.log('   Detalhes:', fixes.join(', '));
-        }
+        console.log(`\n📊 RESULTADO:`);
+        console.log(`   ✅ Placeholders removidos: ${fixes.length}`);
+        console.log(`   🔒 Funções protegidas mantidas: ${protectedSkipped.length}`);
+        console.log(`   ❌ Erros: ${errors.length}`);
         
         log.groupEnd();
-        return { fixes, errors, timestamp: new Date().toISOString(), version: SAFETY.VERSION };
+        return { 
+            fixes, 
+            protected: protectedSkipped, 
+            errors, 
+            timestamp: new Date().toISOString(), 
+            version: SAFETY.VERSION 
+        };
     };
 
-    // ========== DETECÇÃO SEGURA (SEM REMOÇÃO DE CORE) ==========
+    // ========== DETECÇÃO PRECISA (SEM DANOS COLATERAIS) ==========
     window.detectAndRemoveBrokenReferences = function() {
-        log.group('DETECÇÃO DE REFERÊNCIAS QUEBRADAS (MODO SEGURO)');
+        log.group('DETECÇÃO PRECISA DE REFERÊNCIAS');
         
         const removed = [];
-        const protectedSkipped = [];
+        const protectedPreserved = [];
+        const notFound = [];
 
-        // APENAS remover placeholders da ALLOWED_REMOVAL
+        // APENAS processar a lista EXPLÍCITA de placeholders
         SAFETY.ALLOWED_REMOVAL.forEach(ref => {
             try {
                 if (ref in window) {
-                    // Verificar se NÃO é função Core protegida
-                    if (!SAFETY.CORE_PROTECTED.includes(ref)) {
+                    // VERIFICAÇÃO RÍGIDA: não é função protegida
+                    const isProtected = SAFETY.PROTECTED_FUNCTIONS.some(p => 
+                        p === ref || p.split('.')[0] === ref
+                    );
+                    
+                    if (!isProtected) {
                         delete window[ref];
                         removed.push(ref);
                         console.log(`   🗑️ Removido: ${ref}`);
                     } else {
-                        protectedSkipped.push(ref);
-                        console.log(`   🔒 Protegido (CORE): ${ref} - NÃO removido`);
+                        protectedPreserved.push(ref);
+                        console.log(`   🔒 PRESERVADO (protegido): ${ref}`);
                     }
+                } else {
+                    notFound.push(ref);
+                    console.log(`   ℹ️ Não encontrado: ${ref}`);
                 }
             } catch (e) {
-                console.error(`   ❌ Erro ao verificar ${ref}:`, e.message);
+                console.error(`   ❌ Erro ao processar ${ref}:`, e.message);
             }
         });
 
-        console.log(`\n📊 RESULTADO:`);
-        console.log(`   ✅ Removidos: ${removed.length}`);
-        console.log(`   🔒 Protegidos (mantidos): ${protectedSkipped.length}`);
+        // VERIFICAÇÃO FINAL DE SEGURANÇA
+        console.log('\n🔍 VERIFICAÇÃO DE SEGURANÇA:');
+        const pdfLoggerStillExists = 'PdfLogger' in window;
+        console.log(`   ${pdfLoggerStillExists ? '✅' : '❌'} PdfLogger: ${pdfLoggerStillExists ? 'PRESERVADO' : 'REMOVIDO - CRÍTICO!'}`);
+        
+        const verifyMediaStillExists = 'verifyMediaMigration' in window;
+        console.log(`   ${verifyMediaStillExists ? '✅' : '❌'} verifyMediaMigration: ${verifyMediaStillExists ? 'PRESERVADO' : 'REMOVIDO - CRÍTICO!'}`);
+
+        console.log(`\n📊 RESUMO:`);
+        console.log(`   🗑️ Removidos: ${removed.length}`);
+        console.log(`   🔒 Preservados: ${protectedPreserved.length}`);
+        console.log(`   ℹ️ Não encontrados: ${notFound.length}`);
         
         log.groupEnd();
-        return { removed, protected: protectedSkipped, version: SAFETY.VERSION };
+        return { 
+            removed, 
+            preserved: protectedPreserved, 
+            notFound,
+            version: SAFETY.VERSION 
+        };
     };
 
-    // ========== PAINEL DE CONTROLE NÃO INVASIVO ==========
+    // ========== PAINEL DE CONTROLE COM ALERTA VISUAL ==========
     window.showCompatibilityControlPanel = function() {
-        log.group('CRIANDO PAINEL DE CONTROLE');
+        log.group('CRIANDO PAINEL DE CONTROLE v5.6.3');
         
-        const panelId = 'compatibility-panel-v5-6-2';
+        const panelId = 'compatibility-panel-v5-6-3';
         let panel = document.getElementById(panelId);
         
-        if (panel) {
-            panel.remove();
-        }
+        if (panel) panel.remove();
+
+        // Verificar status do PdfLogger (CRÍTICO)
+        const pdfLoggerStatus = 'PdfLogger' in window ? '✅ ATIVO' : '❌ AUSENTE (CRÍTICO)';
+        const pdfLoggerColor = 'PdfLogger' in window ? '#00ff9c' : '#ff5555';
 
         panel = document.createElement('div');
         panel.id = panelId;
@@ -230,105 +294,98 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            width: 360px;
-            background: linear-gradient(135deg, #1a2a3a, #0a1a2a);
+            width: 400px;
+            background: linear-gradient(135deg, #1a1a2a, #0a0a1a);
             color: #fff;
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
             border: 2px solid #00aaff;
             z-index: 999999;
             font-family: 'Segoe UI', monospace;
             backdrop-filter: blur(5px);
         `;
 
-        // Coletar status sem modificar nada
-        const corePresent = SAFETY.CORE_PROTECTED.filter(f => f in window).length;
-        const coreTotal = SAFETY.CORE_PROTECTED.length;
-        const coreStatus = corePresent === coreTotal ? '✅ ÍNTEGRO' : '⚠️ INCOMPLETO';
-        const coreColor = corePresent === coreTotal ? '#00ff9c' : '#ffaa00';
-
         panel.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin: 0; color: #00aaff; font-size: 16px;">
-                    🔧 DIAGNÓSTICO v5.6.2
+                    🔧 DIAGNÓSTICO v5.6.3
                 </h3>
-                <span style="background: #2a3a4a; padding: 4px 8px; border-radius: 4px; font-size: 11px; color: #aaddff;">
-                    MODO SEGURO
+                <span style="background: #ff0000; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">
+                    CORREÇÃO CRÍTICA
                 </span>
             </div>
             
-            <div style="background: #2a3a4a; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                    <span style="color: #aaddff;">Sistema Core:</span>
-                    <span style="color: ${coreColor}; font-weight: bold;">${coreStatus}</span>
+            <div style="background: #2a2a3a; border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 4px solid ${pdfLoggerColor};">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="color: #aaddff; font-weight: bold;">📄 PdfLogger:</span>
+                    <span style="color: ${pdfLoggerColor}; font-weight: bold;">${pdfLoggerStatus}</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 12px;">
-                    <span style="color: #88aaff;">Funções Core:</span>
-                    <span style="color: white;">${corePresent}/${coreTotal}</span>
-                </div>
-                <div style="margin-top: 10px; height: 4px; background: #1a2a3a; border-radius: 2px;">
-                    <div style="width: ${(corePresent/coreTotal)*100}%; height: 100%; background: ${coreColor}; border-radius: 2px;"></div>
+                <div style="font-size: 12px; color: #ffaa00; background: #332200; padding: 8px; border-radius: 4px;">
+                    ⚠️ PdfLogger é uma função LEGÍTIMA do Support System e NUNCA será removida
                 </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
                 <button id="btn-diagnose" style="
-                    padding: 10px;
+                    padding: 12px;
                     background: #00aaff;
                     color: white;
                     border: none;
                     border-radius: 6px;
                     cursor: pointer;
                     font-weight: bold;
-                    transition: all 0.3s;
                 ">
                     🔍 DIAGNOSTICAR
                 </button>
                 <button id="btn-clean" style="
-                    padding: 10px;
+                    padding: 12px;
                     background: #ffaa00;
                     color: black;
                     border: none;
                     border-radius: 6px;
                     cursor: pointer;
                     font-weight: bold;
-                    transition: all 0.3s;
                 ">
-                    🧹 LIMPAR PLACEHOLDERS
+                    🧹 REMOVER PLACEHOLDERS
                 </button>
-                <button id="btn-detect" style="
-                    padding: 10px;
-                    background: #ff5500;
-                    color: white;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-weight: bold;
-                    transition: all 0.3s;
-                ">
-                    🔗 REMOVER OBSOLETOS
-                </button>
-                <button id="btn-pdf" style="
-                    padding: 10px;
+                <button id="btn-verify-pdf" style="
+                    padding: 12px;
                     background: #9933cc;
                     color: white;
                     border: none;
                     border-radius: 6px;
                     cursor: pointer;
                     font-weight: bold;
-                    transition: all 0.3s;
                 ">
-                    📄 TESTAR PDF
+                    📄 TESTAR PdfLogger
+                </button>
+                <button id="btn-protected" style="
+                    padding: 12px;
+                    background: #2a5a2a;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-weight: bold;
+                ">
+                    🔒 LISTA PROTEGIDOS
                 </button>
             </div>
 
-            <div style="font-size: 11px; color: #88aaff; text-align: center; border-top: 1px solid #2a3a4a; padding-top: 15px;">
-                ⚠️ NUNCA remove funções do Core System (PdfLogger, etc)
-                <br>
+            <div style="font-size: 11px; color: #88aaff; border-top: 1px solid #2a3a4a; padding-top: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>✅ Funções protegidas:</span>
+                    <span style="color: #00ff9c;">${SAFETY.PROTECTED_FUNCTIONS.length}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span>🗑️ Placeholders removíveis:</span>
+                    <span style="color: #ffaa00;">${SAFETY.ALLOWED_REMOVAL.length}</span>
+                </div>
                 <button onclick="this.parentElement.parentElement.remove()" style="
+                    width: 100%;
                     margin-top: 10px;
-                    padding: 5px 15px;
+                    padding: 8px;
                     background: #4a5a6a;
                     color: white;
                     border: none;
@@ -358,77 +415,91 @@
             }
         });
 
-        document.getElementById('btn-detect')?.addEventListener('click', () => {
-            window.detectAndRemoveBrokenReferences?.();
-        });
-
-        document.getElementById('btn-pdf')?.addEventListener('click', () => {
-            if (window.PdfSystem?.testButtons) {
-                window.PdfSystem.testButtons();
-            } else if (window.PdfSystem?.showModal && window.properties?.[0]) {
-                window.PdfSystem.showModal(window.properties[0].id);
+        document.getElementById('btn-verify-pdf')?.addEventListener('click', () => {
+            if (window.PdfLogger) {
+                console.group('📄 TESTE DO PdfLogger');
+                console.log('✅ PdfLogger está disponível!');
+                console.log('📋 Funções disponíveis:', Object.keys(window.PdfLogger));
+                if (typeof window.PdfLogger.logPdfAccess === 'function') {
+                    window.PdfLogger.logPdfAccess('teste', 'função funcionando');
+                }
+                console.groupEnd();
+                alert('✅ PdfLogger está funcionando corretamente! Verifique o console.');
+            } else {
+                alert('❌ PdfLogger NÃO está disponível! Recarregue a página.');
             }
         });
 
-        log.info('Painel de controle criado');
+        document.getElementById('btn-protected')?.addEventListener('click', () => {
+            console.group('🔒 FUNÇÕES PROTEGIDAS (NUNCA REMOVER)');
+            SAFETY.PROTECTED_FUNCTIONS.forEach(f => console.log(`   ✅ ${f}`));
+            console.groupEnd();
+        });
+
+        log.info('Painel de controle criado com proteções');
         log.groupEnd();
         return panel;
     };
 
-    // ========== INICIALIZAÇÃO NÃO INVASIVA ==========
+    // ========== INICIALIZAÇÃO SEGURA (SEM DANOS) ==========
     window.safeInitDiagnostics = function() {
-        log.group('INICIALIZAÇÃO SEGURA');
+        log.group('INICIALIZAÇÃO SEGURA v5.6.3');
         
         try {
-            // 1. APENAS diagnosticar, NUNCA modificar
+            // PASSO 1: VERIFICAR INTEGRIDADE DO PdfLogger
+            if (!('PdfLogger' in window)) {
+                log.critical('PdfLogger não encontrado! Tentando carregar...');
+                const script = document.createElement('script');
+                script.src = 'https://rclessa25-hub.github.io/weberlessa-support/debug/pdf-logger.js';
+                document.head.appendChild(script);
+            }
+
+            // PASSO 2: DIAGNÓSTICO APENAS LEITURA
             const diagnosis = window.diagnoseExistingFunctions?.();
             
-            // 2. Mostrar painel APENAS se debug=true explícito
+            // PASSO 3: MOSTRAR PAINEL SE EM MODO DEBUG
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('debug') === 'true' && urlParams.get('diagnostics') === 'true') {
+            if (urlParams.get('debug') === 'true') {
                 setTimeout(() => window.showCompatibilityControlPanel?.(), 1000);
-                log.info('Modo diagnóstico ativo - painel será exibido');
-            } else {
-                log.info('Diagnóstico inativo. Use ?debug=true&diagnostics=true para ativar');
             }
             
-            log.info('Inicialização concluída (nenhuma modificação feita)');
+            // PASSO 4: ALERTA CRÍTICO SE PdfLogger AINDA AUSENTE
+            setTimeout(() => {
+                if (!('PdfLogger' in window)) {
+                    log.critical('PdfLogger permanece ausente! Verifique a conexão com Support System.');
+                }
+            }, 2000);
             
         } catch (error) {
-            log.error('Falha na inicialização segura: ' + error.message);
+            log.error('Erro na inicialização: ' + error.message);
         }
         
         log.groupEnd();
-        return { success: true, version: SAFETY.VERSION, mode: 'readonly' };
+        return { success: true, version: SAFETY.VERSION };
     };
 
-    // ========== EXPORTAÇÃO CONTROLADA ==========
-    // NUNCA sobrescrever funções do Core
-    const exportedFunctions = {
-        diagnoseExistingFunctions: true,
-        autoFixMissingFunctions: true,
-        detectAndRemoveBrokenReferences: true,
-        showCompatibilityControlPanel: true,
-        safeInitDiagnostics: true
-    };
-
-    // ========== EXECUÇÃO INICIAL ==========
-    log.info('MÓDULO DE COMPATIBILIDADE OTIMIZADO (v5.6.2)');
-    console.log('📋 [DIAG56] Comandos disponíveis:');
-    console.log('   diagnoseExistingFunctions()  - Verificar funções (MODO LEITURA)');
-    console.log('   autoFixMissingFunctions()    - Remover APENAS placeholders');
-    console.log('   detectAndRemoveBrokenReferences() - Remover APENAS obsoletos permitidos');
-    console.log('   showCompatibilityControlPanel() - Abrir painel não invasivo');
-    console.log('   safeInitDiagnostics()        - Inicialização manual (NÃO modifica Core)');
-    console.log('\n🔒 PROTEÇÕES ATIVAS:');
-    console.log(`   - ${SAFETY.CORE_PROTECTED.length} funções do Core NUNCA serão removidas`);
-    console.log(`   - Apenas ${SAFETY.ALLOWED_REMOVAL.length} placeholders podem ser limpos`);
-    console.log('   - Nenhuma função do Core é sobrescrita ou delegada');
-    
-    // Auto-inicialização APENAS se for modo diagnóstico explícito
+    // ========== INICIALIZAÇÃO AUTOMÁTICA CONTROLADA ==========
     const urlParams = new URLSearchParams(window.location.search);
+    
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`✅ ${SAFETY.MODULE_NAME} - VERSÃO ${SAFETY.VERSION}`);
+    console.log(`${'='.repeat(60)}`);
+    console.log(`📋 COMANDOS DISPONÍVEIS:`);
+    console.log(`   🔍 window.diagnoseExistingFunctions()`);
+    console.log(`   🧹 window.autoFixMissingFunctions()`);
+    console.log(`   🔗 window.detectAndRemoveBrokenReferences()`);
+    console.log(`   🎛️ window.showCompatibilityControlPanel()`);
+    console.log(`   🚀 window.safeInitDiagnostics()`);
+    console.log(`${'='.repeat(60)}`);
+    console.log(`🔒 FUNÇÕES PROTEGIDAS (NUNCA REMOVER): ${SAFETY.PROTECTED_FUNCTIONS.length}`);
+    console.log(`   - PdfLogger, verifyMediaMigration, testModuleCompatibility...`);
+    console.log(`🗑️ PLACEHOLDERS REMOVÍVEIS: ${SAFETY.ALLOWED_REMOVAL.length}`);
+    console.log(`   - ValidationSystem, EmergencySystem, monitorPdfPostCorrection...`);
+    console.log(`${'='.repeat(60)}\n`);
+
+    // Auto-inicialização APENAS em modo debug explícito
     if (urlParams.get('debug') === 'true' && urlParams.get('diagnostics') === 'true') {
-        setTimeout(window.safeInitDiagnostics, 500);
+        setTimeout(window.safeInitDiagnostics, 800);
     }
 
 })();
