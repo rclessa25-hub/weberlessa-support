@@ -1,4 +1,4 @@
-// debug/diagnostics/diagnostics54.js - SISTEMA DE DIAGNÓSTICO DEFINITIVO E ISOLADO
+// debug/diagnostics/diagnostics54.js - SISTEMA DE DIAGNÓSTICO DEFINITIVO
 console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO ISOLADA)');
 
 (function() {
@@ -6,12 +6,15 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
     
     // ========== CONFIGURAÇÕES PRIVADAS ==========
     const CONFIG = {
-        version: '5.4.1',
-        namespace: 'DiagnosticsV54', // Namespace único para evitar conflitos
+        version: '5.4.2',
+        namespace: 'DiagnosticsV54',
         autoStart: true,
         maxLogs: 100,
-        refreshInterval: 5000,
-        containerId: 'diagnostics-container-v54' // ID único
+        containerId: 'diagnostics-container-v54',
+        // Novas configurações para debugging
+        debugMode: true,
+        forceShow: true, // Forçar mostrar sempre que possível
+        checkInterval: 1000 // Verificar a cada 1s se pode mostrar
     };
     
     // ========== ESTADO PRIVADO ==========
@@ -21,7 +24,10 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
         panels: {},
         isVisible: false,
         startTime: Date.now(),
-        hasInitialized: false
+        hasInitialized: false,
+        domReady: false,
+        systemReady: false,
+        attempts: 0
     };
     
     // ========== ELEMENTOS DO DOM ==========
@@ -36,263 +42,289 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
     
     // ========== ESTILOS CSS ÚNICOS ==========
     const STYLES = `
-        /* CONTAINER PRINCIPAL ÚNICO */
+        /* CONTAINER PRINCIPAL ÚNICO - ESTILOS FORTES */
         #${CONFIG.containerId} {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 90%;
-            max-width: 1200px;
-            height: 80vh;
-            background: #0a0a0a;
-            border: 3px solid #ff6b6b;
-            border-radius: 12px;
-            z-index: 999999;
-            box-shadow: 0 0 40px rgba(255, 107, 107, 0.4);
-            display: none;
-            overflow: hidden;
-            font-family: 'Segoe UI', 'Courier New', monospace;
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 90% !important;
+            max-width: 1200px !important;
+            height: 80vh !important;
+            background: #0a0a0a !important;
+            border: 3px solid #ff6b6b !important;
+            border-radius: 12px !important;
+            z-index: 999999 !important;
+            box-shadow: 0 0 40px rgba(255, 107, 107, 0.4) !important;
+            display: none !important;
+            overflow: hidden !important;
+            font-family: 'Segoe UI', 'Courier New', monospace !important;
         }
         
         /* HEADER DISTINTIVO */
         .diagnostics-header-v54 {
-            background: linear-gradient(90deg, #111, #222);
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #ff6b6b;
+            background: linear-gradient(90deg, #111, #222) !important;
+            padding: 15px 20px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            border-bottom: 2px solid #ff6b6b !important;
         }
         
         .diagnostics-header-v54 h2 {
-            margin: 0;
-            color: #ff6b6b;
-            font-size: 1.4rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            margin: 0 !important;
+            color: #ff6b6b !important;
+            font-size: 1.4rem !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
         }
         
         .header-controls-v54 {
-            display: flex;
-            gap: 10px;
+            display: flex !important;
+            gap: 10px !important;
         }
         
         .control-btn-v54 {
-            background: #333;
-            color: #ff6b6b;
-            border: 1px solid #ff6b6b;
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
+            background: #333 !important;
+            color: #ff6b6b !important;
+            border: 1px solid #ff6b6b !important;
+            padding: 8px 15px !important;
+            border-radius: 6px !important;
+            cursor: pointer !important;
+            font-weight: bold !important;
+            transition: all 0.3s !important;
         }
         
         .control-btn-v54:hover {
-            background: #ff6b6b;
-            color: #000;
+            background: #ff6b6b !important;
+            color: #000 !important;
         }
         
         .close-btn-v54 {
-            background: #ff3333;
-            color: white;
-            border: 1px solid #ff6666;
+            background: #ff3333 !important;
+            color: white !important;
+            border: 1px solid #ff6666 !important;
         }
         
         .close-btn-v54:hover {
-            background: #ff6666;
+            background: #ff6666 !important;
         }
         
         /* TABS ÚNICOS */
         .diagnostics-tabs-v54 {
-            display: flex;
-            background: #222;
-            border-bottom: 1px solid #444;
-            overflow-x: auto;
+            display: flex !important;
+            background: #222 !important;
+            border-bottom: 1px solid #444 !important;
+            overflow-x: auto !important;
         }
         
         .tab-btn-v54 {
-            padding: 12px 20px;
-            background: transparent;
-            color: #888;
-            border: none;
-            border-right: 1px solid #333;
-            cursor: pointer;
-            font-weight: 600;
-            white-space: nowrap;
-            transition: all 0.3s;
+            padding: 12px 20px !important;
+            background: transparent !important;
+            color: #888 !important;
+            border: none !important;
+            border-right: 1px solid #333 !important;
+            cursor: pointer !important;
+            font-weight: 600 !important;
+            white-space: nowrap !important;
+            transition: all 0.3s !important;
         }
         
         .tab-btn-v54:hover {
-            background: #333;
-            color: #ff6b6b;
+            background: #333 !important;
+            color: #ff6b6b !important;
         }
         
         .tab-btn-v54.active {
-            background: #ff6b6b;
-            color: #000;
+            background: #ff6b6b !important;
+            color: #000 !important;
         }
         
         /* CONTEÚDO */
         .diagnostics-content-v54 {
-            height: calc(100% - 120px);
-            overflow-y: auto;
-            padding: 20px;
+            height: calc(100% - 120px) !important;
+            overflow-y: auto !important;
+            padding: 20px !important;
         }
         
         .tab-panel-v54 {
-            display: none;
+            display: none !important;
         }
         
         .tab-panel-v54.active {
-            display: block;
+            display: block !important;
         }
         
         /* PAINÉIS ÚNICOS */
         .panel-grid-v54 {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+            gap: 20px !important;
+            margin-bottom: 30px !important;
         }
         
         .panel-v54 {
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 8px;
-            overflow: hidden;
+            background: #111 !important;
+            border: 1px solid #333 !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
         }
         
         .panel-header-v54 {
-            background: #222;
-            padding: 12px 15px;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: #222 !important;
+            padding: 12px 15px !important;
+            border-bottom: 1px solid #333 !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
         }
         
         .panel-header-v54 h3 {
-            margin: 0;
-            color: #ff6b6b;
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            margin: 0 !important;
+            color: #ff6b6b !important;
+            font-size: 1.1rem !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
         }
         
         .panel-body-v54 {
-            padding: 15px;
+            padding: 15px !important;
         }
         
         .status-indicator-v54 {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
+            width: 10px !important;
+            height: 10px !important;
+            border-radius: 50% !important;
+            display: inline-block !important;
+            margin-right: 8px !important;
         }
         
-        .status-success-v54 { background: #27ae60; }
-        .status-warning-v54 { background: #f39c12; }
-        .status-error-v54 { background: #e74c3c; }
-        .status-info-v54 { background: #3498db; }
+        .status-success-v54 { background: #27ae60 !important; }
+        .status-warning-v54 { background: #f39c12 !important; }
+        .status-error-v54 { background: #e74c3c !important; }
+        .status-info-v54 { background: #3498db !important; }
         
         /* BOTÕES ÚNICOS */
         .test-btn-v54 {
-            display: block;
-            width: 100%;
-            background: #222;
-            color: #ff6b6b;
-            border: 1px solid #333;
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 5px;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.3s;
+            display: block !important;
+            width: 100% !important;
+            background: #222 !important;
+            color: #ff6b6b !important;
+            border: 1px solid #333 !important;
+            padding: 10px !important;
+            margin: 5px 0 !important;
+            border-radius: 5px !important;
+            cursor: pointer !important;
+            text-align: left !important;
+            transition: all 0.3s !important;
         }
         
         .test-btn-v54:hover {
-            background: #ff6b6b;
-            color: #000;
-            transform: translateX(5px);
+            background: #ff6b6b !important;
+            color: #000 !important;
+            transform: translateX(5px) !important;
         }
         
         .run-all-btn-v54 {
-            background: #2980b9;
-            color: white;
-            border: none;
-            padding: 12px;
-            margin: 10px 0;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
+            background: #2980b9 !important;
+            color: white !important;
+            border: none !important;
+            padding: 12px !important;
+            margin: 10px 0 !important;
+            border-radius: 5px !important;
+            cursor: pointer !important;
+            font-weight: bold !important;
+            width: 100% !important;
         }
         
         /* LOGS ÚNICOS */
         #logs-container-v54 {
-            background: #000;
-            border: 1px solid #333;
-            border-radius: 5px;
-            padding: 15px;
-            max-height: 300px;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
+            background: #000 !important;
+            border: 1px solid #333 !important;
+            border-radius: 5px !important;
+            padding: 15px !important;
+            max-height: 300px !important;
+            overflow-y: auto !important;
+            font-family: 'Courier New', monospace !important;
+            font-size: 0.9rem !important;
         }
         
         .log-entry-v54 {
-            padding: 5px;
-            border-bottom: 1px solid #222;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
+            padding: 5px !important;
+            border-bottom: 1px solid #222 !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
         }
         
         .log-time-v54 {
-            color: #888;
-            min-width: 80px;
+            color: #888 !important;
+            min-width: 80px !important;
         }
         
         .log-type-v54 {
-            font-weight: bold;
-            min-width: 60px;
+            font-weight: bold !important;
+            min-width: 60px !important;
         }
         
-        .log-type-v54.info { color: #3498db; }
-        .log-type-v54.success { color: #27ae60; }
-        .log-type-v54.warning { color: #f39c12; }
-        .log-type-v54.error { color: #e74c3c; }
+        .log-type-v54.info { color: #3498db !important; }
+        .log-type-v54.success { color: #27ae60 !important; }
+        .log-type-v54.warning { color: #f39c12 !important; }
+        .log-type-v54.error { color: #e74c3c !important; }
+        
+        /* BOTÃO FLUTUANTE DE ACESSO RÁPIDO */
+        .diagnostics-floating-btn {
+            position: fixed !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            background: #ff6b6b !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 50% !important;
+            width: 60px !important;
+            height: 60px !important;
+            font-size: 24px !important;
+            cursor: pointer !important;
+            z-index: 999998 !important;
+            box-shadow: 0 4px 20px rgba(255, 107, 107, 0.5) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.3s !important;
+        }
+        
+        .diagnostics-floating-btn:hover {
+            transform: scale(1.1) !important;
+            box-shadow: 0 6px 30px rgba(255, 107, 107, 0.7) !important;
+        }
         
         /* RESPONSIVO */
         @media (max-width: 768px) {
             #${CONFIG.containerId} {
-                width: 95%;
-                height: 90vh;
+                width: 95% !important;
+                height: 90vh !important;
             }
             
             .panel-grid-v54 {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr !important;
             }
             
             .diagnostics-tabs-v54 {
-                flex-wrap: wrap;
+                flex-wrap: wrap !important;
             }
             
             .tab-btn-v54 {
-                flex: 1;
-                min-width: 120px;
-                padding: 10px;
-                font-size: 0.9rem;
+                flex: 1 !important;
+                min-width: 120px !important;
+                padding: 10px !important;
+                font-size: 0.9rem !important;
             }
         }
     `;
     
-    // ========== FUNÇÕES DE LOG ÚNICAS ==========
+    // ========== FUNÇÕES DE LOG ==========
     function log(type, message, data = null) {
         const timestamp = new Date().toLocaleTimeString();
         const logEntry = {
@@ -311,7 +343,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
         }
         
         // Atualizar UI se visível
-        if (state.isVisible) {
+        if (state.isVisible && elements.logsContainer) {
             updateLogsDisplay();
         }
         
@@ -341,6 +373,30 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
         `).join('');
     }
     
+    // ========== VERIFICAÇÃO DE SISTEMA ==========
+    function isSystemReady() {
+        // Verificar se elementos essenciais estão carregados
+        const essentialElements = [
+            document.body,
+            document.querySelector('.properties-grid') || document.body
+        ];
+        
+        const essentialsReady = essentialElements.every(el => el);
+        
+        // Verificar se módulos principais estão carregados
+        const coreModules = [
+            window.SharedCore,
+            window.properties,
+            window.supabaseClient
+        ];
+        
+        const modulesReady = coreModules.some(module => module);
+        
+        log('info', `🔍 Verificação sistema: DOM=${essentialsReady}, Módulos=${modulesReady}, Tentativas=${state.attempts}`);
+        
+        return essentialsReady || state.attempts > 5;
+    }
+    
     // ========== FUNÇÕES DO SISTEMA ==========
     
     // 1. TESTE DO SISTEMA PDF
@@ -357,7 +413,6 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
         
         log('info', '📊 Resultados do teste PDF:', results);
         
-        // Mostrar resumo
         const passed = Object.values(results).filter(Boolean).length;
         const total = Object.keys(results).length;
         const score = Math.round((passed / total) * 100);
@@ -398,7 +453,6 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
         if (issues.length > 0) {
             log('error', `⚠️ Encontrados ${issues.length} botões PDF com problemas:`, issues);
             
-            // Tentar corrigir automaticamente
             issues.forEach(issue => {
                 const card = document.querySelectorAll('.property-card')[issue.cardIndex];
                 const button = card?.querySelector('.pdf-access');
@@ -439,7 +493,6 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
                 `${exists ? '✅' : '❌'} ${name}: ${exists ? 'Disponível' : 'Ausente'}`);
         });
         
-        // Estatísticas
         const total = Object.keys(results).length;
         const passed = Object.values(results).filter(r => r === '✅').length;
         const score = Math.round((passed / total) * 100);
@@ -450,182 +503,34 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
         return { results, total, passed, score };
     }
     
-    // 4. ANÁLISE DE PERFORMANCE
-    function analyzePerformance() {
-        log('info', '⚡ Analisando performance do sistema...');
-        
-        const perf = {
-            loadTime: Date.now() - state.startTime,
-            memory: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) : 'N/A',
-            propertyCount: window.properties?.length || 0,
-            scriptsLoaded: document.querySelectorAll('script[src]').length,
-            localStorageSize: JSON.stringify(localStorage).length
-        };
-        
-        // Verificar imagens carregadas
-        const images = document.querySelectorAll('img');
-        const loadedImages = Array.from(images).filter(img => img.complete).length;
-        perf.imagesLoaded = `${loadedImages}/${images.length}`;
-        
-        // Verificar event listeners (estimativa)
-        perf.estimatedListeners = document.querySelectorAll('*').length * 0.5;
-        
-        log('info', '📊 Métricas de performance:', perf);
-        
-        // Recomendações
-        const recommendations = [];
-        if (perf.propertyCount > 50) recommendations.push('Considere paginação para muitos imóveis');
-        if (perf.estimatedListeners > 1000) recommendations.push('Verifique vazamento de event listeners');
-        if (perf.localStorageSize > 5000000) recommendations.push('LocalStorage pode estar muito grande');
-        
-        if (recommendations.length > 0) {
-            log('warning', '💡 Recomendações de performance:', recommendations);
-        }
-        
-        return { perf, recommendations };
-    }
-    
-    // 5. TESTE DE SUPABASE
-    async function testSupabaseConnection() {
-        log('info', '🌐 Testando conexão com Supabase...');
-        
-        if (!window.supabaseClient) {
-            log('error', '❌ Cliente Supabase não disponível');
-            return { connected: false, error: 'Cliente não disponível' };
-        }
-        
-        try {
-            // Teste simples de timeout
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout após 5 segundos')), 5000)
-            );
-            
-            const queryPromise = window.supabaseClient
-                .from('properties')
-                .select('id')
-                .limit(1);
-            
-            const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
-            
-            if (error) {
-                log('error', '❌ Erro na conexão Supabase:', error.message);
-                return { connected: false, error: error.message };
-            } else {
-                log('success', `✅ Conexão Supabase OK! ${data?.length || 0} registros encontrados`);
-                return { 
-                    connected: true, 
-                    count: data?.length || 0,
-                    sampleId: data?.[0]?.id 
-                };
-            }
-        } catch (err) {
-            log('error', '❌ Erro fatal Supabase:', err.message);
-            return { connected: false, error: err.message };
-        }
-    }
-    
-    // 6. VALIDAÇÃO DE FORMULÁRIO ADMIN
-    function validateAdminForm() {
-        log('info', '📝 Validando formulário admin...');
-        
-        const form = document.getElementById('propertyForm');
-        if (!form) {
-            log('error', '❌ Formulário admin não encontrado!');
-            return { exists: false };
-        }
-        
-        const fields = [
-            'propTitle', 'propPrice', 'propLocation', 
-            'propDescription', 'propFeatures', 'propType',
-            'propBadge', 'propHasVideo', 'fileInput', 'pdfFileInput'
-        ];
-        
-        const results = {};
-        fields.forEach(fieldId => {
-            const element = document.getElementById(fieldId);
-            results[fieldId] = {
-                exists: !!element,
-                type: element?.type || element?.tagName,
-                value: element?.value || element?.checked
-            };
-        });
-        
-        // Verificar botões
-        results.submitButton = !!form.querySelector('button[type="submit"]');
-        results.cancelButton = !!document.getElementById('cancelEditBtn');
-        
-        log('info', '📊 Campos do formulário:', results);
-        
-        const existingFields = Object.values(results).filter(r => r.exists).length;
-        const totalFields = Object.keys(results).length;
-        const score = Math.round((existingFields / totalFields) * 100);
-        
-        log(score >= 80 ? 'success' : 'warning',
-            `📝 Formulário: ${existingFields}/${totalFields} campos OK (${score}%)`);
-        
-        return { results, existingFields, totalFields, score };
-    }
-    
-    // 7. TESTE DE GALERIA
-    function testGallery() {
-        log('info', '🖼️ Testando sistema de galeria...');
-        
-        const results = {
-            galleryModal: document.getElementById('propertyGalleryModal'),
-            galleryImages: document.querySelectorAll('.property-gallery-image').length,
-            galleryFunctions: {
-                openGallery: typeof window.openGallery,
-                closeGallery: typeof window.closeGallery,
-                nextGalleryImage: typeof window.nextGalleryImage,
-                prevGalleryImage: typeof window.prevGalleryImage
-            },
-            videoIndicators: document.querySelectorAll('.video-indicator').length
-        };
-        
-        log('info', '📊 Resultados galeria:', results);
-        
-        // Verificar funcionalidades
-        const functionsExist = Object.values(results.galleryFunctions).filter(f => f === 'function').length;
-        const totalFunctions = Object.keys(results.galleryFunctions).length;
-        
-        log(functionsExist === totalFunctions ? 'success' : 'warning',
-            `🎨 Galeria: ${functionsExist}/${totalFunctions} funções disponíveis`);
-        
-        return results;
-    }
-    
     // ========== INTERFACE DO USUÁRIO ==========
     function createUI() {
-        // Remover UI existente COM NOSSO ID
+        // Remover UI existente
         const existing = document.getElementById(CONFIG.containerId);
         if (existing) existing.remove();
         
-        // Verificar se há outros containers de diagnóstico e desabilitá-los
-        document.querySelectorAll('[id*="diagnostics"]').forEach(el => {
-            if (el.id !== CONFIG.containerId && el.style.display === 'block') {
-                el.style.display = 'none';
-                console.log(`%c[${CONFIG.namespace}] ⚠️ Outro painel de diagnóstico foi ocultado: ${el.id}`, 'color: #f39c12');
-            }
-        });
+        // Remover botão flutuante anterior
+        const existingBtn = document.getElementById('diagnostics-floating-btn-v54');
+        if (existingBtn) existingBtn.remove();
         
-        // Adicionar estilos COM CLASSES ÚNICAS
+        // Adicionar estilos
         const styleEl = document.createElement('style');
         styleEl.id = 'diagnostics-styles-v54';
         styleEl.textContent = STYLES;
         document.head.appendChild(styleEl);
         
-        // Criar container principal COM ID ÚNICO
+        // Criar container principal
         elements.container = document.createElement('div');
         elements.container.id = CONFIG.containerId;
         elements.container.innerHTML = `
             <div class="diagnostics-header-v54">
                 <h2>
                     <span>🔍</span>
-                    DIAGNÓSTICO V54 - v${CONFIG.version} - ${CONFIG.namespace}
+                    DIAGNÓSTICO V54 - v${CONFIG.version}
                 </h2>
                 <div class="header-controls-v54">
                     <button class="control-btn-v54" onclick="window.${CONFIG.namespace}.runAllTests()">
-                        🧪 EXECUTAR TODOS
+                        🧪 TESTAR TUDO
                     </button>
                     <button class="control-btn-v54" onclick="window.${CONFIG.namespace}.exportReport()">
                         📊 EXPORTAR
@@ -640,14 +545,13 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
                 <button class="tab-btn-v54 active" data-tab="overview">📊 VISÃO GERAL</button>
                 <button class="tab-btn-v54" data-tab="modules">📦 MÓDULOS</button>
                 <button class="tab-btn-v54" data-tab="pdf">📄 PDF SYSTEM</button>
-                <button class="tab-btn-v54" data-tab="media">🖼️ MÍDIA</button>
                 <button class="tab-btn-v54" data-tab="performance">⚡ PERFORMANCE</button>
                 <button class="tab-btn-v54" data-tab="logs">📝 LOGS</button>
                 <button class="tab-btn-v54" data-tab="actions">🔧 AÇÕES</button>
             </div>
             
             <div class="diagnostics-content-v54" id="diagnostics-content-v54">
-                <!-- Conteúdo será preenchido dinamicamente -->
+                <!-- Conteúdo dinâmico -->
             </div>
         `;
         
@@ -663,27 +567,36 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
         // Configurar eventos dos tabs
         elements.tabs.querySelectorAll('.tab-btn-v54').forEach(btn => {
             btn.addEventListener('click', () => {
-                // Remover active de todos
                 elements.tabs.querySelectorAll('.tab-btn-v54').forEach(b => b.classList.remove('active'));
                 elements.content.querySelectorAll('.tab-panel-v54').forEach(p => p.classList.remove('active'));
                 
-                // Adicionar ao selecionado
                 btn.classList.add('active');
                 const tabId = btn.getAttribute('data-tab');
                 const panel = elements.content.querySelector(`#tab-${tabId}-v54`);
                 if (panel) panel.classList.add('active');
                 
-                // Atualizar conteúdo específico do tab
                 if (tabId === 'modules') {
                     updateModulesPanel();
                 }
             });
         });
         
-        // Carregar painel inicial
-        showTab('overview');
+        // Criar botão flutuante
+        createFloatingButton();
         
-        log('success', '✅ Interface de diagnóstico criada com namespace único');
+        log('success', '✅ Interface de diagnóstico criada');
+    }
+    
+    function createFloatingButton() {
+        const floatingBtn = document.createElement('button');
+        floatingBtn.id = 'diagnostics-floating-btn-v54';
+        floatingBtn.className = 'diagnostics-floating-btn';
+        floatingBtn.innerHTML = '🔍';
+        floatingBtn.title = 'Abrir Diagnóstico V54';
+        floatingBtn.onclick = () => window[CONFIG.namespace].toggle();
+        
+        document.body.appendChild(floatingBtn);
+        log('info', '🎯 Botão flutuante criado');
     }
     
     function initializePanels() {
@@ -693,13 +606,13 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
                 <div class="panel-grid-v54">
                     <div class="panel-v54">
                         <div class="panel-header-v54">
-                            <h3><span class="status-indicator-v54 status-info-v54"></span> SISTEMA V54</h3>
+                            <h3><span class="status-indicator-v54 status-info-v54"></span> SISTEMA</h3>
                         </div>
                         <div class="panel-body-v54">
-                            <p><strong>Namespace:</strong> ${CONFIG.namespace}</p>
                             <p><strong>URL:</strong> ${window.location.href}</p>
+                            <p><strong>User Agent:</strong> ${navigator.userAgent.substring(0, 50)}...</p>
                             <p><strong>Tela:</strong> ${window.innerWidth} × ${window.innerHeight}</p>
-                            <p><strong>Carregado em:</strong> ${(Date.now() - state.startTime)}ms</p>
+                            <p><strong>Tempo de carga:</strong> ${(Date.now() - state.startTime)}ms</p>
                             <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.testModule('verifyModules')">
                                 📦 Verificar Módulos
                             </button>
@@ -712,10 +625,10 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
                         </div>
                         <div class="panel-body-v54">
                             <p><strong>Total:</strong> <span id="property-count-v54">${window.properties?.length || 0}</span></p>
-                            <p><strong>Filtro Ativo:</strong> <span id="current-filter-v54">${window.currentFilter || 'todos'}</span></p>
                             <p><strong>Cards na Página:</strong> <span id="cards-count-v54">${document.querySelectorAll('.property-card').length}</span></p>
-                            <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.testModule('testGallery')">
-                                🖼️ Testar Galeria
+                            <p><strong>Carregado:</strong> ${state.systemReady ? '✅' : '⏳'}</p>
+                            <button class="test-btn-v54" onclick="checkProperties()">
+                                🔍 Verificar Imóveis
                             </button>
                         </div>
                     </div>
@@ -744,11 +657,11 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
                             <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.testModule('diagnosePdfIconProblem')">
                                 🔧 Corrigir Ícones PDF
                             </button>
-                            <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.testModule('validateAdminForm')">
-                                📝 Validar Formulário
-                            </button>
                             <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.testModule('analyzePerformance')">
                                 ⚡ Analisar Performance
+                            </button>
+                            <button class="test-btn-v54" onclick="forceShowDiagnostics()">
+                                💥 FORÇAR VISUALIZAÇÃO
                             </button>
                         </div>
                     </div>
@@ -799,9 +712,6 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
                             <button class="test-btn-v54" onclick="testPdfModal()">
                                 🎮 Testar Modal PDF
                             </button>
-                            <button class="test-btn-v54" onclick="testPdfButtonsManual()">
-                                🔍 Testar Botões PDF
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -819,9 +729,6 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
                     <button class="control-btn-v54" onclick="window.${CONFIG.namespace}.exportLogs()">
                         💾 EXPORTAR LOGS
                     </button>
-                    <button class="control-btn-v54" onclick="window.${CONFIG.namespace}.testModule('analyzePerformance')">
-                        ⚡ ATUALIZAR
-                    </button>
                 </div>
                 <div id="logs-container-v54">
                     <!-- Logs serão mostrados aqui -->
@@ -829,74 +736,12 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
             </div>
         `;
         
-        // Painel de ações
-        elements.panels.actions = `
-            <div id="tab-actions-v54" class="tab-panel-v54">
-                <h3 style="color: #ff6b6b; margin-bottom: 20px;">🔧 AÇÕES DE EMERGÊNCIA</h3>
-                <div class="panel-grid-v54">
-                    <div class="panel-v54">
-                        <div class="panel-header-v54">
-                            <h3><span class="status-indicator-v54 status-warning-v54"></span> SISTEMA</h3>
-                        </div>
-                        <div class="panel-body-v54">
-                            <button class="test-btn-v54" onclick="forceReloadProperties()">
-                                🔄 Recarregar Imóveis
-                            </button>
-                            <button class="test-btn-v54" onclick="clearLocalStorage()">
-                                🗑️ Limpar LocalStorage
-                            </button>
-                            <button class="test-btn-v54" onclick="reloadPage()">
-                                ↩️ Recarregar Página
-                            </button>
-                            <button class="test-btn-v54" onclick="showSystemInfo()">
-                                ℹ️ Informações do Sistema
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="panel-v54">
-                        <div class="panel-header-v54">
-                            <h3><span class="status-indicator-v54 status-error-v54"></span> DEBUG</h3>
-                        </div>
-                        <div class="panel-body-v54">
-                            <button class="test-btn-v54" onclick="enableVerboseLogging()">
-                                🔊 Ativar Logs Detalhados
-                            </button>
-                            <button class="test-btn-v54" onclick="disableOtherDiagnostics()">
-                                ⚡ Desativar Outros Diagnósticos
-                            </button>
-                            <button class="test-btn-v54" onclick="testAllButtons()">
-                                🔘 Testar Todos os Botões
-                            </button>
-                            <button class="test-btn-v54" onclick="checkConflicts()">
-                🔍 Verificar Conflitos
-            </button>
-        </div>
-    </div>
-</div>
-</div>
-`;
-        
         // Adicionar todos ao content
         elements.content.innerHTML = Object.values(elements.panels).join('');
         elements.logsContainer = document.getElementById('logs-container-v54');
-    }
-    
-    function showTab(tabId) {
-        // Atualizar tabs
-        elements.tabs.querySelectorAll('.tab-btn-v54').forEach(btn => {
-            btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
-        });
         
-        // Mostrar painel
-        elements.content.querySelectorAll('.tab-panel-v54').forEach(panel => {
-            panel.classList.toggle('active', panel.id === `tab-${tabId}-v54`);
-        });
-        
-        // Atualizar conteúdo específico do tab
-        if (tabId === 'modules') {
-            updateModulesPanel();
-        }
+        // Atualizar logs imediatamente
+        updateLogsDisplay();
     }
     
     function updateModulesPanel() {
@@ -909,7 +754,6 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
             { name: 'PdfSystem', obj: window.PdfSystem, color: '#e74c3c' },
             { name: 'LoadingManager', obj: window.LoadingManager, color: '#f39c12' },
             { name: 'FilterManager', obj: window.FilterManager, color: '#1abc9c' },
-            { name: 'EventManager', obj: window.EventManager, color: '#34495e' },
             { name: 'properties (array)', obj: window.properties, isArray: true, color: '#27ae60' },
             { name: 'supabaseClient', obj: window.supabaseClient, color: '#2980b9' },
             { name: CONFIG.namespace, obj: window[CONFIG.namespace], color: '#ff6b6b', isThis: true }
@@ -936,349 +780,164 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
                     <p><strong>Disponível:</strong> ${exists ? 'Sim' : 'Não'}</p>
                     ${mod.isArray ? `<p><strong>Itens:</strong> ${itemCount}</p>` : ''}
                     ${funcCount > 0 ? `<p><strong>Funções:</strong> ${funcCount}</p>` : ''}
-                    ${mod.name === 'properties (array)' && itemCount > 0 ? 
-                        `<button class="test-btn-v54" onclick="sampleFirstProperty()">
-                            👁️ Ver Primeiro Item
-                        </button>` : ''}
                 </div>
             </div>
             `;
         }).join('');
     }
     
-    // ========== FUNÇÕES AUXILIARES DE AÇÕES ==========
+    // ========== FUNÇÕES AUXILIARES ==========
+    function checkProperties() {
+        const props = window.properties || [];
+        log('info', `🔍 Verificando ${props.length} imóveis:`, props.slice(0, 3));
+        return props;
+    }
+    
     function testPdfModal() {
-        if (window.PdfSystem && typeof window.PdfSystem.showModal === 'function') {
-            const firstProperty = window.properties?.[0];
-            if (firstProperty) {
-                window.PdfSystem.showModal(firstProperty.id);
-                log('success', `🎮 Modal PDF aberto para imóvel ${firstProperty.id}`);
+        if (window.PdfSystem && window.PdfSystem.showModal) {
+            const firstProp = window.properties?.[0];
+            if (firstProp) {
+                window.PdfSystem.showModal(firstProp.id);
+                log('success', `🎮 Modal PDF aberto para imóvel ${firstProp.id}`);
             } else {
-                log('warning', '⚠️ Nenhum imóvel encontrado para testar o modal');
+                log('warning', '⚠️ Nenhum imóvel disponível para testar');
             }
         } else {
-            log('error', '❌ PdfSystem ou showModal não disponível');
+            log('error', '❌ PdfSystem.showModal não disponível');
         }
     }
     
-    function testPdfButtonsManual() {
-        const buttons = document.querySelectorAll('.pdf-access');
-        log('info', `🔍 Testando ${buttons.length} botões PDF manualmente...`);
+    function forceShowDiagnostics() {
+        log('info', '💥 Forçando visualização do diagnóstico...');
         
-        let fixedCount = 0;
-        let issues = [];
-        
-        buttons.forEach((btn, index) => {
-            const hasOnclick = btn.getAttribute('onclick');
-            const hasEvent = btn.onclick;
-            
-            if (!hasOnclick && !hasEvent) {
-                issues.push(index);
-                
-                // Tentar encontrar property ID
-                const card = btn.closest('.property-card');
-                const propertyId = card?.getAttribute('data-property-id');
-                
-                if (propertyId) {
-                    btn.setAttribute('onclick', `event.stopPropagation(); window.PdfSystem.showModal(${propertyId})`);
-                    btn.style.border = '2px solid #27ae60';
-                    fixedCount++;
-                }
-            }
-        });
-        
-        if (issues.length > 0) {
-            log(fixedCount > 0 ? 'success' : 'warning',
-                `🔧 ${fixedCount}/${issues.length} botões PDF corrigidos`);
-        } else {
-            log('success', '✅ Todos os botões PDF estão funcionais');
+        // Criar UI se não existir
+        if (!elements.container) {
+            createUI();
         }
         
-        return { issues, fixedCount };
-    }
-    
-    function forceReloadProperties() {
-        log('info', '🔄 Forçando recarregamento de imóveis...');
+        // Mostrar forçadamente
+        elements.container.style.display = 'block';
+        elements.container.style.zIndex = '999999';
+        elements.container.style.opacity = '1';
+        state.isVisible = true;
         
-        if (window.SharedCore && window.SharedCore.fetchProperties) {
-            window.SharedCore.fetchProperties()
-                .then(() => log('success', '✅ Imóveis recarregados com sucesso'))
-                .catch(err => log('error', '❌ Erro ao recarregar imóveis:', err));
-        } else {
-            log('error', '❌ SharedCore.fetchProperties não disponível');
-        }
+        // Trazer para frente
+        elements.container.style.transform = 'translate(-50%, -50%) scale(1)';
+        
+        log('success', '✅ Diagnóstico forçado para visualização');
     }
     
-    function clearLocalStorage() {
-        const confirm = window.confirm('⚠️ TEM CERTEZA? Isso limpará todos os dados locais (filtros, preferências, etc).');
-        if (confirm) {
-            const backup = {};
-            Object.keys(localStorage).forEach(key => {
-                backup[key] = localStorage.getItem(key);
-            });
-            
-            localStorage.clear();
-            log('warning', '🗑️ LocalStorage limpo. Backup no console.');
-            console.log('💾 Backup do LocalStorage:', backup);
-            
-            // Recarregar a página
-            setTimeout(() => location.reload(), 1000);
-        }
-    }
-    
-    function reloadPage() {
-        location.reload();
-    }
-    
-    function showSystemInfo() {
-        const info = {
-            navigator: {
-                userAgent: navigator.userAgent,
-                platform: navigator.platform,
-                language: navigator.language
-            },
-            screen: {
-                width: window.screen.width,
-                height: window.screen.height,
-                innerWidth: window.innerWidth,
-                innerHeight: window.innerHeight
-            },
-            performance: performance.timing ? {
-                loadTime: performance.timing.loadEventEnd - performance.timing.navigationStart,
-                domReady: performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart
-            } : 'N/A',
-            memory: performance.memory ? {
-                used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) + 'MB',
-                total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024) + 'MB',
-                limit: Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024) + 'MB'
-            } : 'N/A',
-            diagnostics: {
-                namespace: CONFIG.namespace,
-                version: CONFIG.version,
-                logsCount: state.logs.length,
-                startTime: new Date(state.startTime).toLocaleString()
-            }
+    function analyzePerformance() {
+        log('info', '⚡ Analisando performance...');
+        
+        const perf = {
+            loadTime: Date.now() - state.startTime,
+            propertyCount: window.properties?.length || 0,
+            scriptsLoaded: document.querySelectorAll('script[src]').length,
+            imagesLoaded: document.querySelectorAll('img[src]').length
         };
         
-        log('info', 'ℹ️ Informações completas do sistema:', info);
-        
-        // Mostrar em alerta também
-        const summary = `
-💻 SISTEMA:
-• User Agent: ${info.navigator.userAgent.substring(0, 80)}...
-• Tela: ${info.screen.width}x${info.screen.height}
-• Idioma: ${info.navigator.language}
-
-📊 PERFORMANCE:
-• Memória usada: ${info.memory.used || 'N/A'}
-• Tempo de carga: ${info.performance.loadTime || 'N/A'}ms
-
-🔧 DIAGNÓSTICO:
-• Namespace: ${CONFIG.namespace}
-• Versão: ${CONFIG.version}
-• Logs: ${state.logs.length} entradas
-        `.trim();
-        
-        alert(summary);
-        
-        return info;
+        log('info', '📊 Performance:', perf);
+        return perf;
     }
     
-    function enableVerboseLogging() {
-        localStorage.setItem('debug_mode', 'verbose');
-        localStorage.setItem('log_level', 'debug');
+    async function testSupabaseConnection() {
+        log('info', '🌐 Testando Supabase...');
         
-        // Adicionar listener global para erros
-        window.addEventListener('error', function(e) {
-            log('error', `🌍 Erro global: ${e.message}`, {
-                filename: e.filename,
-                lineno: e.lineno,
-                colno: e.colno
-            });
-        });
-        
-        // Adicionar listener para promises não tratadas
-        window.addEventListener('unhandledrejection', function(e) {
-            log('error', '🌍 Promise rejeitada não tratada:', e.reason);
-        });
-        
-        log('success', '🔊 Logs detalhados ativados. Erros globais serão capturados.');
-    }
-    
-    function disableOtherDiagnostics() {
-        // Encontrar e desativar outros painéis de diagnóstico
-        const otherPanels = document.querySelectorAll('[id*="diagnostics"]:not(#' + CONFIG.containerId + ')');
-        let disabledCount = 0;
-        
-        otherPanels.forEach(panel => {
-            if (panel.style.display !== 'none') {
-                panel.style.display = 'none';
-                disabledCount++;
-                console.log(`%c[${CONFIG.namespace}] ⚡ Painel desativado: ${panel.id}`, 'color: #e74c3c');
-            }
-        });
-        
-        // Limpar event listeners de outros sistemas
-        const oldDiagnostics = window.Diagnostics;
-        if (oldDiagnostics && oldDiagnostics !== window[CONFIG.namespace]) {
-            console.log(`%c[${CONFIG.namespace}] ⚡ Sistema Diagnostics anterior encontrado e isolado`, 'color: #e74c3c');
+        if (!window.supabaseClient) {
+            return { error: 'Cliente não encontrado' };
         }
         
-        log('info', `⚡ ${disabledCount} outros painéis de diagnóstico foram desativados`);
-        return disabledCount;
+        try {
+            const { data, error } = await window.supabaseClient
+                .from('properties')
+                .select('id')
+                .limit(1);
+            
+            if (error) throw error;
+            
+            log('success', `✅ Supabase conectado: ${data?.length || 0} registros`);
+            return { success: true, count: data?.length || 0 };
+        } catch (err) {
+            log('error', '❌ Erro Supabase:', err.message);
+            return { error: err.message };
+        }
     }
     
-    function testAllButtons() {
-        log('info', '🔘 Testando todos os botões da página...');
+    // ========== SISTEMA DE TENTATIVAS AUTOMÁTICAS ==========
+    function attemptAutoShow() {
+        if (state.hasInitialized || !CONFIG.autoStart) return;
         
-        const buttons = document.querySelectorAll('button, [onclick], .btn, .button');
-        const results = {
-            total: buttons.length,
-            withOnclick: 0,
-            withListener: 0,
-            broken: []
-        };
+        state.attempts++;
         
-        buttons.forEach((btn, index) => {
-            const hasOnclick = btn.getAttribute('onclick');
-            const hasEvent = btn.onclick;
-            const isVisible = btn.offsetParent !== null;
+        // Condições para mostrar automaticamente
+        const shouldShow = 
+            window.location.search.includes('diagnostics=true') ||
+            localStorage.getItem('diagnostics_auto') === 'true' ||
+            (state.attempts > 3 && isSystemReady());
+        
+        if (shouldShow && !state.isVisible) {
+            log('info', `🚀 Tentativa ${state.attempts}: Iniciando diagnóstico automático...`);
             
-            if (hasOnclick) results.withOnclick++;
-            if (hasEvent) results.withListener++;
+            // Marcar como inicializado
+            state.hasInitialized = true;
+            state.systemReady = true;
             
-            if (!hasOnclick && !hasEvent && isVisible && btn.textContent.includes('PDF')) {
-                results.broken.push({
-                    index,
-                    text: btn.textContent.substring(0, 30),
-                    type: btn.className
-                });
-            }
-        });
-        
-        log('info', '📊 Resultado do teste de botões:', results);
-        
-        const functional = results.withOnclick + results.withListener;
-        const score = Math.round((functional / results.total) * 100);
-        
-        log(score > 90 ? 'success' : 'warning',
-            `🔘 Botões: ${functional}/${results.total} funcionais (${score}%)`);
-        
-        return results;
-    }
-    
-    function checkConflicts() {
-        log('info', '🔍 Verificando conflitos no sistema...');
-        
-        const conflicts = [];
-        
-        // Verificar múltiplos diagnósticos
-        if (window.Diagnostics && window.Diagnostics !== window[CONFIG.namespace]) {
-            conflicts.push({
-                type: 'namespace',
-                message: 'Múltiplos sistemas Diagnostics encontrados',
-                details: {
-                    current: CONFIG.namespace,
-                    other: 'window.Diagnostics'
+            // Criar e mostrar UI
+            createUI();
+            
+            // Aguardar um pouco e mostrar
+            setTimeout(() => {
+                if (elements.container) {
+                    elements.container.style.display = 'block';
+                    state.isVisible = true;
+                    log('success', '✅ Diagnóstico V54 aberto automaticamente');
+                    
+                    // Executar verificações iniciais
+                    setTimeout(() => {
+                        verifyModules();
+                        analyzePerformance();
+                    }, 500);
                 }
-            });
-        }
-        
-        // Verificar funções duplicadas
-        const functions = ['show', 'hide', 'runAllTests'];
-        functions.forEach(funcName => {
-            const ourFunc = window[CONFIG.namespace][funcName];
-            const globalFunc = window[funcName];
+            }, 300);
             
-            if (globalFunc && globalFunc !== ourFunc) {
-                conflicts.push({
-                    type: 'function',
-                    message: `Função ${funcName} duplicada no escopo global`,
-                    details: { source: 'window.' + funcName }
-                });
-            }
-        });
-        
-        // Verificar event listeners duplicados
-        if (window._diagnosticsEventListeners && window._diagnosticsEventListeners.length > 1) {
-            conflicts.push({
-                type: 'listeners',
-                message: 'Múltiplos event listeners de diagnóstico',
-                details: { count: window._diagnosticsEventListeners.length }
-            });
+            // Parar tentativas
+            clearInterval(attemptInterval);
+        } else if (state.attempts > 10) {
+            log('warning', `⏱️ Máximo de tentativas atingido (${state.attempts}). Use DiagnosticsV54.show()`);
+            clearInterval(attemptInterval);
         }
-        
-        // Verificar estilos CSS duplicados
-        const styleSheets = document.querySelectorAll('style[id*="diagnostics"]');
-        if (styleSheets.length > 1) {
-            conflicts.push({
-                type: 'styles',
-                message: 'Múltiplas folhas de estilo de diagnóstico',
-                details: { count: styleSheets.length }
-            });
-        }
-        
-        if (conflicts.length > 0) {
-            log('warning', `⚠️ ${conflicts.length} conflitos encontrados:`, conflicts);
-            
-            // Oferecer correção automática
-            const fix = window.confirm(
-                `Encontrados ${conflicts.length} conflitos.\n` +
-                `Deseja corrigir automaticamente?`
-            );
-            
-            if (fix) {
-                disableOtherDiagnostics();
-                log('success', '✅ Conflitos resolvidos automaticamente');
-            }
-        } else {
-            log('success', '✅ Nenhum conflito encontrado. Sistema limpo.');
-        }
-        
-        return conflicts;
     }
     
-    function sampleFirstProperty() {
-        const firstProp = window.properties?.[0];
-        if (firstProp) {
-            console.log('📋 Primeiro imóvel:', firstProp);
-            log('info', '📋 Primeiro imóvel (veja console)', {
-                id: firstProp.id,
-                title: firstProp.title,
-                price: firstProp.price,
-                hasPDF: !!firstProp.pdf_url
-            });
-        } else {
-            log('warning', '⚠️ Nenhum imóvel encontrado no array properties');
-        }
-        return firstProp;
-    }
-    
-    // ========== API PÚBLICA ÚNICA ==========
+    // ========== API PÚBLICA ==========
     window[CONFIG.namespace] = {
-        // Controle da UI
         show: function() {
             if (!elements.container) {
                 createUI();
             }
             elements.container.style.display = 'block';
             state.isVisible = true;
-            log('info', '🎛️ Painel de diagnóstico V54 aberto');
+            log('success', '🎛️ Diagnóstico V54 aberto manualmente');
             
-            // Atualizar dados em tempo real
+            // Atualizar dados
             setTimeout(() => {
-                const countEl = document.getElementById('property-count-v54');
-                const cardsEl = document.getElementById('cards-count-v54');
-                if (countEl) countEl.textContent = window.properties?.length || 0;
-                if (cardsEl) cardsEl.textContent = document.querySelectorAll('.property-card').length;
+                if (document.getElementById('property-count-v54')) {
+                    document.getElementById('property-count-v54').textContent = window.properties?.length || 0;
+                }
+                if (document.getElementById('cards-count-v54')) {
+                    document.getElementById('cards-count-v54').textContent = document.querySelectorAll('.property-card').length;
+                }
+                updateLogsDisplay();
             }, 100);
+            
+            return true;
         },
         
         hide: function() {
             if (elements.container) {
                 elements.container.style.display = 'none';
                 state.isVisible = false;
-                log('info', '🎛️ Painel de diagnóstico V54 fechado');
+                log('info', '🎛️ Diagnóstico V54 fechado');
             }
         },
         
@@ -1290,238 +949,135 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO IS
             }
         },
         
-        // Execução de testes
         testModule: async function(moduleName) {
-            log('info', `🧪 Executando teste: ${moduleName}`);
+            log('info', `🧪 Testando: ${moduleName}`);
             
-            const testFunctions = {
+            const tests = {
                 'testPdfSystem': testPdfSystem,
                 'diagnosePdfIconProblem': diagnosePdfIconProblem,
                 'verifyModules': verifyModules,
                 'testSupabaseConnection': testSupabaseConnection,
-                'validateAdminForm': validateAdminForm,
-                'testGallery': testGallery,
                 'analyzePerformance': analyzePerformance
             };
             
-            if (testFunctions[moduleName]) {
+            if (tests[moduleName]) {
                 try {
-                    const result = await testFunctions[moduleName]();
-                    log('success', `✅ Teste ${moduleName} concluído`);
-                    
-                    // Atualizar UI se necessário
-                    if (state.isVisible && elements.container) {
-                        showTab('logs');
-                    }
-                    
+                    const result = await tests[moduleName]();
+                    log('success', `✅ ${moduleName} concluído`);
                     return result;
-                } catch (error) {
-                    log('error', `❌ Erro no teste ${moduleName}:`, error.message);
-                    return { error: error.message, stack: error.stack };
+                } catch (err) {
+                    log('error', `❌ Erro em ${moduleName}:`, err.message);
+                    return { error: err.message };
                 }
-            } else {
-                log('error', `❌ Teste desconhecido: ${moduleName}`);
-                return { error: 'Teste não encontrado' };
             }
+            
+            return { error: 'Teste não encontrado' };
         },
         
         runAllTests: async function() {
-            log('info', '🚀 INICIANDO TODOS OS TESTES V54...');
+            log('info', '🚀 Executando todos os testes...');
             
-            const tests = [
-                'verifyModules',
-                'testPdfSystem',
-                'diagnosePdfIconProblem',
-                'testSupabaseConnection',
-                'validateAdminForm',
-                'testGallery',
-                'analyzePerformance'
-            ];
+            const testList = ['verifyModules', 'testPdfSystem', 'analyzePerformance'];
+            const results = [];
             
-            const results = {
-                startTime: new Date().toISOString(),
-                system: CONFIG.namespace,
-                tests: [],
-                summary: {
-                    passed: 0,
-                    failed: 0,
-                    total: tests.length
-                }
-            };
-            
-            for (const testName of tests) {
-                try {
-                    log('info', `▶️ Executando: ${testName}`);
-                    const result = await this.testModule(testName);
-                    
-                    const testResult = {
-                        name: testName,
-                        result: result,
-                        status: result?.error ? 'failed' : 'passed',
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    results.tests.push(testResult);
-                    
-                    if (result?.error) {
-                        results.summary.failed++;
-                    } else {
-                        results.summary.passed++;
-                    }
-                    
-                } catch (error) {
-                    results.tests.push({
-                        name: testName,
-                        error: error.message,
-                        status: 'error',
-                        timestamp: new Date().toISOString()
-                    });
-                    results.summary.failed++;
-                }
+            for (const test of testList) {
+                results.push(await this.testModule(test));
             }
             
-            const score = Math.round((results.summary.passed / results.summary.total) * 100);
-            log(score >= 80 ? 'success' : 'warning',
-                `📊 RESULTADO FINAL V54: ${results.summary.passed}/${results.summary.total} testes passados (${score}%)`);
+            const passed = results.filter(r => !r.error).length;
+            const total = results.length;
+            const score = Math.round((passed / total) * 100);
             
-            // Mostrar resumo na UI
-            if (state.isVisible) {
-                alert(`✅ Testes V54 concluídos!\n\n` +
-                      `Passados: ${results.summary.passed}/${results.summary.total}\n` +
-                      `Score: ${score}%\n` +
-                      `Sistema: ${CONFIG.namespace}`);
-            }
-            
-            state.tests = results;
-            return results;
+            log('success', `📊 Resultado: ${passed}/${total} passaram (${score}%)`);
+            return { passed, total, score, results };
         },
         
-        // Logs
         clearLogs: function() {
             state.logs = [];
             updateLogsDisplay();
-            log('info', '🗑️ Logs V54 limpos');
+            log('info', '🗑️ Logs limpos');
         },
         
         exportLogs: function() {
-            const dataStr = JSON.stringify(state.logs, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            const exportFileDefaultName = `diagnostics-v54-logs-${Date.now()}.json`;
-            
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
-            
-            log('success', '💾 Logs V54 exportados');
+            const data = JSON.stringify(state.logs, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `diagnostics-v54-logs-${Date.now()}.json`;
+            a.click();
+            log('success', '💾 Logs exportados');
         },
         
         exportReport: function() {
             const report = {
                 timestamp: new Date().toISOString(),
-                namespace: CONFIG.namespace,
+                system: CONFIG.namespace,
                 version: CONFIG.version,
                 url: window.location.href,
-                systemInfo: {
-                    userAgent: navigator.userAgent,
-                    screen: `${window.innerWidth}x${window.innerHeight}`,
-                    propertiesCount: window.properties?.length || 0,
-                    loadTime: Date.now() - state.startTime
-                },
                 logs: state.logs,
-                tests: state.tests,
-                modules: verifyModules().results
+                state: state
             };
             
-            const dataStr = JSON.stringify(report, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            const exportFileDefaultName = `diagnostics-v54-report-${Date.now()}.json`;
-            
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
-            
-            log('success', '📊 Relatório V54 exportado');
+            const data = JSON.stringify(report, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `diagnostics-v54-report-${Date.now()}.json`;
+            a.click();
+            log('success', '📊 Relatório exportado');
         },
         
-        // Informações
-        getLogs: function() {
-            return [...state.logs];
-        },
-        
-        getState: function() {
-            return { 
-                ...state, 
-                config: CONFIG,
-                elements: {
-                    container: !!elements.container,
-                    tabs: !!elements.tabs,
-                    content: !!elements.content,
-                    logsContainer: !!elements.logsContainer
-                }
-            };
-        },
-        
-        // Funções auxiliares diretas
-        forceReloadProperties: forceReloadProperties,
-        showSystemInfo: showSystemInfo,
-        checkConflicts: checkConflicts,
-        testAllButtons: testAllButtons,
-        disableOtherDiagnostics: disableOtherDiagnostics
+        getLogs: function() { return [...state.logs]; },
+        getState: function() { return { ...state, config: CONFIG }; },
+        forceShow: forceShowDiagnostics
     };
     
-    // ========== INICIALIZAÇÃO AUTOMÁTICA ÚNICA ==========
-    if (CONFIG.autoStart) {
-        document.addEventListener('DOMContentLoaded', function() {
-            // Verificar se deve iniciar automaticamente
-            const shouldStart = window.location.search.includes('diagnostics=true') ||
-                              localStorage.getItem('diagnostics_auto') === 'true';
-            
-            if (shouldStart) {
-                setTimeout(() => {
-                    log('info', `🚀 Sistema de diagnóstico ${CONFIG.namespace} v${CONFIG.version} inicializado`);
-                    
-                    // Aguardar um pouco mais para garantir que tudo carregou
-                    setTimeout(() => {
-                        // Criar e mostrar UI
-                        window[CONFIG.namespace].show();
-                        
-                        // Executar verificação inicial
-                        setTimeout(() => {
-                            verifyModules();
-                            analyzePerformance();
-                            checkConflicts();
-                        }, 1500);
-                    }, 1000);
-                }, 2000);
-            } else {
-                log('info', `🔧 Sistema ${CONFIG.namespace} v${CONFIG.version} carregado (modo standby)`);
-            }
-        });
-    }
-    
-    // ========== HOTKEY PARA ABRIR ==========
+    // ========== HOTKEYS ==========
     document.addEventListener('keydown', function(e) {
-        // Ctrl+Shift+D para abrir diagnóstico
+        // Ctrl+Shift+D
         if (e.ctrlKey && e.shiftKey && e.key === 'D') {
             e.preventDefault();
             window[CONFIG.namespace].toggle();
-            log('info', '⌨️ Hotkey Ctrl+Shift+D acionada');
         }
         
-        // Ctrl+Shift+T para executar todos os testes
+        // Ctrl+Shift+T
         if (e.ctrlKey && e.shiftKey && e.key === 'T') {
             e.preventDefault();
             window[CONFIG.namespace].runAllTests();
-            log('info', '⌨️ Hotkey Ctrl+Shift+T acionada');
         }
     });
     
-    // ========== INICIALIZAÇÃO FINAL ==========
-    log('info', `🔧 ${CONFIG.namespace} v${CONFIG.version} carregado`);
-    console.log(`🎛️ ${CONFIG.namespace}: Use "${CONFIG.namespace}.show()" para abrir o painel`);
-    console.log(`🎛️ ${CONFIG.namespace}: Use "${CONFIG.namespace}.runAllTests()" para executar todos os testes`);
-    console.log(`🎛️ ${CONFIG.namespace}: Hotkeys: Ctrl+Shift+D (abrir), Ctrl+Shift+T (testar)`);
+    // ========== INICIALIZAÇÃO ==========
+    log('info', `🔧 ${CONFIG.namespace} v${CONFIG.version} inicializando...`);
     
-})();            
+    // Iniciar sistema de tentativas
+    let attemptInterval;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        log('info', '📄 DOM Content Loaded - Iniciando verificações...');
+        state.domReady = true;
+        
+        // Começar tentativas
+        attemptInterval = setInterval(attemptAutoShow, CONFIG.checkInterval);
+        
+        // Primeira tentativa imediata
+        setTimeout(attemptAutoShow, 500);
+    });
+    
+    // Fallback: Se DOMContentLoaded já passou, iniciar agora
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        log('info', '⚡ DOM já carregado - Iniciando agora...');
+        state.domReady = true;
+        attemptInterval = setInterval(attemptAutoShow, CONFIG.checkInterval);
+        setTimeout(attemptAutoShow, 100);
+    }
+    
+    // Mensagem final no console
+    console.log(`🎛️ ${CONFIG.namespace} v${CONFIG.version} PRONTO!`);
+    console.log(`🎛️ Use: ${CONFIG.namespace}.show()`);
+    console.log(`🎛️ Ou clique no botão 🔍 no canto inferior direito`);
+    console.log(`🎛️ Hotkeys: Ctrl+Shift+D (abrir), Ctrl+Shift+T (testar)`);
+    
+})();
