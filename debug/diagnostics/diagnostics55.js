@@ -3,7 +3,7 @@
    Repositório: weberlessa-support
    Ativação: ?debug=true&diagnostics=true na URL
    CARACTERÍSTICA: ZERO poluição de console (apenas 1 linha total)
-   Última atualização: 11/02/2026
+   Última atualização: 11/02/2026 - CORREÇÃO DE TRUNCAMENTO
    ========================================================================== */
 
 // ================== CONFIGURAÇÃO INICIAL (SILENCIOSA) ==================
@@ -12,7 +12,7 @@
     const IS_ACTIVE = location.search.includes('debug=true') && location.search.includes('diagnostics=true');
     
     if (!IS_ACTIVE) return;
-    
+
     // ================== ESTADO GLOBAL ==================
     window._diag55 = window._diag55 || {
         panel: null,
@@ -243,7 +243,7 @@
             panel.style.display = 'none';
         });
         
-        document.getElementById('_diag_minimize')?.addEventListener('click', () => {
+        document.getElementById('_diag_minimize')?.addEventListener('click', function() {
             if (content.style.display === 'none') {
                 content.style.display = 'block';
                 this.innerHTML = '─';
