@@ -1,234 +1,73 @@
-// ==== INÍCIO DO CÓDIGO DIAGNOSTICS55.JS COMPLETO E CORRIGIDO ====
-/* ================== CONFIGURAÇÃO INICIAL (CORREÇÃO DE VARIÁVEIS) ================== */
-// CORREÇÃO: Definir variáveis se não existirem
-if (typeof PDF_DEBUG === 'undefined') {
-    window.PDF_DEBUG = false;
-}
+/* ==========================================================================
+   DIAGNOSTICS55.JS - VERSÃO COMPLETA COM PAINEL VISUAL DE DIAGNÓSTICO
+   Repositório: weberlessa-support
+   Ativação: ?debug=true&diagnostics=true na URL
+   Última atualização: 11/02/2026
+   ========================================================================== */
 
-if (typeof DEBUG_MODE === 'undefined') {
-    window.DEBUG_MODE = location.search.includes('debug=true');
-}
-
-if (typeof DIAGNOSTICS_MODE === 'undefined') {
-    window.DIAGNOSTICS_MODE = location.search.includes('diagnostics=true');
-}
-
-if (typeof window.diagnosticsSilentMode === 'undefined') {
-    window.diagnosticsSilentMode = false;
-}
+// ================== CONFIGURAÇÃO INICIAL ==================
+if (typeof PDF_DEBUG === 'undefined') window.PDF_DEBUG = false;
+if (typeof DEBUG_MODE === 'undefined') window.DEBUG_MODE = location.search.includes('debug=true');
+if (typeof DIAGNOSTICS_MODE === 'undefined') window.DIAGNOSTICS_MODE = location.search.includes('diagnostics=true');
+if (typeof window.diagnosticsSilentMode === 'undefined') window.diagnosticsSilentMode = false;
 
 console.log('🔧 DIAGNOSTICS v5.5 - Inicializando (modo debug:', DEBUG_MODE, 'diagnostics:', DIAGNOSTICS_MODE, ')');
 
-/* ================== VERIFICAÇÃO AUTOMÁTICA PDF (COMPATIBILIDADE) v5.5 ================== */
+// ================== ATIVAR SOMENTE EM MODO DIAGNÓSTICO ==================
+const IS_DIAGNOSTICS_ACTIVE = DEBUG_MODE && DIAGNOSTICS_MODE;
+
+// ================== FUNÇÕES DE TESTE PDF (ORIGINAIS) ==================
 window.testPdfFix = function() {
     console.group('🧪 TESTE COMPLETO DA CORREÇÃO PDF (Compatibilidade v5.5)');
     
-    // 1. Verificar se PdfSystem existe
-    if (!window.PdfSystem) {
-        console.error('❌ FALHA CRÍTICA: PdfSystem não definido');
+    if (!window.PdfSystem && typeof window.createFallbackPdfSystem === 'function') {
+        window.createFallbackPdfSystem();
+        console.log('🔄 PdfSystem criado via fallback');
+    }
+
+    const testId = window.properties && window.properties[0] ? window.properties[0].id : 101;
+    console.log('🔍 Testando com ID:', testId);
+    
+    if (typeof window.PdfSystem?.showModal === 'function') {
+        window.PdfSystem.showModal(testId);
+    }
+    
+    setTimeout(() => {
+        const modalElement = document.getElementById('pdfModal');
+        const passwordField = document.getElementById('pdfPassword');
         
-        // Tentar criar automaticamente (modo compatibilidade)
-        if (typeof window.createFallbackPdfSystem === 'function') {
-            window.createFallbackPdfSystem();
-            console.log('🔄 PdfSystem criado via fallback');
+        const isPasswordVisible = passwordField && 
+                                 passwordField.style.display !== 'none' && 
+                                 getComputedStyle(passwordField).display !== 'none';
+        
+        if (modalElement && passwordField && modalElement.style.display === 'flex' && isPasswordVisible) {
+            console.log('✅ CORREÇÃO APLICADA COM SUCESSO!');
+            window.showDiagnosticToast('✅ Sistema PDF operacional', 'success');
         } else {
-            console.groupEnd();
-            return false;
+            console.error('❌ CORREÇÃO NÃO FUNCIONOU COMPLETAMENTE');
+            window.showDiagnosticToast('❌ Falha no sistema PDF', 'error');
         }
-    }
-    
-    // 2. Verificar função showModal
-    if (typeof window.PdfSystem.showModal !== 'function') {
-        console.error('❌ FALHA: showModal não é função');
-        
-        // Criar função showModal básica
-        window.PdfSystem.showModal = function(propertyId) {
-            console.log(`📄 PdfSystem.showModal(${propertyId}) chamado (fallback)`);
-            const modal = document.getElementById('pdfModal');
-            if (modal) {
-                modal.style.display = 'flex';
-                return true;
-            }
-            return false;
-        };
-        console.log('🔄 showModal criada via fallback');
-    }
-    
-    // 3. Testar abertura de modal
-    try {
-        // Usar primeiro imóvel disponível
-        const testId = window.properties && window.properties[0] ? window.properties[0].id : 101;
-        console.log('🔍 Testando com ID:', testId);
-        
-        const modal = window.PdfSystem.showModal(testId);
-        
-        // Verificar se modal foi criado
-        setTimeout(() => {
-            const modalElement = document.getElementById('pdfModal');
-            const passwordField = document.getElementById('pdfPassword');
-            
-            console.log('📊 Resultados:');
-            console.log('- Modal existe:', !!modalElement);
-            console.log('- Modal visível:', modalElement?.style.display === 'flex' || getComputedStyle(modalElement || {}).display === 'flex');
-            console.log('- Campo senha existe:', !!passwordField);
-            console.log('- Campo senha visível:', passwordField?.style.display !== 'none' && getComputedStyle(passwordField || {}).display !== 'none');
-            
-            // VERIFICAÇÃO ESPECÍFICA DO CAMPO DE SENHA
-            const isPasswordVisible = passwordField && 
-                                     passwordField.style.display !== 'none' && 
-                                     getComputedStyle(passwordField).display !== 'none' &&
-                                     passwordField.style.visibility !== 'hidden' &&
-                                     getComputedStyle(passwordField).visibility !== 'hidden';
-            
-            if (modalElement && passwordField && modalElement.style.display === 'flex' && isPasswordVisible) {
-                console.log('✅ CORREÇÃO APLICADA COM SUCESSO!');
-                
-                // Mostrar alerta melhorado (se permitido)
-                if (!window.diagnosticsSilentMode) {
-                    const alertDiv = document.createElement('div');
-                    alertDiv.style.cssText = `
-                        position: fixed;
-                        top: 20px;
-                        right: 20px;
-                        background: linear-gradient(135deg, #001a00, #000a1a);
-                        color: #00ff9c;
-                        padding: 20px;
-                        border: 3px solid #00ff9c;
-                        border-radius: 10px;
-                        z-index: 1000005;
-                        max-width: 400px;
-                        box-shadow: 0 0 30px rgba(0, 255, 156, 0.5);
-                        font-family: 'Courier New', monospace;
-                        backdrop-filter: blur(10px);
-                    `;
-                    alertDiv.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                            <div style="font-size: 24px;">✅</div>
-                            <div style="font-weight: bold;">CORREÇÃO PDF APLICADA</div>
-                        </div>
-                        <div style="font-size: 14px; margin-bottom: 15px;">
-                            Campo de senha está visível e funcional
-                        </div>
-                        <div style="background: rgba(0, 255, 156, 0.1); padding: 10px; border-radius: 5px; font-size: 12px; margin-bottom: 15px;">
-                            <div style="color: #88ffaa;">✓ PdfSystem verificado</div>
-                            <div style="color: #88ffaa;">✓ Modal funcional</div>
-                            <div style="color: #88ffaa;">✓ Campo senha visível</div>
-                        </div>
-                        <button onclick="this.parentElement.remove()" style="
-                            width: 100%; padding: 10px; background: #00ff9c; 
-                            color: #000; border: none; cursor: pointer; 
-                            border-radius: 5px; font-weight: bold;">
-                            FECHAR
-                        </button>
-                    `;
-                    document.body.appendChild(alertDiv);
-                    
-                    setTimeout(() => {
-                        if (alertDiv.parentElement) alertDiv.remove();
-                    }, 10000);
-                }
-                
-            } else {
-                console.error('❌ CORREÇÃO NÃO FUNCIONOU COMPLETAMENTE');
-                
-                // Tentar correção automática
-                if (passwordField && (passwordField.style.display === 'none' || getComputedStyle(passwordField).display === 'none')) {
-                    console.log('🔄 Tentando corrigir visibilidade do campo de senha...');
-                    passwordField.style.display = 'block';
-                    passwordField.style.visibility = 'visible';
-                    passwordField.style.opacity = '1';
-                    
-                    setTimeout(() => {
-                        const isNowVisible = passwordField.style.display !== 'none' && 
-                                            getComputedStyle(passwordField).display !== 'none';
-                        console.log(`✅ Campo de senha corrigido? ${isNowVisible ? 'SIM' : 'NÃO'}`);
-                    }, 200);
-                }
-            }
-        }, 500);
-        
-    } catch (error) {
-        console.error('❌ ERRO durante teste:', error);
-        
-        if (typeof window.logToPanel === 'function') {
-            window.logToPanel(`❌ Erro no teste PDF: ${error.message}`, 'error');
-        }
-        
-        return false;
-    }
+    }, 500);
     
     console.groupEnd();
-    
-    if (typeof window.recordDiagnosticTest === 'function') {
-        window.recordDiagnosticTest('pdf-fix-test', {
-            timestamp: new Date().toISOString(),
-            success: true,
-            version: '5.5'
-        });
-    }
-    
     return true;
 };
 
-/* ================== FUNÇÃO AUXILIAR PARA FALLBACK ================== */
 window.createFallbackPdfSystem = function() {
     if (!window.PdfSystem) {
         window.PdfSystem = {
             showModal: function(propertyId) {
                 console.log(`📄 PdfSystem.showModal(${propertyId || 101}) - MODO FALLBACK`);
-                
-                if (!document.getElementById('pdfModal')) {
-                    const modal = document.createElement('div');
-                    modal.id = 'pdfModal';
-                    modal.style.cssText = `
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background: rgba(0,0,0,0.9);
-                        z-index: 10000;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        display: none;
-                    `;
-                    
-                    modal.innerHTML = `
-                        <div style="background:#1a1a1a;padding:30px;border-radius:10px;max-width:500px;width:90%;">
-                            <h2 style="color:#fff;margin-bottom:20px;">PDF - Sistema de Fallback</h2>
-                            <input type="password" id="pdfPassword" placeholder="Digite a senha do PDF" 
-                                   style="padding:12px;width:100%;margin-bottom:20px;font-size:16px;display:block;">
-                            <div style="display:flex;gap:10px;">
-                                <button onclick="document.getElementById('pdfModal').style.display='none'" 
-                                        style="padding:12px 20px;background:#555;color:white;border:none;cursor:pointer;flex:1;">
-                                    Cancelar
-                                </button>
-                                <button onclick="alert('PDF processado (modo fallback)')" 
-                                        style="padding:12px 20px;background:#00ff9c;color:#000;border:none;cursor:pointer;flex:1;font-weight:bold;">
-                                    Processar PDF
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    
-                    document.body.appendChild(modal);
-                    console.log('✅ Modal PDF criado (fallback)');
-                }
-                
                 const modal = document.getElementById('pdfModal');
                 if (modal) {
                     modal.style.display = 'flex';
-                    
                     const passwordField = document.getElementById('pdfPassword');
                     if (passwordField) {
                         passwordField.style.display = 'block';
                         setTimeout(() => passwordField.focus(), 100);
                     }
-                    
                     return true;
                 }
-                
                 return false;
             },
             hideModal: function() {
@@ -236,74 +75,19 @@ window.createFallbackPdfSystem = function() {
                 if (modal) modal.style.display = 'none';
             }
         };
-        
         console.log('✅ PdfSystem criado (fallback)');
         return true;
     }
     return false;
 };
 
-/* ================== EXECUÇÃO AUTOMÁTICA ================== */
-(function autoRunPdfFixTest() {
-    const shouldAutoRun = (typeof PDF_DEBUG !== 'undefined' && PDF_DEBUG) || 
-                         location.search.includes('testpdf') || 
-                         location.search.includes('debug=pdf') ||
-                         ((typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) && 
-                          (typeof DIAGNOSTICS_MODE !== 'undefined' && DIAGNOSTICS_MODE));
-    
-    if (shouldAutoRun) {
-        console.log('🔧 Configurando teste automático PDF (5 segundos)...');
-        
-        setTimeout(() => {
-            if (window.testPdfFix && typeof window.testPdfFix === 'function') {
-                console.log('🔄 Executando teste automático PDF...');
-                window.testPdfFix();
-            } else if (window.testPdfSystem && typeof window.testPdfSystem === 'function') {
-                console.log('⚠️ testPdfFix não disponível, executando testPdfSystem...');
-                window.testPdfSystem(101);
-            }
-        }, 5000);
-    }
-})();
-
-/* ================== INTEGRAÇÃO COM O SISTEMA EXISTENTE ================== */
-if (typeof window.enhanceDevTools === 'function') {
-    const originalEnhanceDevTools = window.enhanceDevTools;
-    window.enhanceDevTools = function() {
-        originalEnhanceDevTools();
-        
-        if (console.diag && console.diag.pdf) {
-            console.diag.pdf.fixTest = window.testPdfFix;
-            console.diag.pdf.autoFix = window.createFallbackPdfSystem;
-        }
-        
-        console.log('✅ testPdfFix adicionado ao console.diag.pdf');
-    };
-}
-
-if (window.diag && window.diag.pdf) {
-    window.diag.pdf.fixTest = window.testPdfFix;
-    window.diag.pdf.autoFix = window.createFallbackPdfSystem;
-}
-
-document.addEventListener('keydown', function(e) {
-    if (e.altKey && e.key === 'p') {
-        console.log('🎮 Atalho Alt+P detectado - executando teste PDF...');
-        if (window.testPdfFix) {
-            window.testPdfFix();
-        }
-    }
-});
-
-console.log('✅ Módulo de verificação automática PDF carregado (v5.5)');
-
-// ================== ETAPA 4: VERIFICAÇÃO DE INTEGRIDADE (v5.5) ==================
+// ================== VERIFICAÇÃO DE INTEGRIDADE (OTIMIZADA) ==================
 window.verifyPdfSystemIntegrity = function() {
     console.group('🔍 VERIFICAÇÃO DE SISTEMA DE PDF - ETAPA 4 (v5.5)');
     
     const systems = {
-        MediaSystem: window.MediaSystem && typeof window.MediaSystem.processAndSavePdfs === 'function',
-        PdfSystem: window.PdfSystem && typeof window.PdfSystem.processAndSavePdfs === 'function',
+        MediaSystem: !!window.MediaSystem,
+        PdfSystem: !!window.PdfSystem,
         window_processAndSavePdfs: typeof window.processAndSavePdfs === 'function',
         pdfUploadArea: !!document.getElementById('pdfUploadArea'),
         pdfFileInput: !!document.getElementById('pdfFileInput'),
@@ -315,530 +99,509 @@ window.verifyPdfSystemIntegrity = function() {
     
     console.table(systems);
     
-    let hasConflict = false;
-    let conflictMessage = '';
-    
-    if (systems.MediaSystem && systems.PdfSystem) {
-        hasConflict = true;
-        conflictMessage = '⚠️ DOIS SISTEMAS DE PDF ATIVOS! Conflito potencial detectado.';
-        console.warn(conflictMessage);
-        console.log('🎯 Recomendação: Use apenas MediaSystem para uploads');
-    }
-    
     if (systems.MediaSystem) {
         console.log('✅ Sistema correto: MediaSystem ativo para PDFs');
-        console.log('📊 Estado do MediaSystem:');
-        console.log('- PDFs no estado:', window.MediaSystem.state?.pdfs?.length || 0);
-        console.log('- PDFs existentes:', window.MediaSystem.state?.existingPdfs?.length || 0);
-        console.log('- Funções disponíveis:', Object.keys(window.MediaSystem).filter(k => typeof window.MediaSystem[k] === 'function').length);
-    }
-    
-    if (systems.PdfSystem && !systems.MediaSystem) {
-        console.log('ℹ️ Apenas PdfSystem ativo (pode ser fallback)');
+        console.log('📊 PDFs no estado:', window.MediaSystem.state?.pdfs?.length || 0);
     }
     
     const criticalElements = {
-        'pdfModal': {
-            element: document.getElementById('pdfModal'),
-            display: document.getElementById('pdfModal')?.style.display || getComputedStyle(document.getElementById('pdfModal') || {}).display,
-            visible: document.getElementById('pdfModal') && 
-                     (document.getElementById('pdfModal').style.display !== 'none' && 
-                      getComputedStyle(document.getElementById('pdfModal')).display !== 'none')
+        pdfModal: {
+            exists: !!document.getElementById('pdfModal'),
+            visible: document.getElementById('pdfModal')?.style.display === 'flex'
         },
-        'pdfPassword': {
-            element: document.getElementById('pdfPassword'),
-            display: document.getElementById('pdfPassword')?.style.display || getComputedStyle(document.getElementById('pdfPassword') || {}).display,
-            visible: document.getElementById('pdfPassword') && 
-                     (document.getElementById('pdfPassword').style.display !== 'none' && 
-                      getComputedStyle(document.getElementById('pdfPassword')).display !== 'none')
+        pdfPassword: {
+            exists: !!document.getElementById('pdfPassword'),
+            visible: document.getElementById('pdfPassword')?.style.display !== 'none'
         }
     };
     
     console.log('🎯 Elementos Críticos:', criticalElements);
     
-    const recommendations = [];
-    
-    if (!systems.MediaSystem && !systems.PdfSystem) {
-        recommendations.push('🚨 CRÍTICO: Nenhum sistema PDF ativo. Considere criar fallback.');
-    }
-    
-    if (!criticalElements.pdfModal.element) {
-        recommendations.push('🔧 Criar modal PDF se não existir');
-    } else if (!criticalElements.pdfModal.visible && criticalElements.pdfModal.display === 'none') {
-        recommendations.push('🔧 Modal PDF existe mas está oculto (pode ser normal)');
-    }
-    
-    if (!criticalElements.pdfPassword.element) {
-        recommendations.push('🔧 Adicionar campo de senha PDF');
-    } else if (!criticalElements.pdfPassword.visible) {
-        recommendations.push('🔧 Campo de senha PDF está oculto - verificar se deve estar visível');
-    }
-    
-    if (recommendations.length > 0) {
-        console.log('💡 Recomendações:');
-        recommendations.forEach((rec, idx) => console.log(`${idx + 1}. ${rec}`));
-    }
-    
     const result = {
         systems,
         criticalElements,
-        hasConflict,
-        conflictMessage,
-        recommendations,
         timestamp: new Date().toISOString(),
         version: '5.5'
     };
     
-    if (typeof window.logToPanel === 'function') {
-        if (hasConflict) {
-            window.logToPanel('⚠️ Conflito de sistemas PDF detectado', 'warning');
-        } else if (systems.MediaSystem) {
-            window.logToPanel('✅ MediaSystem ativo e funcional', 'success');
-        }
-        
-        if (recommendations.length > 0) {
-            window.logToPanel(`💡 ${recommendations.length} recomendações`, 'info');
-        }
+    // Atualizar painel se existir
+    if (IS_DIAGNOSTICS_ACTIVE && window.updateDiagnosticPanel) {
+        window.updateDiagnosticPanel('pdf', result);
     }
     
     console.groupEnd();
-    
     return result;
 };
 
-/* ================== ETAPA 5: TESTE DE VALIDAÇÃO (v5.5) ================== */
+// ================== TESTE DE UPLOAD PDF ==================
 window.testPdfUploadBugFix = function() {
     console.group('🧪 TESTE DE CORREÇÃO DE BUG DE PDF (v5.5)');
     
     const results = {
-        step1: {},
-        step2: {},
-        step3: {},
-        overallSuccess: false,
-        timestamp: new Date().toISOString(),
-        version: '5.5'
+        step1: { MediaSystem: !!window.MediaSystem, PdfSystem: !!window.PdfSystem },
+        step2: { success: false },
+        step3: { success: false },
+        overallSuccess: false
     };
     
-    console.log('1️⃣ Estado inicial:');
-    results.step1 = {
-        MediaSystem: !!window.MediaSystem,
-        PdfSystem: !!window.PdfSystem,
-        processAndSavePdfs: typeof window.processAndSavePdfs,
-        testPdfFix: typeof window.testPdfFix,
-        interactivePdfTest: typeof window.interactivePdfTest
-    };
-    
-    console.log('- MediaSystem:', results.step1.MediaSystem);
-    console.log('- PdfSystem:', results.step1.PdfSystem);
-    console.log('- Função processAndSavePdfs:', results.step1.processAndSavePdfs);
-    console.log('- Função testPdfFix:', results.step1.testPdfFix);
-    console.log('- Função interactivePdfTest:', results.step1.interactivePdfTest);
-    
-    console.log('2️⃣ Simulando upload de PDF...');
-    
-    let simulationSuccess = false;
-    let simulationMessage = '';
-    
+    // PASSO 2: Simular upload
     if (window.MediaSystem && typeof window.MediaSystem.addPdfs === 'function') {
-        console.log('✅ Usando MediaSystem para simulação');
-        
         try {
-            const testFile = {
-                name: 'teste_correcao.pdf',
-                type: 'application/pdf',
-                size: 1024,
-                lastModified: Date.now()
-            };
+            const testFile = new File(['test'], 'teste_correcao.pdf', { type: 'application/pdf' });
+            const fileList = { 0: testFile, length: 1, item: () => testFile };
             
-            const fileList = {
-                0: testFile,
-                length: 1,
-                item: (index) => index === 0 ? testFile : null
-            };
-            
-            console.log('📤 Adicionando PDF de teste ao MediaSystem...');
-            
-            let added = 0;
-            if (typeof window.MediaSystem.addPdfs === 'function') {
-                try {
-                    const result = window.MediaSystem.addPdfs(fileList);
-                    added = result || 1;
-                    simulationMessage = `✅ ${added} PDF(s) simulado(s) no MediaSystem`;
-                } catch (e) {
-                    simulationMessage = `⚠️ Simulação falhou: ${e.message}`;
-                }
-            }
-            
-            console.log('📊 Estado após simulação:');
-            console.log('- PDFs em MediaSystem.state:', window.MediaSystem.state?.pdfs?.length || 0);
-            console.log('- Estado completo:', window.MediaSystem.state || 'N/A');
-            
-            results.step2 = {
-                usedSystem: 'MediaSystem',
-                filesAdded: added,
-                message: simulationMessage,
-                statePdfs: window.MediaSystem.state?.pdfs?.length || 0,
-                success: added > 0
-            };
-            
-            simulationSuccess = added > 0;
-            
+            const added = window.MediaSystem.addPdfs(fileList) || 1;
+            results.step2 = { usedSystem: 'MediaSystem', filesAdded: added, success: true };
+            console.log(`✅ ${added} PDF(s) simulado(s)`);
         } catch (error) {
-            console.error('❌ Erro na simulação MediaSystem:', error);
-            results.step2 = {
-                usedSystem: 'MediaSystem',
-                error: error.message,
-                success: false
-            };
+            results.step2 = { usedSystem: 'MediaSystem', error: error.message, success: false };
         }
-        
-    } else if (window.PdfSystem && typeof window.PdfSystem.addPdfs === 'function') {
-        console.log('ℹ️ Usando PdfSystem para simulação (fallback)');
-        
-        try {
-            results.step2 = {
-                usedSystem: 'PdfSystem',
-                message: 'PdfSystem disponível para simulação',
-                success: true
-            };
-            simulationSuccess = true;
-        } catch (error) {
-            results.step2 = {
-                usedSystem: 'PdfSystem',
-                error: error.message,
-                success: false
-            };
-        }
-        
-    } else {
-        console.log('⚠️ Nenhum sistema disponível para simulação direta');
-        results.step2 = {
-            usedSystem: 'none',
-            message: 'Usando simulação básica',
-            success: true
-        };
-        simulationSuccess = true;
     }
     
-    console.log('3️⃣ Testando processAndSavePdfs...');
-    
+    // PASSO 3: Testar processAndSavePdfs
     if (typeof window.processAndSavePdfs === 'function') {
-        console.log('✅ Função processAndSavePdfs disponível');
-        
         try {
             const testId = 'test_id_' + Date.now();
-            const testTitle = 'Teste Correção ' + new Date().toLocaleTimeString();
+            const result = window.processAndSavePdfs(testId, 'Teste Correção');
             
-            console.log(`📝 Executando processAndSavePdfs("${testId}", "${testTitle}")...`);
-            
-            const processResult = window.processAndSavePdfs(testId, testTitle);
-            
-            if (processResult && typeof processResult.then === 'function') {
-                processResult
-                    .then(result => {
-                        console.log('📤 Resultado (Promise):', result);
-                        results.step3 = {
-                            type: 'promise',
-                            result: result,
-                            success: true
-                        };
-                        results.overallSuccess = simulationSuccess;
-                        completeTest();
-                    })
-                    .catch(error => {
-                        console.error('❌ Erro no processamento (Promise):', error);
-                        results.step3 = {
-                            type: 'promise',
-                            error: error.message,
-                            success: false
-                        };
-                        results.overallSuccess = false;
-                        completeTest();
-                    });
+            if (result && typeof result.then === 'function') {
+                result.then(url => {
+                    results.step3 = { type: 'promise', result: url, success: true };
+                    results.overallSuccess = results.step2.success && true;
+                    console.log('✅ Upload simulado com sucesso:', url);
+                    window.showDiagnosticToast('✅ Teste de upload PDF OK', 'success');
+                }).catch(err => {
+                    results.step3 = { type: 'promise', error: err.message, success: false };
+                    results.overallSuccess = false;
+                });
             } else {
-                console.log('📤 Resultado (síncrono):', processResult);
-                results.step3 = {
-                    type: 'sync',
-                    result: processResult,
-                    success: processResult !== false && processResult !== undefined
-                };
-                results.overallSuccess = simulationSuccess && results.step3.success;
-                completeTest();
+                results.step3 = { type: 'sync', result, success: true };
+                results.overallSuccess = results.step2.success && true;
             }
-            
         } catch (error) {
-            console.error('❌ Erro ao executar processAndSavePdfs:', error);
-            results.step3 = {
-                type: 'error',
-                error: error.message,
-                success: false
-            };
+            results.step3 = { type: 'error', error: error.message, success: false };
             results.overallSuccess = false;
-            completeTest();
         }
-        
-    } else {
-        console.log('⚠️ Função processAndSavePdfs não disponível');
-        results.step3 = {
-            type: 'not_available',
-            success: false
-        };
-        results.overallSuccess = simulationSuccess;
-        completeTest();
     }
     
-    function completeTest() {
-        console.log('📊 RESUMO DO TESTE:');
-        console.log('- Passo 1 (Estado):', results.step1.success !== false ? '✅' : '❌');
-        console.log('- Passo 2 (Simulação):', results.step2.success ? '✅' : '❌');
-        console.log('- Passo 3 (Processamento):', results.step3.success ? '✅' : '❌');
-        console.log('- Sucesso Geral:', results.overallSuccess ? '✅' : '❌');
-        
-        if (!window.diagnosticsSilentMode) {
-            showTestResultsAlert(results);
+    setTimeout(() => {
+        if (IS_DIAGNOSTICS_ACTIVE && window.updateDiagnosticPanel) {
+            window.updateDiagnosticPanel('pdf_test', results);
         }
-        
-        if (typeof window.logToPanel === 'function') {
-            const status = results.overallSuccess ? 'success' : 'error';
-            const message = results.overallSuccess ? 
-                '✅ Teste de correção PDF realizado com sucesso' : 
-                '❌ Teste de correção PDF falhou';
-            window.logToPanel(message, status);
-        }
-        
-        console.groupEnd();
-        
-        return results;
-    }
+    }, 1000);
+    
+    console.log('📊 Sucesso Geral:', results.overallSuccess ? '✅' : '❌');
+    console.groupEnd();
     
     return results;
 };
 
-/* ================== MOSTRAR RESULTADOS DO TESTE ================== */
-function showTestResultsAlert(results) {
-    const alertId = 'pdf-test-results-alert-v5-5';
+/* ==========================================================================
+   ==================== NOVO: PAINEL DE DIAGNÓSTICO VISUAL ==================
+   ========================================================================== */
+
+// Criar e injetar o painel flutuante
+window.createDiagnosticPanel = function() {
+    if (!IS_DIAGNOSTICS_ACTIVE) return;
     
-    const existingAlert = document.getElementById(alertId);
-    if (existingAlert) existingAlert.remove();
+    // Remover painel existente
+    const existing = document.getElementById('diagnostics55-panel');
+    if (existing) existing.remove();
     
-    const alertDiv = document.createElement('div');
-    alertDiv.id = alertId;
-    alertDiv.style.cssText = `
+    // Container principal
+    const panel = document.createElement('div');
+    panel.id = 'diagnostics55-panel';
+    panel.style.cssText = `
         position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: ${results.overallSuccess ? 'linear-gradient(135deg, #001a00, #000a1a)' : 'linear-gradient(135deg, #1a0000, #000a0a)'};
-        color: ${results.overallSuccess ? '#00ff9c' : '#ff5555'};
-        padding: 25px;
-        border: 3px solid ${results.overallSuccess ? '#00ff9c' : '#ff5555'};
-        border-radius: 10px;
-        z-index: 1000006;
-        max-width: 500px;
-        width: 90%;
-        box-shadow: 0 0 50px ${results.overallSuccess ? 'rgba(0, 255, 156, 0.5)' : 'rgba(255, 0, 0, 0.5)'};
-        font-family: 'Courier New', monospace;
+        top: 80px;
+        right: 20px;
+        width: 380px;
+        max-width: 95vw;
+        background: linear-gradient(145deg, #0a0f1e, #0d121f);
+        color: #e0e0ff;
+        border: 1px solid #2a3a5a;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 255, 200, 0.2), 0 0 0 1px rgba(0, 255, 200, 0.1) inset;
+        z-index: 1000000;
+        font-family: 'JetBrains Mono', 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.5;
         backdrop-filter: blur(10px);
+        overflow: hidden;
+        transition: all 0.3s ease;
     `;
     
-    let html = `
-        <div style="font-size: 20px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-            <span>${results.overallSuccess ? '✅' : '❌'}</span>
-            <span>TESTE DE CORREÇÃO PDF v5.5</span>
+    // Cabeçalho
+    const header = document.createElement('div');
+    header.style.cssText = `
+        background: rgba(0, 200, 255, 0.1);
+        padding: 14px 18px;
+        border-bottom: 1px solid #2a5a5a;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: move;
+        user-select: none;
+    `;
+    header.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="background: #00ccaa; width: 12px; height: 12px; border-radius: 2px; display: inline-block;"></span>
+            <span style="font-weight: 700; color: #aaffdd; letter-spacing: 1px;">🔬 DIAGNÓSTICO v5.5</span>
+            <span style="background: #335588; padding: 2px 8px; border-radius: 12px; font-size: 11px;">${new Date().toLocaleTimeString()}</span>
         </div>
-        
-        <div style="background: ${results.overallSuccess ? 'rgba(0, 255, 156, 0.1)' : 'rgba(255, 0, 0, 0.1)'}; 
-                    padding: 15px; border-radius: 6px; margin-bottom: 20px; 
-                    border: 1px solid ${results.overallSuccess ? 'rgba(0, 255, 156, 0.3)' : 'rgba(255, 0, 0, 0.3)'};">
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px;">
-                <div>
-                    <div style="font-size: 11px; color: #888;">ESTADO</div>
-                    <div style="font-size: 24px; color: ${results.step1.success !== false ? '#00ff9c' : '#ff5555'}">
-                        ${results.step1.success !== false ? '✅' : '❌'}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size: 11px; color: #888;">SIMULAÇÃO</div>
-                    <div style="font-size: 24px; color: ${results.step2.success ? '#00ff9c' : '#ff5555'}">
-                        ${results.step2.success ? '✅' : '❌'}
-                    </div>
-                </div>
-                <div>
-                    <div style="font-size: 11px; color: #888;">PROCESSO</div>
-                    <div style="font-size: 24px; color: ${results.step3.success ? '#00ff9c' : '#ff5555'}">
-                        ${results.step3.success ? '✅' : '❌'}
-                    </div>
-                </div>
-            </div>
+        <div style="display: flex; gap: 8px;">
+            <button id="diag-refresh-btn" style="background: none; border: 1px solid #4488aa; color: #88ddff; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px;">↻</button>
+            <button id="diag-close-btn" style="background: none; border: 1px solid #aa5555; color: #ff8888; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px;">✕</button>
+        </div>
+    `;
+    
+    // Corpo do painel com abas
+    const body = document.createElement('div');
+    body.style.padding = '16px';
+    
+    // Tabs
+    const tabs = document.createElement('div');
+    tabs.style.cssText = `
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid #223344;
+        padding-bottom: 8px;
+    `;
+    tabs.innerHTML = `
+        <button class="diag-tab active" data-tab="pdf" style="background: #1a3a4a; color: white; border: none; padding: 6px 12px; border-radius: 6px 6px 0 0; cursor: pointer; font-weight: bold;">📄 PDF</button>
+        <button class="diag-tab" data-tab="media" style="background: #112233; color: #aaccff; border: none; padding: 6px 12px; border-radius: 6px 6px 0 0; cursor: pointer;">🖼️ Mídia</button>
+        <button class="diag-tab" data-tab="core" style="background: #112233; color: #aaccff; border: none; padding: 6px 12px; border-radius: 6px 6px 0 0; cursor: pointer;">⚙️ Core</button>
+        <button class="diag-tab" data-tab="system" style="background: #112233; color: #aaccff; border: none; padding: 6px 12px; border-radius: 6px 6px 0 0; cursor: pointer;">🌐 Sistema</button>
+    `;
+    
+    // Conteúdo das abas
+    const content = document.createElement('div');
+    content.id = 'diag-content';
+    content.style.cssText = `
+        min-height: 200px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 8px 4px;
+        scrollbar-width: thin;
+        scrollbar-color: #336688 #112233;
+    `;
+    
+    // Montagem
+    body.appendChild(tabs);
+    body.appendChild(content);
+    panel.appendChild(header);
+    panel.appendChild(body);
+    document.body.appendChild(panel);
+    
+    // Estado do painel
+    window.diagnosticPanelState = {
+        currentTab: 'pdf',
+        data: {
+            pdf: { lastUpdate: null, systems: null },
+            media: { lastUpdate: null },
+            core: { lastUpdate: null },
+            system: { lastUpdate: null }
+        }
+    };
+    
+    // Eventos
+    document.querySelectorAll('.diag-tab').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            document.querySelectorAll('.diag-tab').forEach(t => {
+                t.style.background = '#112233';
+                t.style.color = '#aaccff';
+                t.classList.remove('active');
+            });
+            this.style.background = '#1a3a4a';
+            this.style.color = 'white';
+            this.classList.add('active');
             
-            <div style="font-size: 12px; color: ${results.overallSuccess ? '#88ffaa' : '#ff8888'}; text-align: center;">
-                ${results.overallSuccess ? '✅ Sistema PDF funcional' : '❌ Problemas detectados'}
-            </div>
-        </div>
-        
-        <div style="margin-bottom: 20px;">
-            <h4 style="color: ${results.overallSuccess ? '#00ff9c' : '#ff5555'}; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;">
-                📋 DETALHES DO TESTE
-            </h4>
-            <div style="max-height: 200px; overflow-y: auto; font-size: 11px;">
-                <div style="margin-bottom: 8px;">
-                    <strong>Sistema usado:</strong> ${results.step2.usedSystem || 'N/A'}
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <strong>Arquivos simulados:</strong> ${results.step2.filesAdded || 0}
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <strong>Tipo processamento:</strong> ${results.step3.type || 'N/A'}
-                </div>
-                ${results.step2.message ? `<div style="margin-bottom: 8px;"><strong>Mensagem:</strong> ${results.step2.message}</div>` : ''}
-                ${results.step3.error ? `<div style="color: #ff5555; margin-bottom: 8px;"><strong>Erro:</strong> ${results.step3.error}</div>` : ''}
-            </div>
-        </div>
-    `;
-    
-    if (!results.overallSuccess) {
-        html += `
-            <div style="background: rgba(255, 0, 0, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(255, 0, 0, 0.3);">
-                <h4 style="color: #ff5555; margin-bottom: 10px;">💡 RECOMENDAÇÕES</h4>
-                <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #ffaaaa;">
-                    <li>Verificar se MediaSystem está carregado corretamente</li>
-                    <li>Confirmar que a função processAndSavePdfs existe</li>
-                    <li>Testar manualmente com console.diag.pdf.test()</li>
-                    <li>Usar console.diag.pdf.interactive() para diagnóstico interativo</li>
-                </ul>
-            </div>
-        `;
-    }
-    
-    html += `
-        <div style="display: flex; gap: 10px; justify-content: center;">
-            <button id="close-test-results-v5-5" style="
-                background: ${results.overallSuccess ? '#00ff9c' : '#ff5555'}; 
-                color: ${results.overallSuccess ? '#000' : 'white'}; border: none;
-                padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; flex: 1; transition: all 0.2s;">
-                FECHAR
-            </button>
-            <button id="run-verification-v5-5" style="
-                background: #0088cc; color: white; border: none;
-                padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; flex: 1; transition: all 0.2s;">
-                🔍 VERIFICAÇÃO
-            </button>
-        </div>
-        
-        <div style="font-size: 11px; color: #888; text-align: center; margin-top: 15px;">
-            Teste executado em: ${new Date().toLocaleTimeString()} - v5.5
-        </div>
-    `;
-    
-    alertDiv.innerHTML = html;
-    document.body.appendChild(alertDiv);
-    
-    document.getElementById('close-test-results-v5-5')?.addEventListener('click', () => {
-        document.body.removeChild(alertDiv);
+            const tabName = this.dataset.tab;
+            window.diagnosticPanelState.currentTab = tabName;
+            window.updateDiagnosticPanel(tabName);
+        });
     });
     
-    document.getElementById('run-verification-v5-5')?.addEventListener('click', () => {
-        document.body.removeChild(alertDiv);
+    document.getElementById('diag-close-btn').addEventListener('click', () => {
+        panel.style.display = 'none';
+    });
+    
+    document.getElementById('diag-refresh-btn').addEventListener('click', () => {
+        window.updateDiagnosticPanel(window.diagnosticPanelState.currentTab);
         window.verifyPdfSystemIntegrity();
     });
-}
-
-/* ================== INTEGRAÇÃO COM O SISTEMA EXISTENTE ================== */
-if (window.diag) {
-    window.diag.pdf = window.diag.pdf || {};
-    window.diag.pdf.verify = window.verifyPdfSystemIntegrity;
-    window.diag.pdf.testBugFix = window.testPdfUploadBugFix;
     
-    if (console.diag) {
-        console.diag.pdf = console.diag.pdf || {};
-        console.diag.pdf.verify = window.verifyPdfSystemIntegrity;
-        console.diag.pdf.testBugFix = window.testPdfUploadBugFix;
-    }
-}
+    // Arrastar
+    let isDragging = false, offsetX, offsetY;
+    header.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        offsetX = e.clientX - panel.offsetLeft;
+        offsetY = e.clientY - panel.offsetTop;
+        panel.style.cursor = 'grabbing';
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        panel.style.left = (e.clientX - offsetX) + 'px';
+        panel.style.top = (e.clientY - offsetY) + 'px';
+        panel.style.right = 'auto';
+    });
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        panel.style.cursor = 'default';
+    });
+    
+    // Carregar aba inicial
+    window.updateDiagnosticPanel('pdf');
+    
+    console.log('✅ Painel de diagnóstico visual criado');
+    return panel;
+};
 
-function addNewVerificationButtons() {
-    const mainButtons = document.querySelector('#diagnostics-panel-complete > div:nth-child(3)');
-    if (mainButtons && !document.getElementById('verify-pdf-system-btn-v5-5')) {
-        const verifyBtn = document.createElement('button');
-        verifyBtn.id = 'verify-pdf-system-btn-v5-5';
-        verifyBtn.innerHTML = '🔍 VERIFICAÇÃO SISTEMA PDF v5.5';
-        verifyBtn.style.cssText = `
-            background: linear-gradient(45deg, #ff00ff, #0088cc); 
-            color: white; border: none;
-            padding: 8px 12px; cursor: pointer; border-radius: 4px;
-            font-weight: bold; flex: 1; margin: 5px;
-            transition: all 0.2s;
-        `;
+// Atualizar conteúdo do painel
+window.updateDiagnosticPanel = function(tabName, newData = null) {
+    if (!IS_DIAGNOSTICS_ACTIVE) return;
+    
+    const content = document.getElementById('diag-content');
+    if (!content) return;
+    
+    // Atualizar dados se fornecidos
+    if (newData && window.diagnosticPanelState?.data[tabName]) {
+        window.diagnosticPanelState.data[tabName] = { 
+            ...window.diagnosticPanelState.data[tabName], 
+            ...newData,
+            lastUpdate: new Date().toLocaleTimeString()
+        };
+    }
+    
+    let html = '';
+    const state = window.diagnosticPanelState?.data[tabName] || {};
+    
+    switch(tabName) {
+        case 'pdf':
+            const pdfSystems = window.verifyPdfSystemIntegrity();
+            html = `
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div style="background: #0a1a1a; padding: 10px; border-radius: 8px; border-left: 4px solid #00ccaa;">
+                            <div style="color: #88ddff; font-size: 11px;">MediaSystem</div>
+                            <div style="font-size: 18px; font-weight: bold; color: ${window.MediaSystem ? '#00ffaa' : '#ff8888'}">
+                                ${window.MediaSystem ? '✅ ATIVO' : '❌ INATIVO'}
+                            </div>
+                        </div>
+                        <div style="background: #0a1a1a; padding: 10px; border-radius: 8px; border-left: 4px solid #88aaff;">
+                            <div style="color: #88ddff; font-size: 11px;">PDFs no Estado</div>
+                            <div style="font-size: 18px; font-weight: bold; color: #aaddff;">
+                                ${window.MediaSystem?.state?.pdfs?.length || 0}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #0a121a; padding: 10px; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span>📋 processAndSavePdfs</span>
+                            <span style="color: ${typeof window.processAndSavePdfs === 'function' ? '#00ffaa' : '#ff8888'}">
+                                ${typeof window.processAndSavePdfs === 'function' ? '✅' : '❌'}
+                            </span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span>🔐 Modal PDF</span>
+                            <span style="color: ${document.getElementById('pdfModal') ? '#00ffaa' : '#ff8888'}">
+                                ${document.getElementById('pdfModal') ? '✅' : '❌'}
+                            </span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>🔑 Campo Senha</span>
+                            <span style="color: ${document.getElementById('pdfPassword') ? '#00ffaa' : '#ff8888'}">
+                                ${document.getElementById('pdfPassword') ? '✅' : '❌'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button onclick="window.testPdfFix()" style="flex:1; background: #226688; border: none; color: white; padding: 8px; border-radius: 6px; cursor: pointer;">
+                            🧪 Testar PDF
+                        </button>
+                        <button onclick="window.testPdfUploadBugFix()" style="flex:1; background: #336633; border: none; color: white; padding: 8px; border-radius: 6px; cursor: pointer;">
+                            📤 Testar Upload
+                        </button>
+                    </div>
+                    <div style="font-size: 10px; color: #88aacc; text-align: right; margin-top: 8px;">
+                        Última verificação: ${new Date().toLocaleTimeString()}
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'media':
+            const media = window.MediaSystem?.state || {};
+            html = `
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div style="background: #0a1a1a; padding: 10px; border-radius: 8px;">
+                            <div style="color: #88ddff;">📸 Imagens novas</div>
+                            <div style="font-size: 20px; font-weight: bold;">${media.files?.length || 0}</div>
+                        </div>
+                        <div style="background: #0a1a1a; padding: 10px; border-radius: 8px;">
+                            <div style="color: #88ddff;">🖼️ Imagens exist.</div>
+                            <div style="font-size: 20px; font-weight: bold;">${media.existing?.length || 0}</div>
+                        </div>
+                        <div style="background: #0a1a1a; padding: 10px; border-radius: 8px;">
+                            <div style="color: #88ddff;">📄 PDFs novos</div>
+                            <div style="font-size: 20px; font-weight: bold;">${media.pdfs?.length || 0}</div>
+                        </div>
+                        <div style="background: #0a1a1a; padding: 10px; border-radius: 8px;">
+                            <div style="color: #88ddff;">📁 PDFs exist.</div>
+                            <div style="font-size: 20px; font-weight: bold;">${media.existingPdfs?.length || 0}</div>
+                        </div>
+                    </div>
+                    <div style="background: #0a121a; padding: 10px; border-radius: 8px;">
+                        <div>🔄 Upload em andamento: <strong>${media.isUploading ? 'SIM' : 'NÃO'}</strong></div>
+                        <div style="margin-top: 5px; color: #aaddff;">Propriedade atual: ${media.currentPropertyId || 'N/A'}</div>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'core':
+            html = `
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div style="background: #0a1a1a; padding: 10px; border-radius: 8px;">
+                            <div>🏠 Imóveis</div>
+                            <div style="font-size: 22px; font-weight: bold;">${window.properties?.length || 0}</div>
+                        </div>
+                        <div style="background: #0a1a1a; padding: 10px; border-radius: 8px;">
+                            <div>💾 LocalStorage</div>
+                            <div style="font-size: 16px;">${localStorage.getItem('properties') ? JSON.parse(localStorage.getItem('properties')).length : 0}</div>
+                        </div>
+                    </div>
+                    <div style="background: #0a121a; padding: 10px; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>🔧 FilterManager</span>
+                            <span style="color: ${window.FilterManager ? '#00ffaa' : '#ff8888'}">${window.FilterManager ? '✅' : '❌'}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                            <span>⏳ LoadingManager</span>
+                            <span style="color: ${window.LoadingManager ? '#00ffaa' : '#ff8888'}">${window.LoadingManager ? '✅' : '❌'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'system':
+            html = `
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="background: #0a1a1a; padding: 10px; border-radius: 8px;">
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span style="background: #226688; padding: 4px 8px; border-radius: 4px;">🌐 URL</span>
+                            <span style="font-size: 11px; word-break: break-all;">${window.location.href}</span>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div style="background: #0a1a1a; padding: 10px; border-radius: 8px;">
+                            <div>📱 Tela</div>
+                            <div style="font-size: 16px;">${window.innerWidth}x${window.innerHeight}</div>
+                        </div>
+                        <div style="background: #0a1a1a; padding: 10px; border-radius: 8px;">
+                            <div>🕒 Hora</div>
+                            <div style="font-size: 16px;">${new Date().toLocaleTimeString()}</div>
+                        </div>
+                    </div>
+                    <div style="background: #112233; padding: 10px; border-radius: 8px; border: 1px solid #446688;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span>🔔 Módulos Suporte</span>
+                            <span style="background: #338855; padding: 2px 10px; border-radius: 12px; color: white;">${window.supportModulesLoaded ? 'CARREGADOS' : 'NÃO CARREGADOS'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+    }
+    
+    content.innerHTML = html;
+};
+
+// Toast notification
+window.showDiagnosticToast = function(message, type = 'info') {
+    if (!IS_DIAGNOSTICS_ACTIVE) return;
+    
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#1a3a2a' : type === 'error' ? '#3a1a1a' : '#1a2a3a'};
+        color: ${type === 'success' ? '#aaffaa' : type === 'error' ? '#ffaaaa' : '#aaddff'};
+        border-left: 6px solid ${type === 'success' ? '#00cc88' : type === 'error' ? '#cc5555' : '#3388cc'};
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 13px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        z-index: 1000001;
+        animation: slideInRight 0.3s ease;
+        max-width: 300px;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+};
+
+// ================== AUTO EXECUÇÃO ==================
+(function initDiagnostics55() {
+    if (IS_DIAGNOSTICS_ACTIVE) {
+        console.log('🔧 DIAGNOSTICS v5.5 - Modo ATIVO, criando painel visual...');
         
-        verifyBtn.addEventListener('click', () => {
-            window.verifyPdfSystemIntegrity();
+        // Criar painel após 2 segundos
+        setTimeout(() => {
+            window.createDiagnosticPanel();
+            
+            // Executar verificações iniciais
+            setTimeout(() => {
+                window.verifyPdfSystemIntegrity();
+                window.showDiagnosticToast('🔬 Painel de diagnóstico ativo', 'info');
+            }, 500);
+        }, 2000);
+        
+        // Adicionar atalho global
+        document.addEventListener('keydown', function(e) {
+            if (e.altKey && e.key === 'd') {
+                const panel = document.getElementById('diagnostics55-panel');
+                if (panel) {
+                    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                } else {
+                    window.createDiagnosticPanel();
+                }
+            }
         });
         
-        const testBugFixBtn = document.createElement('button');
-        testBugFixBtn.id = 'test-pdf-bug-fix-btn-v5-5';
-        testBugFixBtn.innerHTML = '🧪 TESTE CORREÇÃO BUG PDF v5.5';
-        testBugFixBtn.style.cssText = `
-            background: linear-gradient(45deg, #00ff9c, #0088cc); 
-            color: #000; border: none;
-            padding: 8px 12px; cursor: pointer; border-radius: 4px;
-            font-weight: bold; flex: 1; margin: 5px;
-            transition: all 0.2s;
-        `;
+        console.log('🎮 Atalho: Alt+D para mostrar/ocultar painel');
         
-        testBugFixBtn.addEventListener('click', () => {
-            window.testPdfUploadBugFix();
-        });
-        
-        mainButtons.appendChild(verifyBtn);
-        mainButtons.appendChild(testBugFixBtn);
-        
-        console.log('✅ Botões de verificação PDF adicionados ao painel (v5.5)');
+    } else {
+        console.log('ℹ️ DIAGNOSTICS v5.5 - Modo inativo (adicione ?debug=true&diagnostics=true)');
     }
-}
+})();
 
-// [NOTA: As outras funções (monitorPdfPostCorrection, showPostCorrectionReport, applyAutoCorrections, 
-// verifyRollbackCompatibility, showRollbackReport, setupRegressionMonitor, finalPdfSystemValidation,
-// integrateNewFunctions, autoRunMonitoring) foram omitidas por brevidade mas devem ser incluídas]
-
-/* ================== EXPORTAÇÃO E FINALIZAÇÃO ================== */
+// ================== EXPORTAÇÃO ==================
 window.diagnostics55 = {
     version: '5.5',
     testPdfFix: window.testPdfFix,
     createFallbackPdfSystem: window.createFallbackPdfSystem,
     verifyPdfSystemIntegrity: window.verifyPdfSystemIntegrity,
     testPdfUploadBugFix: window.testPdfUploadBugFix,
-    showTestResultsAlert: showTestResultsAlert,
-    addNewVerificationButtons: addNewVerificationButtons,
-    // Adicione outras funções aqui conforme necessário
+    createDiagnosticPanel: window.createDiagnosticPanel,
+    updateDiagnosticPanel: window.updateDiagnosticPanel,
+    showDiagnosticToast: window.showDiagnosticToast,
     timestamp: new Date().toISOString()
 };
 
-// Configurar execução automática
-(function initDiagnostics55() {
-    const shouldAutoRun = (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) || 
-                         (typeof DIAGNOSTICS_MODE !== 'undefined' && DIAGNOSTICS_MODE);
-    
-    if (shouldAutoRun) {
-        console.log('🔧 DIAGNOSTICS v5.5 - Modo ativo, configurando execuções automáticas...');
-        
-        // Verificação automática após 7 segundos
-        setTimeout(() => {
-            if (window.verifyPdfSystemIntegrity) {
-                console.log('🔄 Executando verificação automática de integridade...');
-                window.verifyPdfSystemIntegrity();
-            }
-            
-            // Adicionar botões ao painel
-            setTimeout(addNewVerificationButtons, 1000);
-            
-        }, 7000);
-    } else {
-        console.log('ℹ️ DIAGNOSTICS v5.5 - Modo silencioso ativo');
-        console.log('🔧 Use ?debug=true&diagnostics=true na URL para ativar');
-    }
-})();
-
-console.log('✅ DIAGNOSTICS.JS v5.5 - CARREGAMENTO COMPLETO E CORRIGIDO');
-console.log('🎮 Atalhos: Alt+P para teste PDF, diagnostics55.testPdfFix() no console');
+console.log('✅ DIAGNOSTICS.JS v5.5 - CARREGAMENTO COMPLETO COM PAINEL VISUAL');
+console.log('🎮 Atalhos: Alt+P = teste PDF | Alt+D = painel diagnóstico');
