@@ -1,360 +1,440 @@
-// ================== debug/diagnostics/diagnostics56.js ==================
-// SISTEMA DE DIAGNÓSTICO E COMPATIBILIDADE - VERSÃO 5.6.6 (FINAL)
-// CORREÇÃO: Adicionar APENAS os 3 métodos faltantes no PdfLogger
-// TODAS as outras funções já estão OK
-// =========================================================================
+// ============================================================
+// ARQUIVO: debug/diagnostics/diagnostics56.js
+// VERSÃO: 6.0 FINAL - CORREÇÃO DE INICIALIZAÇÃO E PAINEL
+// PROPÓSITO: Versão definitiva do sistema de diagnóstico e compatibilidade.
+//            Corrige a inicialização para garantir a exibição do painel
+//            quando os parâmetros ?debug=true&diagnostics=true estão ativos.
+//            Remove placeholders temporários e implementa correções diretas.
+// ============================================================
+console.log('✅ [DIAGNOSTICS56] Módulo v6.0 FINAL carregado. Modo: DIAGNÓSTICO ATIVO.');
 
-(function() {
-    'use strict';
+// ============================================================
+// BLOCO 1: INICIALIZAÇÃO CRÍTICA (EXECUTA IMEDIATAMENTE)
+// ============================================================
+(function initializeDiagnosticsPanel() {
+    // --- 1.1 Verificar se os parâmetros de URL exigem o painel ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldShowPanel = urlParams.has('debug') && urlParams.has('diagnostics');
     
-    const VERSION = '5.6.6';
-    const MODULE_NAME = 'DIAG56-FINAL';
-
-    // ========== UTILITÁRIOS DE LOG ==========
-    const log = {
-        info: (msg) => console.log(`✅ ${MODULE_NAME} - ${msg}`),
-        warn: (msg) => console.warn(`⚠️ ${MODULE_NAME} - ${msg}`),
-        error: (msg) => console.error(`❌ ${MODULE_NAME} - ${msg}`),
-        group: (msg) => console.group(`🔍 ${MODULE_NAME} - ${msg}`),
-        groupEnd: () => console.groupEnd()
-    };
-
-    // ========== FUNÇÃO ÚNICA: REPARAR PDFLOGGER ==========
-    function repairPdfLoggerMethods() {
-        log.group('REPARANDO PDFLOGGER METHODS');
-        
-        const fixes = [];
-        
-        // Garantir que PdfLogger existe
-        if (!window.PdfLogger) {
-            window.PdfLogger = {
-                _logs: [],
-                _access: 0,
-                _errors: 0,
-                _success: 0
-            };
-            fixes.push('PdfLogger (criado)');
+    if (shouldShowPanel) {
+        console.log('🟢 [DIAGNOSTICS56] Parâmetros detectados. Painel será exibido automaticamente.');
+        // Agendar a exibição do painel após o carregamento completo
+        if (document.readyState === 'complete') {
+            setTimeout(showCompatibilityControlPanel, 500);
+        } else {
+            window.addEventListener('load', () => setTimeout(showCompatibilityControlPanel, 500));
         }
-
-        // 1. ADICIONAR logPdfAccess
-        if (typeof window.PdfLogger.logPdfAccess !== 'function') {
-            window.PdfLogger.logPdfAccess = function(propertyId, action = 'view') {
-                const timestamp = new Date().toISOString();
-                const logEntry = { type: 'access', propertyId, action, timestamp };
-                
-                if (!window.PdfLogger._logs) window.PdfLogger._logs = [];
-                window.PdfLogger._logs.push(logEntry);
-                window.PdfLogger._access = (window.PdfLogger._access || 0) + 1;
-                
-                console.log(`📄 [PDF LOGGER] Acesso - Imóvel: ${propertyId}, Ação: ${action}`);
-                return logEntry;
-            };
-            fixes.push('PdfLogger.logPdfAccess');
-            console.log('   ✅ PdfLogger.logPdfAccess criado');
-        }
-
-        // 2. ADICIONAR logPdfError
-        if (typeof window.PdfLogger.logPdfError !== 'function') {
-            window.PdfLogger.logPdfError = function(propertyId, error, context = '') {
-                const timestamp = new Date().toISOString();
-                const logEntry = { 
-                    type: 'error', 
-                    propertyId, 
-                    error: error?.message || String(error), 
-                    context, 
-                    timestamp 
-                };
-                
-                if (!window.PdfLogger._logs) window.PdfLogger._logs = [];
-                window.PdfLogger._logs.push(logEntry);
-                window.PdfLogger._errors = (window.PdfLogger._errors || 0) + 1;
-                
-                console.error(`❌ [PDF LOGGER] Erro - Imóvel: ${propertyId}, Erro: ${logEntry.error}`);
-                return logEntry;
-            };
-            fixes.push('PdfLogger.logPdfError');
-            console.log('   ✅ PdfLogger.logPdfError criado');
-        }
-
-        // 3. ADICIONAR logPdfSuccess
-        if (typeof window.PdfLogger.logPdfSuccess !== 'function') {
-            window.PdfLogger.logPdfSuccess = function(propertyId, action = 'download') {
-                const timestamp = new Date().toISOString();
-                const logEntry = { type: 'success', propertyId, action, timestamp };
-                
-                if (!window.PdfLogger._logs) window.PdfLogger._logs = [];
-                window.PdfLogger._logs.push(logEntry);
-                window.PdfLogger._success = (window.PdfLogger._success || 0) + 1;
-                
-                console.log(`✅ [PDF LOGGER] Sucesso - Imóvel: ${propertyId}, Ação: ${action}`);
-                return logEntry;
-            };
-            fixes.push('PdfLogger.logPdfSuccess');
-            console.log('   ✅ PdfLogger.logPdfSuccess criado');
-        }
-
-        // 4. ADICIONAR getStats (útil)
-        if (typeof window.PdfLogger.getStats !== 'function') {
-            window.PdfLogger.getStats = function() {
-                const stats = {
-                    access: window.PdfLogger._access || 0,
-                    errors: window.PdfLogger._errors || 0,
-                    success: window.PdfLogger._success || 0,
-                    totalLogs: window.PdfLogger._logs?.length || 0,
-                    timestamp: new Date().toISOString()
-                };
-                console.log('📊 [PDF LOGGER] Estatísticas:', stats);
-                return stats;
-            };
-            fixes.push('PdfLogger.getStats');
-            console.log('   ✅ PdfLogger.getStats criado');
-        }
-
-        console.log(`\n📊 MÉTODOS ADICIONADOS: ${fixes.length}`);
-        log.groupEnd();
-        return fixes;
+    } else {
+        console.log('⚪ [DIAGNOSTICS56] Modo silencioso. Adicione ?debug=true&diagnostics=true para ativar o painel.');
     }
 
-    // ========== DIAGNÓSTICO SIMPLES ==========
-    window.diagnoseExistingFunctions = function() {
-        log.group('VERIFICAÇÃO DE FUNÇÕES');
+    // --- 1.2 Remover todos os placeholders e funções obsoletas ---
+    const obsoleteFunctions = [
+        'ValidationSystem', 'EmergencySystem', 'PdfLogger',
+        'verifyMediaMigration', 'testModuleCompatibility', 'autoValidateMigration',
+        'analyzePlaceholders', 'analyzeBrokenReferences', 'testPdfUploadBugFix',
+        'verifyPdfSystemIntegrity', 'monitorPdfPostCorrection', 'verifyRollbackCompatibility',
+        'finalPdfSystemValidation'
+    ];
+    
+    obsoleteFunctions.forEach(funcName => {
+        if (window[funcName] !== undefined) {
+            console.log(`🧹 [DIAGNOSTICS56] Removendo placeholder obsoleto: ${funcName}`);
+            try { delete window[funcName]; } catch(e) { window[funcName] = undefined; }
+        }
+    });
+})();
+
+// ============================================================
+// BLOCO 2: DIAGNÓSTICO DE FUNÇÕES DO CORE
+// ============================================================
+window.diagnoseExistingFunctions = function() {
+    console.group('🔍 [DIAGNOSTICS56] Verificação de Funções Críticas');
+    
+    const coreModules = [
+        // Sistemas Principais
+        { name: 'properties', type: 'array' },
+        { name: 'MediaSystem', type: 'object' },
+        { name: 'PdfSystem', type: 'object' },
+        { name: 'SharedCore', type: 'object' },
+        { name: 'LoadingManager', type: 'object' },
+        { name: 'FilterManager', type: 'object' },
         
-        const status = {
-            pdfLogger: !!window.PdfLogger,
-            pdfLoggerLogAccess: typeof window.PdfLogger?.logPdfAccess === 'function',
-            pdfLoggerLogError: typeof window.PdfLogger?.logPdfError === 'function',
-            pdfLoggerLogSuccess: typeof window.PdfLogger?.logPdfSuccess === 'function',
-            pdfLoggerGetStats: typeof window.PdfLogger?.getStats === 'function',
-            interactivePdfTest: typeof window.interactivePdfTest === 'function',
-            pdfSystem: !!window.PdfSystem,
-            mediaSystem: !!window.MediaSystem
-        };
-
-        console.log('\n📌 STATUS ATUAL:');
-        Object.entries(status).forEach(([key, value]) => {
-            console.log(`   ${value ? '✅' : '❌'} ${key}: ${value}`);
-        });
-
-        const missingCount = Object.values(status).filter(v => !v).length;
-        console.log(`\n📊 FUNÇÕES AUSENTES: ${missingCount}`);
+        // Funções de Manipulação de Imóveis
+        'loadPropertiesData', 'renderProperties', 'filterProperties',
+        'savePropertiesToStorage', 'addNewProperty', 'updateProperty',
+        'updateLocalProperty', 'deleteProperty', 'updatePropertyCard',
         
-        log.groupEnd();
-        return status;
-    };
-
-    // ========== CORREÇÃO AUTOMÁTICA ==========
-    window.autoFixMissingFunctions = function() {
-        log.group('CORREÇÃO AUTOMÁTICA');
+        // Funções de Admin e UI
+        'toggleAdminPanel', 'setupForm', 'editProperty', 'cancelEdit',
+        'resetAdminFormCompletely', 'loadPropertyList',
         
-        // ÚNICA correção necessária: métodos do PdfLogger
-        const fixes = repairPdfLoggerMethods();
+        // Funções de Mídia
+        'MediaSystem.addFiles', 'MediaSystem.addPdfs', 'MediaSystem.uploadAll',
+        'MediaSystem.loadExisting', 'MediaSystem.resetState',
         
-        console.log(`\n📊 CORREÇÕES APLICADAS: ${fixes.length}`);
-        log.groupEnd();
+        // Funções de PDF
+        'PdfSystem.showModal', 'PdfSystem.init',
         
-        return { fixes, version: VERSION };
-    };
-
-    // ========== DETECÇÃO DE REFERÊNCIAS ==========
-    window.detectAndRemoveBrokenReferences = function() {
-        log.group('VERIFICAÇÃO DE REFERÊNCIAS');
+        // Funções de Galeria
+        'openGallery', 'closeGallery', 'createPropertyGallery',
         
-        // Lista de placeholders que já foram removidos (verificado no log)
-        const placeholders = [
-            'ValidationSystem',
-            'EmergencySystem',
-            'monitorPdfPostCorrection',
-            'verifyRollbackCompatibility',
-            'finalPdfSystemValidation'
-        ];
+        // Utilitários de Suporte (Diagnóstico)
+        'diagnoseExistingFunctions', 'autoFixMissingFunctions',
+        'detectAndRemoveBrokenReferences', 'showCompatibilityControlPanel'
+    ];
+
+    const results = { ok: [], missing: [], warnings: [] };
+
+    coreModules.forEach(item => {
+        let funcName = item;
+        let expectedType = 'function';
         
-        const removed = [];
-        placeholders.forEach(ref => {
-            if (ref in window) {
-                delete window[ref];
-                removed.push(ref);
-                console.log(`   🗑️ Removido: ${ref}`);
-            }
-        });
-        
-        console.log(`\n📊 REMOVIDOS: ${removed.length}`);
-        log.groupEnd();
-        return { removed, version: VERSION };
-    };
+        if (typeof item === 'object') {
+            funcName = item.name;
+            expectedType = item.type;
+        }
 
-    // ========== PAINEL DE CONTROLE ==========
-    window.showCompatibilityControlPanel = function() {
-        log.group('CRIANDO PAINEL DE CONTROLE');
-        
-        const panelId = 'compatibility-panel-final';
-        let panel = document.getElementById(panelId);
-        if (panel) panel.remove();
-
-        // Verificar status do PdfLogger
-        const hasLogAccess = typeof window.PdfLogger?.logPdfAccess === 'function';
-        const hasLogError = typeof window.PdfLogger?.logPdfError === 'function';
-        const hasLogSuccess = typeof window.PdfLogger?.logPdfSuccess === 'function';
-        const hasGetStats = typeof window.PdfLogger?.getStats === 'function';
-        
-        const allMethodsPresent = hasLogAccess && hasLogError && hasLogSuccess && hasGetStats;
-        const statusColor = allMethodsPresent ? '#00ff9c' : '#ffaa00';
-        const statusText = allMethodsPresent ? '✅ COMPLETO' : '⚠️ INCOMPLETO';
-
-        panel = document.createElement('div');
-        panel.id = panelId;
-        panel.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 400px;
-            background: linear-gradient(135deg, #1a2a3a, #0a1a2a);
-            color: #fff;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
-            border: 2px solid #00aaff;
-            z-index: 999999;
-            font-family: 'Segoe UI', monospace;
-        `;
-
-        panel.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #00aaff; font-size: 16px;">
-                    🔧 DIAGNÓSTICO ${VERSION}
-                </h3>
-                <span style="background: #005500; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">
-                    FINAL
-                </span>
-            </div>
-            
-            <div style="background: #2a3a4a; border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 4px solid ${statusColor};">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                    <span style="color: #aaddff; font-weight: bold;">📄 PdfLogger Methods:</span>
-                    <span style="color: ${statusColor}; font-weight: bold;">${statusText}</span>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
-                    <span style="color: ${hasLogAccess ? '#00ff9c' : '#ff5555'}">logPdfAccess: ${hasLogAccess ? '✅' : '❌'}</span>
-                    <span style="color: ${hasLogError ? '#00ff9c' : '#ff5555'}">logPdfError: ${hasLogError ? '✅' : '❌'}</span>
-                    <span style="color: ${hasLogSuccess ? '#00ff9c' : '#ff5555'}">logPdfSuccess: ${hasLogSuccess ? '✅' : '❌'}</span>
-                    <span style="color: ${hasGetStats ? '#00ff9c' : '#ff5555'}">getStats: ${hasGetStats ? '✅' : '❌'}</span>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                <button id="btn-fix-pdf" style="padding: 12px; background: #ffaa00; color: black; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                    🔧 REPARAR PDFLOGGER
-                </button>
-                <button id="btn-test" style="padding: 12px; background: #9933cc; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                    📄 TESTAR PDF
-                </button>
-                <button id="btn-stats" style="padding: 12px; background: #2a5a2a; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                    📊 VER ESTATÍSTICAS
-                </button>
-                <button id="btn-diagnose" style="padding: 12px; background: #00aaff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                    🔍 DIAGNOSTICAR
-                </button>
-            </div>
-
-            <div style="font-size: 11px; color: #88aaff; text-align: center; border-top: 1px solid #2a3a4a; padding-top: 15px;">
-                ✅ Sistema 95% OK - APENAS adicionar métodos do PdfLogger
-                <br>
-                <button onclick="this.parentElement.parentElement.remove()" style="
-                    margin-top: 10px;
-                    padding: 8px 20px;
-                    background: #4a5a6a;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                ">
-                    FECHAR PAINEL
-                </button>
-            </div>
-        `;
-
-        document.body.appendChild(panel);
-
-        document.getElementById('btn-fix-pdf')?.addEventListener('click', () => {
-            const fixes = repairPdfLoggerMethods();
-            setTimeout(() => {
-                panel.remove();
-                window.showCompatibilityControlPanel();
-            }, 1000);
-        });
-
-        document.getElementById('btn-test')?.addEventListener('click', () => {
-            window.interactivePdfTest?.();
-        });
-
-        document.getElementById('btn-stats')?.addEventListener('click', () => {
-            window.PdfLogger?.getStats?.();
-        });
-
-        document.getElementById('btn-diagnose')?.addEventListener('click', () => {
-            window.diagnoseExistingFunctions?.();
-        });
-
-        log.info('Painel de controle criado');
-        log.groupEnd();
-        return panel;
-    };
-
-    // ========== INICIALIZAÇÃO SEGURA ==========
-    window.safeInitDiagnostics = function() {
-        log.group('INICIALIZAÇÃO SEGURA');
+        let exists = false;
+        let actualType = 'undefined';
         
         try {
-            // 1. REPARAR APENAS PDFLOGGER
-            const fixes = repairPdfLoggerMethods();
-            
-            // 2. VERIFICAR SE interactivePdfTest EXISTE
-            if (typeof window.interactivePdfTest !== 'function') {
-                console.log('   ⚠️ interactivePdfTest ausente - recriando...');
-                window.interactivePdfTest = function() {
-                    console.group('🎮 interactivePdfTest');
-                    console.log('✅ Teste interativo executado');
-                    if (window.PdfSystem?.testButtons) window.PdfSystem.testButtons();
-                    console.groupEnd();
-                };
-                fixes.push('interactivePdfTest (recriado)');
+            if (funcName.includes('.')) {
+                const parts = funcName.split('.');
+                let current = window;
+                for (const part of parts) {
+                    current = current?.[part];
+                    if (current === undefined) break;
+                }
+                exists = current !== undefined;
+                actualType = typeof current;
+            } else {
+                exists = funcName in window;
+                actualType = typeof window[funcName];
             }
+
+            const status = exists ? '✅' : '❌';
+            const typeMatch = (expectedType === 'any' || actualType === expectedType) ? '✓' : '⚠️';
             
-            // 3. MOSTRAR PAINEL
-            if (window.location.search.includes('debug=true')) {
-                setTimeout(() => window.showCompatibilityControlPanel?.(), 1000);
+            if (exists) {
+                if (actualType === expectedType || expectedType === 'any' || expectedType === 'array' && Array.isArray(window[funcName])) {
+                    results.ok.push(funcName);
+                    console.log(`${status} ${funcName} (${actualType})`);
+                } else {
+                    results.warnings.push(`${funcName} (tipo: ${actualType}, esperado: ${expectedType})`);
+                    console.warn(`⚠️ ${funcName} existe mas tipo incorreto: ${actualType} (esperado: ${expectedType})`);
+                }
+            } else {
+                results.missing.push(funcName);
+                console.warn(`❌ ${funcName} - NÃO ENCONTRADO`);
             }
-            
-            console.log(`\n✅ INICIALIZAÇÃO CONCLUÍDA - Reparos: ${fixes.length}`);
-            
-        } catch (error) {
-            log.error('Erro: ' + error.message);
+        } catch (e) {
+            results.warnings.push(`${funcName} (erro: ${e.message})`);
+            console.error(`⚠️ Erro ao verificar ${funcName}:`, e.message);
         }
-        
-        log.groupEnd();
-        return { success: true, version: VERSION };
-    };
+    });
 
-    // ========== INICIALIZAÇÃO AUTOMÁTICA ==========
-    console.log(`\n${'='.repeat(60)}`);
-    console.log(`✅ ${MODULE_NAME} - VERSÃO ${VERSION}`);
-    console.log(`${'='.repeat(60)}`);
-    console.log(`📋 COMANDOS DISPONÍVEIS:`);
-    console.log(`   🔧 window.autoFixMissingFunctions() - REPARAR PDFLOGGER`);
-    console.log(`   🔍 window.diagnoseExistingFunctions()`);
-    console.log(`   🎛️ window.showCompatibilityControlPanel()`);
-    console.log(`   🚀 window.safeInitDiagnostics()`);
-    console.log(`   📄 window.PdfLogger.getStats()`);
-    console.log(`   🎮 window.interactivePdfTest()`);
-    console.log(`${'='.repeat(60)}`);
-    console.log(`🎯 STATUS ATUAL: APENAS 3 MÉTODOS DO PDFLOGGER FALTANDO`);
-    console.log(`   - PdfLogger.logPdfAccess`);
-    console.log(`   - PdfLogger.logPdfError`); 
-    console.log(`   - PdfLogger.logPdfSuccess`);
-    console.log(`${'='.repeat(60)}`);
+    console.log(`📊 [RESUMO] OK: ${results.ok.length} | Ausentes: ${results.missing.length} | Avisos: ${results.warnings.length}`);
+    console.groupEnd();
+    return results;
+};
 
-    // Auto-inicialização
-    if (window.location.search.includes('debug=true')) {
-        setTimeout(window.safeInitDiagnostics, 500);
+// ============================================================
+// BLOCO 3: CORREÇÃO AUTOMÁTICA DE FUNÇÕES FALTANTES
+// ============================================================
+window.autoFixMissingFunctions = function() {
+    console.group('🛠️ [DIAGNOSTICS56] Aplicando Correções Automáticas');
+    const fixes = [];
+
+    // --- 3.1 Delegar funções PDF para o PdfSystem ---
+    if (typeof window.showPdfModal !== 'function' && window.PdfSystem?.showModal) {
+        window.showPdfModal = (id) => window.PdfSystem.showModal(id);
+        fixes.push('showPdfModal → PdfSystem.showModal');
+        console.log('✅ showPdfModal delegado para PdfSystem.showModal');
     }
 
+    if (typeof window.testPdfSystem !== 'function') {
+        window.testPdfSystem = (id = 101) => {
+            console.log(`🧪 testPdfSystem chamado para ID: ${id}`);
+            return window.PdfSystem?.showModal ? window.PdfSystem.showModal(id) : false;
+        };
+        fixes.push('testPdfSystem');
+    }
+
+    // --- 3.2 Delegar funções de mídia para o MediaSystem ---
+    if (typeof window.processAndSavePdfs !== 'function' && window.MediaSystem?.processAndSavePdfs) {
+        window.processAndSavePdfs = (id, title) => window.MediaSystem.processAndSavePdfs(id, title);
+        fixes.push('processAndSavePdfs → MediaSystem.processAndSavePdfs');
+        console.log('✅ processAndSavePdfs delegado para MediaSystem');
+    }
+
+    if (typeof window.clearAllPdfs !== 'function' && window.MediaSystem?.clearAllPdfs) {
+        window.clearAllPdfs = () => window.MediaSystem.clearAllPdfs();
+        fixes.push('clearAllPdfs → MediaSystem.clearAllPdfs');
+    }
+
+    if (typeof window.loadExistingPdfsForEdit !== 'function' && window.MediaSystem?.loadExistingPdfsForEdit) {
+        window.loadExistingPdfsForEdit = (prop) => window.MediaSystem.loadExistingPdfsForEdit(prop);
+        fixes.push('loadExistingPdfsForEdit → MediaSystem.loadExistingPdfsForEdit');
+    }
+
+    // --- 3.3 Funções utilitárias de fallback (segurança) ---
+    if (typeof window.formatPriceForInput !== 'function' && window.SharedCore?.PriceFormatter?.formatForInput) {
+        window.formatPriceForInput = (v) => window.SharedCore.PriceFormatter.formatForInput(v);
+        fixes.push('formatPriceForInput');
+    }
+
+    if (typeof window.ensureBooleanVideo !== 'function' && window.SharedCore?.ensureBooleanVideo) {
+        window.ensureBooleanVideo = (v) => window.SharedCore.ensureBooleanVideo(v);
+        fixes.push('ensureBooleanVideo');
+    }
+
+    console.log(`✅ ${fixes.length} correção(ões) aplicada(s):`, fixes);
+    console.groupEnd();
+    return { fixesApplied: fixes, timestamp: new Date().toISOString(), version: '6.0' };
+};
+
+// ============================================================
+// BLOCO 4: DETECÇÃO DE REFERÊNCIAS QUEBRADAS
+// ============================================================
+window.detectAndRemoveBrokenReferences = function() {
+    console.group('🔗 [DIAGNOSTICS56] Verificando Referências Quebradas');
+    
+    const brokenRefs = [];
+    const recommendations = [];
+
+    // Verificar integridade dos sistemas principais
+    if (!window.properties || !Array.isArray(window.properties)) {
+        brokenRefs.push('window.properties (não é array)');
+        recommendations.push('Recarregar dados com window.loadPropertiesData()');
+    }
+
+    if (!window.MediaSystem || typeof window.MediaSystem.uploadAll !== 'function') {
+        brokenRefs.push('MediaSystem.uploadAll');
+        recommendations.push('Verificar carregamento de media-unified.js');
+    }
+
+    if (!window.PdfSystem || typeof window.PdfSystem.showModal !== 'function') {
+        brokenRefs.push('PdfSystem.showModal');
+        recommendations.push('Verificar carregamento de pdf-unified.js');
+    }
+
+    // Verificar listeners de botão admin
+    const adminBtn = document.querySelector('.admin-toggle');
+    if (adminBtn && !adminBtn.hasAttribute('data-diag-checked')) {
+        if (adminBtn.onclick === null && !adminBtn.getAttribute('onclick')) {
+            console.warn('⚠️ Botão admin sem evento de clique. Reaplicando...');
+            adminBtn.onclick = (e) => {
+                e.preventDefault();
+                window.toggleAdminPanel?.();
+            };
+            adminBtn.setAttribute('data-diag-checked', 'true');
+            brokenRefs.push('admin-toggle.onclick (reparado)');
+            recommendations.push('Evento do botão admin restaurado.');
+        }
+    }
+
+    if (brokenRefs.length > 0) {
+        console.warn('❌ Referências quebradas detectadas:', brokenRefs);
+    } else {
+        console.log('✅ Nenhuma referência quebrada crítica encontrada.');
+    }
+
+    console.groupEnd();
+    return { brokenRefs, recommendations, timestamp: new Date().toISOString() };
+};
+
+// ============================================================
+// BLOCO 5: PAINEL DE CONTROLE (VERSÃO VISUAL CORRIGIDA)
+// ============================================================
+window.showCompatibilityControlPanel = function() {
+    // --- 5.1 Remover painel anterior se existir ---
+    const existingPanel = document.getElementById('compatibility-control-panel-v6');
+    if (existingPanel) existingPanel.remove();
+
+    // --- 5.2 Executar diagnósticos para alimentar o painel ---
+    const diagnosis = (window.diagnoseExistingFunctions || function(){ return {ok:[], missing:[], warnings:[]}; })();
+    const missingCount = diagnosis.missing?.length || 0;
+    const okCount = diagnosis.ok?.length || 0;
+    const warningCount = diagnosis.warnings?.length || 0;
+
+    // --- 5.3 Criar estrutura do painel com CSS garantido ---
+    const panel = document.createElement('div');
+    panel.id = 'compatibility-control-panel-v6';
+    panel.setAttribute('data-version', '6.0');
+    panel.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 380px;
+        max-width: 95vw;
+        background: linear-gradient(145deg, #0a1a2f, #0e2a3a);
+        color: #e0f0ff;
+        border: 2px solid #00ccff;
+        border-radius: 16px;
+        padding: 20px;
+        font-family: 'Segoe UI', 'Courier New', monospace;
+        font-size: 13px;
+        z-index: 2147483647;
+        box-shadow: 0 10px 40px rgba(0,200,255,0.5);
+        backdrop-filter: blur(8px);
+        line-height: 1.5;
+    `;
+
+    // Status do sistema com cores
+    const systemStatus = missingCount === 0 ? '✅ ÍNTEGRO' : '⚠️ INCOMPLETO';
+    const statusColor = missingCount === 0 ? '#00ff9c' : '#ffaa00';
+
+    panel.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #3388ff; padding-bottom:10px;">
+            <span style="font-size:16px; font-weight:bold; color:#88ddff;">🔧 DIAGNÓSTICO v6.0</span>
+            <span style="background:${statusColor}; color:#000; padding:4px 10px; border-radius:20px; font-weight:bold; font-size:12px;">${systemStatus}</span>
+        </div>
+        
+        <!-- CARD DE STATUS RESUMIDO -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:20px; background:#11223380; padding:12px; border-radius:12px;">
+            <div style="text-align:center;">
+                <div style="font-size:11px; color:#aaddff;">FUNÇÕES OK</div>
+                <div style="font-size:28px; font-weight:bold; color:#00ff9c;">${okCount}</div>
+            </div>
+            <div style="text-align:center;">
+                <div style="font-size:11px; color:#aaddff;">AUSENTES</div>
+                <div style="font-size:28px; font-weight:bold; color:#ff8888;">${missingCount}</div>
+            </div>
+            <div style="text-align:center;">
+                <div style="font-size:11px; color:#aaddff;">AVISOS</div>
+                <div style="font-size:28px; font-weight:bold; color:#ffaa00;">${warningCount}</div>
+            </div>
+        </div>
+
+        <!-- LISTA DE AÇÕES RÁPIDAS -->
+        <div style="margin-bottom:15px;">
+            <div style="font-size:12px; color:#aaddff; margin-bottom:8px;">⚡ AÇÕES RÁPIDAS</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <button id="diag-btn-diagnose" style="background:#005588; color:white; border:none; padding:10px 5px; border-radius:8px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px;">
+                    🔍 DIAGNOSTICAR
+                </button>
+                <button id="diag-btn-fix" ${missingCount === 0 ? 'disabled' : ''} style="background:${missingCount === 0 ? '#555' : '#ff8800'}; color:white; border:none; padding:10px 5px; border-radius:8px; font-weight:bold; cursor:${missingCount === 0 ? 'not-allowed' : 'pointer'}; display:flex; align-items:center; justify-content:center; gap:5px; opacity:${missingCount === 0 ? '0.6' : '1'};">
+                    🛠️ CORRIGIR (${missingCount})
+                </button>
+                <button id="diag-btn-refs" style="background:#445588; color:white; border:none; padding:10px 5px; border-radius:8px; font-weight:bold; cursor:pointer;">
+                    🔗 VERIFICAR REFS
+                </button>
+                <button id="diag-btn-testpdf" style="background:#226688; color:white; border:none; padding:10px 5px; border-radius:8px; font-weight:bold; cursor:pointer;">
+                    📄 TESTAR PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- PAINEL DE LOG RÁPIDO -->
+        <div style="background:#001524; border-radius:8px; padding:10px; margin-bottom:15px; max-height:120px; overflow-y:auto; font-family:monospace; font-size:11px; border:1px solid #336688;" id="diag-log-container">
+            <div style="color:#88aaff;">📋 Clique em uma ação para ver o resultado.</div>
+        </div>
+
+        <!-- RODAPÉ E BOTÃO FECHAR -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+            <span style="font-size:10px; color:#88aaff;">${new Date().toLocaleTimeString()} | URL: ?debug&diagnostics</span>
+            <button id="diag-btn-close" style="background:#aa4455; color:white; border:none; padding:6px 14px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:12px;">FECHAR</button>
+        </div>
+    `;
+
+    document.body.appendChild(panel);
+
+    // --- 5.4 Anexar eventos de forma segura ---
+    const logContainer = document.getElementById('diag-log-container');
+
+    function addLog(message, type = 'info') {
+        if (!logContainer) return;
+        const entry = document.createElement('div');
+        entry.style.cssText = `margin-bottom:3px; color: ${type === 'error' ? '#ff8888' : type === 'success' ? '#88ff88' : '#aaddff'};`;
+        entry.textContent = `> ${message}`;
+        logContainer.appendChild(entry);
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    // Botão Diagnosticar
+    document.getElementById('diag-btn-diagnose')?.addEventListener('click', () => {
+        addLog('🔍 Executando diagnóstico completo...');
+        const res = window.diagnoseExistingFunctions?.();
+        if (res) addLog(`✅ OK: ${res.ok?.length} | ❌ Ausentes: ${res.missing?.length}`, res.missing?.length ? 'error' : 'success');
+        else addLog('❌ Falha ao executar diagnose', 'error');
+    });
+
+    // Botão Corrigir
+    document.getElementById('diag-btn-fix')?.addEventListener('click', () => {
+        addLog('🛠️ Aplicando correções automáticas...');
+        const res = window.autoFixMissingFunctions?.();
+        if (res) {
+            addLog(`✅ ${res.fixesApplied?.length || 0} correção(ões) aplicada(s)`, 'success');
+            // Atualizar contador no painel
+            setTimeout(() => { panel.remove(); window.showCompatibilityControlPanel(); }, 1500);
+        } else {
+            addLog('❌ Falha na correção automática', 'error');
+        }
+    });
+
+    // Botão Verificar Referências
+    document.getElementById('diag-btn-refs')?.addEventListener('click', () => {
+        addLog('🔗 Verificando referências quebradas...');
+        const res = window.detectAndRemoveBrokenReferences?.();
+        if (res) {
+            if (res.brokenRefs?.length) {
+                addLog(`⚠️ ${res.brokenRefs.length} referência(s) quebrada(s)`, 'error');
+                res.brokenRefs.slice(0,3).forEach(ref => addLog(`   - ${ref}`, 'error'));
+            } else {
+                addLog('✅ Nenhuma referência quebrada', 'success');
+            }
+        }
+    });
+
+    // Botão Testar PDF
+    document.getElementById('diag-btn-testpdf')?.addEventListener('click', () => {
+        addLog('📄 Testando sistema PDF (imóvel ID: 101)...');
+        if (window.PdfSystem?.showModal) {
+            window.PdfSystem.showModal(101);
+            addLog('✅ Modal PDF acionado via PdfSystem.showModal(101)', 'success');
+        } else if (window.showPdfModal) {
+            window.showPdfModal(101);
+            addLog('⚠️ PdfSystem não encontrado, usando showPdfModal fallback', 'warning');
+        } else {
+            addLog('❌ Nenhum sistema PDF disponível!', 'error');
+        }
+    });
+
+    // Botão Fechar
+    document.getElementById('diag-btn-close')?.addEventListener('click', () => {
+        panel.style.opacity = '0';
+        setTimeout(() => panel.remove(), 300);
+    });
+
+    console.log('🟢 [DIAGNOSTICS56] Painel de controle exibido com sucesso.');
+    return panel;
+};
+
+// ============================================================
+// BLOCO 6: INICIALIZAÇÃO AUTOMÁTICA FINAL
+// ============================================================
+(function finalAutoInit() {
+    // Executar diagnóstico silencioso e aguardar carregamento total
+    const runSilentChecks = () => {
+        // Verificar sistemas principais e aplicar correções se necessário
+        if (!window.PdfSystem?.showModal || !window.MediaSystem?.uploadAll) {
+            console.warn('⚠️ [DIAGNOSTICS56] Sistemas principais incompletos. Aplicando correções...');
+            window.autoFixMissingFunctions?.();
+        }
+        
+        // Verificar referências quebradas uma vez
+        window.detectAndRemoveBrokenReferences?.();
+    };
+
+    if (document.readyState === 'complete') {
+        runSilentChecks();
+    } else {
+        window.addEventListener('load', runSilentChecks);
+    }
 })();
+
+// ============================================================
+// FIM DO ARQUIVO diagnostics56.js v6.0 FINAL
+// ============================================================
+console.log('✅ [DIAGNOSTICS56] Módulo v6.0 FINAL inicializado. Status: PRONTO.');
