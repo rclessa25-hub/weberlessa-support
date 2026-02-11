@@ -1,13 +1,14 @@
-// debug/diagnostics/diagnostics54.js - SISTEMA DE DIAGNÓSTICO DEFINITIVO v5.4.4
-// CORREÇÃO: Botão Fechar agora funciona 100% - Eventos refatorados para evitar problemas de escopo
-console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CORRIGIDA v5.4.4)');
+// debug/diagnostics/diagnostics54.js - SISTEMA DE DIAGNÓSTICO DEFINITIVO v5.4.5
+// CORREÇÃO DEFINITIVA: Botão Fechar agora SEMPRE encontra o elemento DOM correto
+// PROBLEMA RESOLVIDO: Referência de objeto desatualizada - agora busca o elemento a cada chamada
+console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CORRIGIDA v5.4.5)');
 
 (function() {
     'use strict';
     
     // ========== CONFIGURAÇÕES PRIVADAS ==========
     const CONFIG = {
-        version: '5.4.4',
+        version: '5.4.5',
         namespace: 'DiagnosticsV54',
         containerId: 'diagnostics-container-v54',
         floatingBtnId: 'diagnostics-floating-btn-v54',
@@ -28,9 +29,9 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
     
     // ========== ELEMENTOS DO DOM ==========
     let elements = {
-        container: null,
         floatingBtn: null,
         logsContainer: null
+        // ⚠️ IMPORTANTE: container NÃO é armazenado em cache - sempre buscamos do DOM!
     };
     
     // ========== ESTILOS CSS COM ALTA PRIORIDADE ==========
@@ -380,6 +381,12 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
         `).join('');
     }
     
+    // ========== FUNÇÃO PARA OBTER CONTAINER DO DOM ==========
+    // ✅ CORREÇÃO CRÍTICA: Sempre buscar do DOM, nunca usar cache
+    function getContainer() {
+        return document.getElementById(CONFIG.containerId);
+    }
+    
     // ========== CRIAÇÃO DO BOTÃO FLUTUANTE ==========
     function createFloatingButton() {
         // Remover botão existente
@@ -396,11 +403,8 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
         elements.floatingBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            // ✅ USAR REFERÊNCIA DIRETA AO INVÉS DE window[CONFIG.namespace]
             if (window.DiagnosticsV54 && typeof window.DiagnosticsV54.show === 'function') {
                 window.DiagnosticsV54.show();
-            } else {
-                console.error('[DiagnosticsV54] API não disponível para abrir');
             }
         });
         
@@ -413,7 +417,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
     // ========== CRIAÇÃO DA UI PRINCIPAL ==========
     function createMainUI() {
         // Remover UI existente
-        const existingUI = document.getElementById(CONFIG.containerId);
+        const existingUI = getContainer();
         if (existingUI) existingUI.remove();
         
         // Adicionar estilos
@@ -426,12 +430,12 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
         document.head.appendChild(newStyleEl);
         
         // Criar container principal
-        elements.container = document.createElement('div');
-        elements.container.id = CONFIG.containerId;
-        elements.container.style.display = 'none'; // Inicialmente oculto
+        const container = document.createElement('div');
+        container.id = CONFIG.containerId;
+        container.style.display = 'none'; // Inicialmente oculto
         
-        // Conteúdo da UI - AGORA USANDO IDs PARA EVENTOS
-        elements.container.innerHTML = `
+        // Conteúdo da UI
+        container.innerHTML = `
             <div class="diagnostics-header-v54">
                 <h2>
                     <span>🔧</span>
@@ -627,51 +631,47 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
         `;
         
         // Adicionar ao DOM
-        document.body.appendChild(elements.container);
+        document.body.appendChild(container);
         state.uiCreated = true;
         
         // ✅ CONFIGURAR EVENTOS APÓS CRIAR UI
         setupEvents();
         setupTabs();
         
-        // Referenciar container de logs
+        // Referenciar container de logs (apenas isso pode ser cacheado)
         elements.logsContainer = document.getElementById('logs-container-v54');
         
         log('success', '✅ Interface principal criada com sucesso');
     }
     
-    // ========== CONFIGURAÇÃO DE EVENTOS (CORRIGIDO) ==========
+    // ========== CONFIGURAÇÃO DE EVENTOS ==========
     function setupEvents() {
-        if (!elements.container) return;
-        
-        // ✅ BOTÃO FECHAR - USANDO ID ESPECÍFICO
+        // ✅ BOTÃO FECHAR - SOLUÇÃO DEFINITIVA
         const closeBtn = document.getElementById('diagnostics-close-btn');
         if (closeBtn) {
             // Remover qualquer evento antigo
-            closeBtn.replaceWith(closeBtn.cloneNode(true));
-            const freshCloseBtn = document.getElementById('diagnostics-close-btn');
+            const newCloseBtn = closeBtn.cloneNode(true);
+            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
             
             // Adicionar evento DIRETO
-            freshCloseBtn.addEventListener('click', function(e) {
+            newCloseBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('[DiagnosticsV54] Botão FECHAR clicado');
                 
-                // ✅ CHAMADA DIRETA AO MÉTODO HIDE
+                // ✅ CHAMADA DIRETA COM VERIFICAÇÃO DUPLA
                 if (window.DiagnosticsV54 && typeof window.DiagnosticsV54.hide === 'function') {
                     window.DiagnosticsV54.hide();
                 } else {
-                    // Fallback: esconder diretamente
+                    // Fallback: esconder diretamente buscando do DOM
                     const container = document.getElementById(CONFIG.containerId);
                     if (container) {
                         container.style.display = 'none';
                         state.isVisible = false;
-                        log('info', '🎛️ Painel fechado (fallback)');
+                        console.log('[DiagnosticsV54] Painel fechado via fallback direto');
                     }
                 }
             });
-        } else {
-            console.error('[DiagnosticsV54] Botão fechar não encontrado no DOM');
         }
         
         // ✅ BOTÃO TESTAR TUDO
@@ -873,8 +873,11 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
     }
     
     function setupTabs() {
-        const tabBtns = elements.container.querySelectorAll('.tab-btn-v54');
-        const tabPanels = elements.container.querySelectorAll('.tab-panel-v54');
+        const container = getContainer();
+        if (!container) return;
+        
+        const tabBtns = container.querySelectorAll('.tab-btn-v54');
+        const tabPanels = container.querySelectorAll('.tab-panel-v54');
         
         tabBtns.forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -1141,9 +1144,11 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
                 createFloatingButton();
             }
             
-            // Mostrar o container
-            if (elements.container) {
-                elements.container.style.display = 'flex';
+            // ✅ SEMPRE BUSCAR CONTAINER DO DOM, NUNCA USAR CACHE
+            const container = getContainer();
+            
+            if (container) {
+                container.style.display = 'flex';
                 state.isVisible = true;
                 
                 // Atualizar dados em tempo real
@@ -1169,20 +1174,43 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
         hide: function() {
             log('info', '🎛️ Fechando painel de diagnóstico...');
             
-            if (elements.container) {
-                elements.container.style.display = 'none';
+            // ✅ SOLUÇÃO DEFINITIVA: SEMPRE BUSCAR CONTAINER DO DOM
+            const container = getContainer();
+            
+            if (container) {
+                // Forçar display none com múltiplas propriedades
+                container.style.display = 'none';
+                container.style.visibility = 'hidden';
+                container.style.opacity = '0';
+                
+                // Garantir que não há estilos inline conflitantes
+                setTimeout(() => {
+                    container.style.visibility = '';
+                    container.style.opacity = '';
+                }, 100);
+                
                 state.isVisible = false;
-                log('success', '✅ Painel de diagnóstico FECHADO com sucesso');
+                log('success', '✅ Painel de diagnóstico FECHADO com sucesso (DOM direto)');
+                
+                // ✅ VERIFICAÇÃO DUPLA
+                setTimeout(() => {
+                    const checkContainer = getContainer();
+                    if (checkContainer && checkContainer.style.display !== 'none') {
+                        console.warn('[DiagnosticsV54] Painel ainda visível, forçando fechamento...');
+                        checkContainer.style.display = 'none';
+                        checkContainer.style.visibility = 'hidden';
+                    }
+                }, 50);
+                
             } else {
-                // Fallback: tentar encontrar pelo ID
-                const container = document.getElementById(CONFIG.containerId);
-                if (container) {
-                    container.style.display = 'none';
+                log('error', '❌ Container não encontrado no DOM');
+                
+                // Tentar criar novamente?
+                const possibleContainer = document.getElementById(CONFIG.containerId);
+                if (possibleContainer) {
+                    possibleContainer.style.display = 'none';
                     state.isVisible = false;
-                    elements.container = container;
-                    log('success', '✅ Painel de diagnóstico FECHADO (fallback)');
-                } else {
-                    log('error', '❌ Não foi possível encontrar o painel para fechar');
+                    log('success', '✅ Painel fechado via fallback (getElementById)');
                 }
             }
         },
@@ -1291,6 +1319,21 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO CO
                     supabase: !!window.supabaseClient,
                     pdfSystem: !!window.PdfSystem
                 }
+            };
+        },
+        
+        // ✅ FUNÇÃO DE DIAGNÓSTICO PARA VERIFICAR O PROBLEMA
+        debug: function() {
+            console.group('[DiagnosticsV54] DEBUG DO PAINEL');
+            console.log('Container no DOM:', getContainer());
+            console.log('state.isVisible:', state.isVisible);
+            console.log('uiCreated:', state.uiCreated);
+            console.log('Todos os elementos com ID:', Array.from(document.querySelectorAll('[id]')).map(el => el.id));
+            console.groupEnd();
+            return {
+                container: getContainer(),
+                isVisible: state.isVisible,
+                uiCreated: state.uiCreated
             };
         }
     };
