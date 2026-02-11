@@ -1,4 +1,4 @@
-// debug/diagnostics/diagnostics54.js - SISTEMA DE DIAGNÓSTICO DEFINITIVO v5.4.3
+// debug/diagnostics/diagnostics54.js - SISTEMA DE DIAGNÓSTICO DEFINITIVO v5.4.4
 console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FINAL)');
 
 (function() {
@@ -6,7 +6,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
     
     // ========== CONFIGURAÇÕES PRIVADAS ==========
     const CONFIG = {
-        version: '5.4.3',
+        version: '5.4.4',
         namespace: 'DiagnosticsV54',
         containerId: 'diagnostics-container-v54',
         floatingBtnId: 'diagnostics-floating-btn-v54',
@@ -29,7 +29,8 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
     let elements = {
         container: null,
         floatingBtn: null,
-        logsContainer: null
+        logsContainer: null,
+        closeBtn: null
     };
     
     // ========== ESTILOS CSS COM ALTA PRIORIDADE ==========
@@ -83,7 +84,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
             box-shadow: 0 0 50px rgba(255, 107, 107, 0.6) !important;
             overflow: hidden !important;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-            display: flex !important;
+            display: none !important; /* INICIALMENTE OCULTO */
             flex-direction: column !important;
         }
         
@@ -134,6 +135,11 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
             background: #ff3333 !important;
             color: white !important;
             border: 2px solid #ff6666 !important;
+        }
+        
+        .close-btn-v54:hover {
+            background: #ff6666 !important;
+            transform: scale(1.05) !important;
         }
         
         /* TABS */
@@ -296,6 +302,18 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
         .log-type-v54.warning { color: #f39c12 !important; }
         .log-type-v54.error { color: #e74c3c !important; }
         
+        /* OVERLAY DE FUNDO (OPCIONAL) */
+        .diagnostics-overlay-v54 {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(0, 0, 0, 0.7) !important;
+            z-index: 999998 !important;
+            display: none !important;
+        }
+        
         /* RESPONSIVO */
         @media (max-width: 768px) {
             #${CONFIG.containerId} {
@@ -391,9 +409,10 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
         elements.floatingBtn.innerHTML = '🔍';
         elements.floatingBtn.title = 'Abrir Diagnóstico V54 (Ctrl+Shift+D)';
         
-        // Adicionar evento
+        // Adicionar evento DIRETO
         elements.floatingBtn.addEventListener('click', function(e) {
             e.stopPropagation();
+            e.preventDefault();
             window[CONFIG.namespace].show();
         });
         
@@ -403,11 +422,34 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
         log('success', '🎯 Botão flutuante criado com sucesso');
     }
     
+    // ========== FUNÇÃO DE FECHAR CORRIGIDA ==========
+    function closeDiagnostics() {
+        log('info', '🔒 Fechando painel de diagnóstico...');
+        
+        if (elements.container) {
+            // Ocultar o container
+            elements.container.style.display = 'none';
+            state.isVisible = false;
+            
+            // Remover overlay se existir
+            const overlay = document.querySelector('.diagnostics-overlay-v54');
+            if (overlay) overlay.style.display = 'none';
+            
+            log('success', '✅ Painel fechado com sucesso');
+        } else {
+            log('error', '❌ Container não encontrado para fechar');
+        }
+    }
+    
     // ========== CRIAÇÃO DA UI PRINCIPAL ==========
     function createMainUI() {
         // Remover UI existente
         const existingUI = document.getElementById(CONFIG.containerId);
         if (existingUI) existingUI.remove();
+        
+        // Remover overlay existente
+        const existingOverlay = document.querySelector('.diagnostics-overlay-v54');
+        if (existingOverlay) existingOverlay.remove();
         
         // Adicionar estilos
         const styleEl = document.createElement('style');
@@ -415,12 +457,22 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
         styleEl.textContent = STYLES;
         document.head.appendChild(styleEl);
         
+        // Criar overlay de fundo
+        const overlay = document.createElement('div');
+        overlay.className = 'diagnostics-overlay-v54';
+        overlay.id = 'diagnostics-overlay-v54';
+        document.body.appendChild(overlay);
+        
+        // Configurar overlay para fechar ao clicar
+        overlay.addEventListener('click', function() {
+            closeDiagnostics();
+        });
+        
         // Criar container principal
         elements.container = document.createElement('div');
         elements.container.id = CONFIG.containerId;
-        elements.container.style.display = 'none'; // Inicialmente oculto
         
-        // Conteúdo da UI
+        // Conteúdo da UI - COM EVENTO CORRETO PARA FECHAR
         elements.container.innerHTML = `
             <div class="diagnostics-header-v54">
                 <h2>
@@ -431,13 +483,13 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                     </small>
                 </h2>
                 <div class="header-controls-v54">
-                    <button class="control-btn-v54" onclick="window.${CONFIG.namespace}.runTests()">
+                    <button class="control-btn-v54" id="run-tests-btn">
                         🧪 TESTAR TUDO
                     </button>
-                    <button class="control-btn-v54" onclick="window.${CONFIG.namespace}.exportReport()">
+                    <button class="control-btn-v54" id="export-report-btn">
                         📊 EXPORTAR
                     </button>
-                    <button class="control-btn-v54 close-btn-v54" onclick="window.${CONFIG.namespace}.hide()">
+                    <button class="control-btn-v54 close-btn-v54" id="close-diagnostics-btn">
                         ✕ FECHAR
                     </button>
                 </div>
@@ -464,7 +516,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                                 <p><strong>URL:</strong> ${window.location.href}</p>
                                 <p><strong>Tela:</strong> ${window.innerWidth} × ${window.innerHeight}</p>
                                 <p><strong>Tempo:</strong> ${(Date.now() - state.startTime)}ms</p>
-                                <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.verifyModules()">
+                                <button class="test-btn-v54" id="verify-modules-btn">
                                     🔍 Verificar Módulos
                                 </button>
                             </div>
@@ -478,7 +530,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                                 <p><strong>Total:</strong> <span id="property-count">${window.properties?.length || 0}</span></p>
                                 <p><strong>Cards:</strong> <span id="cards-count">${document.querySelectorAll('.property-card').length}</span></p>
                                 <p><strong>Carregado:</strong> ${window.properties ? '✅' : '⏳'}</p>
-                                <button class="test-btn-v54" onclick="checkProperties()">
+                                <button class="test-btn-v54" id="check-properties-btn">
                                     📋 Listar Imóveis
                                 </button>
                             </div>
@@ -491,7 +543,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                             <div class="panel-body-v54">
                                 <p><strong>Cliente:</strong> ${window.supabaseClient ? '✅' : '❌'}</p>
                                 <p><strong>URL:</strong> ${window.SUPABASE_CONSTANTS?.URL ? '✅' : '❌'}</p>
-                                <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.testSupabase()">
+                                <button class="test-btn-v54" id="test-supabase-btn">
                                     🔗 Testar Conexão
                                 </button>
                             </div>
@@ -502,13 +554,13 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                                 <h3>⚡ AÇÕES</h3>
                             </div>
                             <div class="panel-body-v54">
-                                <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.runTests()" style="background: #27ae60;">
+                                <button class="test-btn-v54" id="run-all-tests-btn" style="background: #27ae60;">
                                     🚀 Executar Todos os Testes
                                 </button>
-                                <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.fixPDFButtons()">
+                                <button class="test-btn-v54" id="fix-pdf-btns-btn">
                                     🔧 Corrigir Botões PDF
                                 </button>
-                                <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.checkPerformance()">
+                                <button class="test-btn-v54" id="check-perf-btn">
                                     📈 Verificar Performance
                                 </button>
                             </div>
@@ -536,7 +588,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                                 <p><strong>Modal:</strong> ${document.getElementById('pdfModal') ? '✅' : '❌'}</p>
                                 <p><strong>Sistema:</strong> ${window.PdfSystem ? '✅' : '❌'}</p>
                                 <p><strong>Botões:</strong> ${document.querySelectorAll('.pdf-access').length}</p>
-                                <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.testPDFSystem()">
+                                <button class="test-btn-v54" id="test-pdf-btn">
                                     🧪 Testar Sistema PDF
                                 </button>
                             </div>
@@ -547,10 +599,10 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                                 <h3>🔧 REPARO</h3>
                             </div>
                             <div class="panel-body-v54">
-                                <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.fixPDFButtons()">
+                                <button class="test-btn-v54" id="repair-pdf-btns-btn">
                                     🔧 Reparar Botões PDF
                                 </button>
-                                <button class="test-btn-v54" onclick="testPDFModal()">
+                                <button class="test-btn-v54" id="open-pdf-modal-btn">
                                     🎮 Abrir Modal PDF
                                 </button>
                             </div>
@@ -562,10 +614,10 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                 <div id="tab-logs-v54" class="tab-panel-v54">
                     <h3 style="color: #ff6b6b; margin-bottom: 20px;">📝 LOGS DO SISTEMA</h3>
                     <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-                        <button class="control-btn-v54" onclick="window.${CONFIG.namespace}.clearLogs()">
+                        <button class="control-btn-v54" id="clear-logs-btn">
                             🗑️ Limpar Logs
                         </button>
-                        <button class="control-btn-v54" onclick="window.${CONFIG.namespace}.exportLogs()">
+                        <button class="control-btn-v54" id="export-logs-btn">
                             💾 Exportar Logs
                         </button>
                     </div>
@@ -583,13 +635,13 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                                 <h3>🔄 SISTEMA</h3>
                             </div>
                             <div class="panel-body-v54">
-                                <button class="test-btn-v54" onclick="forceReload()">
+                                <button class="test-btn-v54" id="reload-properties-btn">
                                     🔄 Recarregar Imóveis
                                 </button>
-                                <button class="test-btn-v54" onclick="clearCache()">
+                                <button class="test-btn-v54" id="clear-cache-btn">
                                     🗑️ Limpar Cache
                                 </button>
-                                <button class="test-btn-v54" onclick="location.reload()">
+                                <button class="test-btn-v54" id="reload-page-btn">
                                     ↩️ Recarregar Página
                                 </button>
                             </div>
@@ -600,13 +652,13 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                                 <h3>🔍 DIAGNÓSTICO</h3>
                             </div>
                             <div class="panel-body-v54">
-                                <button class="test-btn-v54" onclick="window.${CONFIG.namespace}.debugSystem()">
+                                <button class="test-btn-v54" id="debug-mode-btn">
                                     🐛 Modo Debug
                                 </button>
-                                <button class="test-btn-v54" onclick="checkErrors()">
+                                <button class="test-btn-v54" id="check-errors-btn">
                                     ❌ Verificar Erros
                                 </button>
-                                <button class="test-btn-v54" onclick="showSystemInfo()">
+                                <button class="test-btn-v54" id="system-info-btn">
                                     ℹ️ Informações
                                 </button>
                             </div>
@@ -620,13 +672,73 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
         document.body.appendChild(elements.container);
         state.uiCreated = true;
         
+        // Configurar elementos
+        elements.logsContainer = document.getElementById('logs-container-v54');
+        elements.closeBtn = document.getElementById('close-diagnostics-btn');
+        
+        // Configurar eventos DIRETOS (não via onclick inline)
+        setupEventListeners();
+        
         // Configurar tabs
         setupTabs();
         
-        // Referenciar container de logs
-        elements.logsContainer = document.getElementById('logs-container-v54');
+        log('success', '✅ Interface principal criada com eventos diretos');
+    }
+    
+    function setupEventListeners() {
+        // Botão de FECHAR - EVENTO DIRETO E GARANTIDO
+        if (elements.closeBtn) {
+            elements.closeBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                closeDiagnostics();
+            });
+            
+            // Também adicionar via onclick como fallback
+            elements.closeBtn.onclick = function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                closeDiagnostics();
+            };
+            
+            log('success', '✅ Botão de fechar configurado com eventos duplos');
+        }
         
-        log('success', '✅ Interface principal criada com sucesso');
+        // Outros botões principais
+        const setupButton = (id, handler) => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.addEventListener('click', handler);
+            }
+        };
+        
+        // Botões de ação
+        setupButton('run-tests-btn', () => window[CONFIG.namespace].runTests());
+        setupButton('export-report-btn', () => window[CONFIG.namespace].exportReport());
+        setupButton('verify-modules-btn', () => window[CONFIG.namespace].verifyModules());
+        setupButton('check-properties-btn', () => checkProperties());
+        setupButton('test-supabase-btn', () => window[CONFIG.namespace].testSupabase());
+        setupButton('run-all-tests-btn', () => window[CONFIG.namespace].runTests());
+        setupButton('fix-pdf-btns-btn', () => window[CONFIG.namespace].fixPDFButtons());
+        setupButton('check-perf-btn', () => window[CONFIG.namespace].checkPerformance());
+        setupButton('test-pdf-btn', () => window[CONFIG.namespace].testPDFSystem());
+        setupButton('repair-pdf-btns-btn', () => window[CONFIG.namespace].fixPDFButtons());
+        setupButton('open-pdf-modal-btn', () => testPDFModal());
+        setupButton('clear-logs-btn', () => window[CONFIG.namespace].clearLogs());
+        setupButton('export-logs-btn', () => window[CONFIG.namespace].exportLogs());
+        setupButton('reload-properties-btn', () => forceReload());
+        setupButton('clear-cache-btn', () => clearCache());
+        setupButton('reload-page-btn', () => location.reload());
+        setupButton('debug-mode-btn', () => window[CONFIG.namespace].debugSystem());
+        setupButton('check-errors-btn', () => checkErrors());
+        setupButton('system-info-btn', () => showSystemInfo());
+        
+        // Também configurar tecla ESC para fechar
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && state.isVisible) {
+                closeDiagnostics();
+            }
+        });
     }
     
     function setupTabs() {
@@ -898,6 +1010,12 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                 createFloatingButton();
             }
             
+            // Mostrar overlay
+            const overlay = document.getElementById('diagnostics-overlay-v54');
+            if (overlay) {
+                overlay.style.display = 'block';
+            }
+            
             // Mostrar o container
             if (elements.container) {
                 elements.container.style.display = 'flex';
@@ -922,13 +1040,7 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
             return true;
         },
         
-        hide: function() {
-            if (elements.container) {
-                elements.container.style.display = 'none';
-                state.isVisible = false;
-                log('info', '🎛️ Painel fechado');
-            }
-        },
+        hide: closeDiagnostics, // Usar a função corrigida
         
         toggle: function() {
             if (state.isVisible) {
@@ -1083,12 +1195,20 @@ console.log('🎛️ diagnostics54.js - SISTEMA DEFINITIVO CARREGADO (VERSÃO FI
                 window[CONFIG.namespace].runTests();
                 log('info', '⌨️ Hotkey Ctrl+Shift+T acionada');
             }
+            
+            // ESC para fechar
+            if (e.key === 'Escape' && state.isVisible) {
+                e.preventDefault();
+                window[CONFIG.namespace].hide();
+                log('info', '⌨️ Hotkey ESC acionada para fechar');
+            }
         });
         
         // 5. Mensagem de inicialização completa
         log('success', `✅ ${CONFIG.namespace} v${CONFIG.version} carregado e pronto!`);
         console.log(`🎛️ Clique no botão 🔍 (canto inferior direito) ou use: ${CONFIG.namespace}.show()`);
-        console.log(`🎛️ Hotkeys: Ctrl+Shift+D (abrir/fechar), Ctrl+Shift+T (testar tudo)`);
+        console.log(`🎛️ Hotkeys: Ctrl+Shift+D (abrir/fechar), Ctrl+Shift+T (testar tudo), ESC (fechar)`);
+        console.log(`🎛️ Botão de fechar: Configurado com eventos diretos`);
     }
     
     // Iniciar quando o DOM estiver pronto
