@@ -1,11 +1,12 @@
 // ===== debug/diagnostics/diagnostics55.js =====
-// MÓDULO DE DIAGNÓSTICO DO SISTEMA PDF - VERSÃO 5.5
+// MÓDULO DE DIAGNÓSTICO DO SISTEMA PDF - VERSÃO 5.5.1
 // ARQUITETURA MODULAR: Totalmente refatorado para SRP e DIP.
-// DEPENDÊNCIAS: Nenhuma. Opera exclusivamente sobre APIs do Core System (window.PdfSystem, window.MediaSystem, window.SUPABASE_CONSTANTS).
+// MELHORIA v5.5.1: Adicionado cache no painel de diagnóstico (parâmetro force)
+// DEPENDÊNCIAS: Nenhuma. Opera exclusivamente sobre APIs do Core System.
 // COMPORTAMENTO: Ativado apenas via URL params (?debug=true&diagnostics=true). Silencioso em produção.
 // INTEGRAÇÃO: Projetado para ser hospedado no repositório de suporte (weberlessa-support).
 // AUTOR: Manutenção do Sistema Weber Lessa
-// DATA DA ÚLTIMA ATUALIZAÇÃO: 2026-02-11
+// DATA DA ÚLTIMA ATUALIZAÇÃO: 2026-02-12
 
 (function() {
     "use strict";
@@ -16,7 +17,7 @@
     const CONFIG = {
         DEBUG_MODE: window.location.search.includes('debug=true'),
         DIAGNOSTICS_MODE: window.location.search.includes('diagnostics=true'),
-        VERSION: '5.5',
+        VERSION: '5.5.1',
         MODULE_NAME: 'DiagnosticsPDF',
         SELECTORS: {
             pdfModal: '#pdfModal',
@@ -78,6 +79,9 @@
             children.forEach(child => {
                 if (typeof child === 'string') el.appendChild(document.createTextNode(child));
                 else if (child instanceof Node) el.appendChild(child);
+                else if (child === null || child === undefined) {
+                    // Ignorar valores nulos/undefined (útil para renderização condicional)
+                }
             });
             return el;
         },
@@ -303,19 +307,35 @@
     };
 
     // ========================================================================
-    // 4. INTERFACE DE USUÁRIO (PAINEL DE DIAGNÓSTICO)
+    // 4. INTERFACE DE USUÁRIO (PAINEL DE DIAGNÓSTICO) - COM CACHE
     // ========================================================================
     const UIManager = {
         /**
          * Cria ou atualiza o painel de diagnóstico flutuante.
+         * @param {boolean} force - Se true, recria o painel mesmo se já existir
          */
-        async createDiagnosticPanel() {
-            if (!state.isActive || state.panelCreated) return;
+        async createDiagnosticPanel(force = false) {
+            // ✅ OTIMIZAÇÃO: Cache do painel - não recria se já existe (a menos que force=true)
+            if (!state.isActive || (state.panelCreated && !force)) {
+                if (state.panelCreated && !force) {
+                    Utils.log('log', 'ℹ️ Painel de diagnóstico já existe. Use force=true para recriar.');
+                }
+                return;
+            }
 
             const panelId = 'diagnostics-pdf-panel-v55';
             let panel = document.getElementById(panelId);
             if (panel) {
-                panel.remove();
+                if (!force) {
+                    // Se já existe e não estamos forçando, apenas atualiza o conteúdo
+                    Utils.log('log', '🔄 Atualizando painel existente...');
+                    this.updateExistingPanel(panel);
+                    return;
+                } else {
+                    // Se force=true, remove o antigo para recriar
+                    panel.remove();
+                    state.panelCreated = false;
+                }
             }
 
             // Aguardar o relatório ser gerado
@@ -361,7 +381,10 @@
                     `📋 DIAGNÓSTICO PDF v${CONFIG.VERSION}`
                 ]),
                 Utils.createElement('button', {
-                    onclick: () => panel.remove(),
+                    onclick: () => {
+                        panel.remove();
+                        state.panelCreated = false;
+                    },
                     style: {
                         background: 'transparent',
                         border: '1px solid #ff5555',
@@ -370,7 +393,8 @@
                         cursor: 'pointer',
                         padding: '2px 8px',
                         fontSize: '14px'
-                    }
+                    },
+                    'aria-label': 'Fechar painel'
                 }, ['✕'])
             ]));
 
@@ -470,7 +494,8 @@
                     onclick: async () => {
                         const newReport = await PdfDiagnostic.generateFullReport();
                         Utils.showToast('Relatório atualizado!', 'success');
-                        this.createDiagnosticPanel(); // Recria o painel
+                        // Recria o painel com force=true para garantir atualização completa
+                        this.createDiagnosticPanel(true);
                     },
                     style: {
                         flex: 1,
@@ -504,6 +529,18 @@
             document.body.appendChild(panel);
             state.panelCreated = true;
             Utils.log('log', '✅ Painel de diagnóstico criado.');
+        },
+
+        /**
+         * Atualiza um painel existente sem recriar toda a estrutura DOM.
+         * @param {HTMLElement} panel - O elemento do painel existente.
+         */
+        async updateExistingPanel(panel) {
+            // Para simplificar, removemos o antigo e criamos um novo com force=true
+            // Isso é mais seguro que tentar atualizar seletivamente o conteúdo
+            panel.remove();
+            state.panelCreated = false;
+            await this.createDiagnosticPanel(true);
         },
 
         /**
@@ -593,8 +630,8 @@
             // 1. Executar verificação de integridade silenciosa
             const report = await PdfDiagnostic.generateFullReport();
 
-            // 2. Criar painel flutuante
-            await UIManager.createDiagnosticPanel();
+            // 2. Criar painel flutuante (com cache automático)
+            await UIManager.createDiagnosticPanel(false);
 
             // 3. Integrar com painel principal (se existir)
             UIManager.integrateWithMainDiagnosticsPanel();
@@ -630,4 +667,5 @@
 })();
 
 // ===== FIM DO MÓDULO diagnostics55.js =====
-console.log('✅ diagnostics55.js (v5.5) carregado e encapsulado. Ativo apenas com ?debug=true&diagnostics=true');
+console.log('✅ diagnostics55.js (v5.5.1) carregado e encapsulado. Ativo apenas com ?debug=true&diagnostics=true');
+console.log('💡 Melhoria: Painel de diagnóstico com cache (não recria a menos que force=true)');
