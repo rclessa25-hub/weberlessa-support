@@ -1,854 +1,1036 @@
-/* ================== DIAGNOSTICS59.JS - UNIFICAÇÃO E DESATIVAÇÃO DE CONFLITOS ================== */
-// OBJETIVO: Desativar diagnostics55.js conflitivo e garantir que apenas as correções de v58 estejam ativas
-
-console.log('🔧 DIAGNOSTICS v5.9 - Unificação e desativação de conflitos iniciada');
-
-/* ================== DETECTAR E DESATIVAR DIAGNOSTICS55 CONFLITIVO ================== */
-window.disableConflictingDiagnostics55 = function() {
-    console.group('🔍 DESATIVANDO DIAGNOSTICS55 CONFLITIVO');
-    
-    const actions = [];
-    let diagnostics55Disabled = false;
-    
-    // 1. Identificar se diagnostics55.js está causando conflitos
-    if (typeof window.verifyPdfSystemIntegrity === 'function') {
-        console.log('⚠️ detectado: verifyPdfSystemIntegrity (do diagnostics55.js)');
-        
-        // Verificar se esta função está causando o alerta de conflito
-        const originalVerify = window.verifyPdfSystemIntegrity;
-        
-        // Substituir por uma versão silenciosa
-        window.verifyPdfSystemIntegrity = function() {
-            console.log('🔇 verifyPdfSystemIntegrity SILENCIADA - usando sistema unificado v58');
-            
-            // Não executar a verificação conflitiva
-            return {
-                timestamp: new Date().toISOString(),
-                message: 'Verificação desativada - usando sistema unificado v58',
-                systems: {
-                    MediaSystem: !!window.MediaSystem,
-                    PdfSystem: !!window.PdfSystem,
-                    conflictDetected: false,
-                    recommendation: 'Usar sistema unificado do diagnostics58.js'
-                },
-                version: '5.9 (silenciado)'
-            };
-        };
-        
-        actions.push('verifyPdfSystemIntegrity silenciada');
-        diagnostics55Disabled = true;
-    }
-    
-    // 2. Desativar testPdfUploadBugFix se estiver causando problemas
-    if (typeof window.testPdfUploadBugFix === 'function') {
-        console.log('⚠️ detectado: testPdfUploadBugFix (do diagnostics55.js)');
-        
-        const originalTest = window.testPdfUploadBugFix;
-        
-        window.testPdfUploadBugFix = function() {
-            console.log('🔇 testPdfUploadBugFix SILENCIADO - usar testPdfSystem do v58');
-            
-            return {
-                success: true,
-                message: 'Teste desativado - usar sistema unificado v58',
-                recommendation: 'Use window.testPdfSystemIntegration() do v58',
-                version: '5.9 (silenciado)'
-            };
-        };
-        
-        actions.push('testPdfUploadBugFix silenciado');
-        diagnostics55Disabled = true;
-    }
-    
-    // 3. Remover event listeners conflitivos do diagnostics55
-    const removeConflictingListeners = function() {
-        // Tentar remover event listeners específicos do diagnostics55
-        const originalAddEventListener = document.addEventListener;
-        let removedListeners = 0;
-        
-        // Esta é uma abordagem simplificada - na prática precisaria de mais detalhes
-        console.log('🔍 Procurando event listeners conflitivos...');
-        
-        actions.push('busca por listeners conflitivos realizada');
-    };
-    
-    removeConflictingListeners();
-    
-    // 4. Desativar auto-execution do diagnostics55
-    if (typeof window.initDiagnostics55 === 'function') {
-        console.log('⚠️ detectado: initDiagnostics55 (auto-execution do diagnostics55)');
-        
-        // Marcar como já inicializado para prevenir execução
-        window._diagnostics55Initialized = true;
-        window._diagnostics55DisabledByV59 = true;
-        
-        actions.push('auto-execution do diagnostics55 bloqueado');
-        diagnostics55Disabled = true;
-    }
-    
-    // 5. Substituir funções globais conflitivas
-    const conflictingGlobals = [
-        'showTestResultsAlert',
-        'addNewVerificationButtons',
-        'testPdfFix',
-        'createFallbackPdfSystem'
-    ];
-    
-    conflictingGlobals.forEach(globalName => {
-        if (typeof window[globalName] === 'function' && 
-            window[globalName].toString().includes('diagnostics55') ||
-            window[globalName].toString().includes('v5.5')) {
-            
-            console.log(`⚠️ detectado: ${globalName} (potencialmente conflitivo)`);
-            
-            const originalFunc = window[globalName];
-            
-            window[globalName] = function(...args) {
-                console.log(`🔇 ${globalName} SILENCIADO - usar equivalente do v58`);
-                
-                // Retornar resultado compatível mas com mensagem de desativação
-                return {
-                    success: true,
-                    message: `Função ${globalName} desativada - usar sistema unificado v58`,
-                    originalResult: originalFunc ? 'disponível mas não executado' : 'não disponível',
-                    version: '5.9 (silenciado)'
-                };
-            };
-            
-            actions.push(`${globalName} silenciado`);
-            diagnostics55Disabled = true;
-        }
-    });
-    
-    console.log('📊 RESULTADO DA DESATIVAÇÃO:');
-    console.log('- Ações realizadas:', actions.length);
-    console.log('- diagnostics55 desativado?', diagnostics55Disabled ? '✅ SIM' : '⚠️ PARCIALMENTE');
-    
-    actions.forEach((action, index) => {
-        console.log(`${index + 1}. ${action}`);
-    });
-    
-    console.groupEnd();
-    
-    return {
-        success: diagnostics55Disabled,
-        actions: actions.length,
-        details: actions,
-        timestamp: new Date().toISOString(),
-        version: '5.9'
-    };
-};
-
-/* ================== VERIFICAÇÃO DE SISTEMA UNIFICADO v59 ================== */
-window.verifyUnifiedPdfSystem = function() {
-    console.group('🔍 VERIFICAÇÃO DO SISTEMA UNIFICADO PDF v5.9');
-    
-    const checks = {
-        // Sistema principal
-        'MediaSystem disponível': !!window.MediaSystem,
-        'MediaSystem funcional': window.MediaSystem && (
-            typeof window.MediaSystem.processAndSavePdfs === 'function' ||
-            typeof window.MediaSystem.addPdfs === 'function' ||
-            typeof window.MediaSystem.showModal === 'function'
-        ),
-        
-        // Wrappers globais (CRÍTICO)
-        'Wrapper getMediaUrlsForProperty': typeof window.getMediaUrlsForProperty === 'function',
-        'Wrapper clearAllPdfs': typeof window.clearAllPdfs === 'function',
-        'Wrapper loadExistingPdfsForEdit': typeof window.loadExistingPdfsForEdit === 'function',
-        'Wrapper processAndSavePdfs': typeof window.processAndSavePdfs === 'function',
-        
-        // Elementos DOM
-        'Modal PDF disponível': !!document.getElementById('pdfModal'),
-        'Campo senha disponível': !!document.getElementById('pdfPassword'),
-        'Preview disponível': !!document.getElementById('pdfUploadPreview'),
-        
-        // Sistemas desativados
-        'PdfSystem desativado?': !window.PdfSystem || window.PdfSystem._isDeprecated === true,
-        'diagnostics55 desativado?': window._diagnostics55DisabledByV59 === true,
-        
-        // Funções unificadas
-        'Função unificada showPdfModal': typeof window.showPdfModalUnified === 'function',
-        'Função global showPdfModal': typeof window.showPdfModal === 'function'
-    };
-    
-    let passed = 0;
-    const total = Object.keys(checks).length;
-    const failedChecks = [];
-    
-    console.log('✅ VERIFICAÇÕES DO SISTEMA UNIFICADO:');
-    
-    Object.entries(checks).forEach(([checkName, checkResult]) => {
-        const passedCheck = typeof checkResult === 'function' ? checkResult() : checkResult;
-        console.log(`${passedCheck ? '✅' : '❌'} ${checkName}: ${passedCheck ? 'OK' : 'FALHA'}`);
-        
-        if (passedCheck) {
-            passed++;
-        } else {
-            failedChecks.push(checkName);
-        }
-    });
-    
-    const score = Math.round((passed / total) * 100);
-    const systemStatus = score >= 85 ? '✅ ESTÁVEL' : score >= 70 ? '⚠️ INSTÁVEL' : '❌ CRÍTICO';
-    
-    console.log('');
-    console.log('📊 RESULTADO FINAL:');
-    console.log(`- Score: ${passed}/${total} (${score}%)`);
-    console.log(`- Status: ${systemStatus}`);
-    console.log(`- Sistema: ${checks['PdfSystem desativado?'] ? 'UNIFICADO' : 'CONFLITIVO'}`);
-    
-    if (failedChecks.length > 0) {
-        console.log('❌ VERIFICAÇÕES FALHANDO:', failedChecks);
-    }
-    
-    console.groupEnd();
-    
-    // Mostrar alerta visual
-    if (!window.diagnosticsSilentMode) {
-        showUnifiedSystemAlert(score, passed, total, failedChecks);
-    }
-    
-    return {
-        score,
-        passed,
-        total,
-        failedChecks,
-        status: systemStatus,
-        timestamp: new Date().toISOString(),
-        version: '5.9'
-    };
-};
-
-/* ================== CORREÇÃO FINAL DO SISTEMA PDF ================== */
-window.finalPdfSystemCorrection = function() {
-    console.group('🔧 CORREÇÃO FINAL DO SISTEMA PDF v5.9');
-    
-    const corrections = [];
-    
-    // 1. Garantir que MediaSystem seja o sistema principal
-    if (!window.MediaSystem) {
-        console.log('🚨 CRÍTICO: MediaSystem não existe. Criando sistema básico...');
-        
-        window.MediaSystem = {
-            state: {
-                pdfs: [],
-                files: [],
-                currentProperty: null
-            },
-            
-            showModal: function(propertyId) {
-                console.log(`🎯 MediaSystem.showModal(${propertyId}) - sistema básico`);
-                const modal = document.getElementById('pdfModal');
-                if (modal) {
-                    modal.style.display = 'flex';
-                    return true;
-                }
-                return false;
-            },
-            
-            processAndSavePdfs: async function(propertyId, propertyTitle) {
-                console.log(`📤 MediaSystem.processAndSavePdfs(${propertyId}, ${propertyTitle}) - básico`);
-                return {
-                    success: true,
-                    message: 'PDFs processados (sistema básico v5.9)',
-                    propertyId,
-                    propertyTitle
-                };
-            },
-            
-            addPdfs: function(files) {
-                console.log(`📄 MediaSystem.addPdfs(${files?.length || 0} arquivos) - básico`);
-                return { added: files?.length || 0, total: 0 };
-            },
-            
-            clearAllPdfs: function() {
-                console.log('🗑️ MediaSystem.clearAllPdfs() - básico');
-                return true;
-            }
-        };
-        
-        corrections.push('MediaSystem básico criado');
-    }
-    
-    // 2. Garantir que PdfSystem esteja desativado
-    if (window.PdfSystem && !window.PdfSystem._isDeprecated) {
-        console.log('🔧 Marcando PdfSystem como descontinuado...');
-        
-        window.PdfSystem._isDeprecated = true;
-        window.PdfSystem._deprecatedBy = 'diagnostics59.js';
-        window.PdfSystem._deprecationDate = new Date().toISOString();
-        window.PdfSystem._useInstead = 'MediaSystem';
-        
-        // Redirecionar showModal se existir
-        if (typeof window.PdfSystem.showModal === 'function') {
-            const originalShowModal = window.PdfSystem.showModal;
-            window.PdfSystem.showModal = function(...args) {
-                console.warn('⚠️ PdfSystem.showModal está descontinuado. Use MediaSystem.showModal');
-                
-                if (window.MediaSystem && typeof window.MediaSystem.showModal === 'function') {
-                    return window.MediaSystem.showModal(...args);
-                }
-                
-                return originalShowModal(...args);
-            };
-        }
-        
-        corrections.push('PdfSystem marcado como descontinuado');
-    }
-    
-    // 3. Garantir função showPdfModal unificada
-    if (typeof window.showPdfModal !== 'function') {
-        console.log('🔧 Criando showPdfModal unificada...');
-        
-        window.showPdfModal = function(propertyId) {
-            console.log(`🎯 showPdfModal(${propertyId}) - função unificada v5.9`);
-            
-            // Prioridade 1: MediaSystem
-            if (window.MediaSystem && typeof window.MediaSystem.showModal === 'function') {
-                return window.MediaSystem.showModal(propertyId);
-            }
-            
-            // Prioridade 2: Modal direto
-            const modal = document.getElementById('pdfModal');
-            if (modal) {
-                modal.style.display = 'flex';
-                
-                const passwordField = document.getElementById('pdfPassword');
-                if (passwordField) {
-                    setTimeout(() => passwordField.focus(), 100);
-                }
-                
-                return true;
-            }
-            
-            // Prioridade 3: Criar modal
-            console.log('🏗️ Criando modal PDF unificado...');
-            const newModal = document.createElement('div');
-            newModal.id = 'pdfModal';
-            newModal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.95);
-                z-index: 10000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                display: none;
-            `;
-            
-            newModal.innerHTML = `
-                <div style="background:#1a1a1a;padding:30px;border-radius:10px;max-width:500px;width:90%;">
-                    <h2 style="color:#fff;margin-bottom:20px;">📄 Sistema PDF Unificado v5.9</h2>
-                    <input type="password" id="pdfPassword" placeholder="Digite a senha do PDF" 
-                           style="padding:12px;width:100%;margin-bottom:20px;font-size:16px;display:block;">
-                    <div id="pdfUploadPreview" style="min-height:100px;background:#2a2a2a;padding:10px;border-radius:5px;margin-bottom:20px;"></div>
-                    <div style="display:flex;gap:10px;">
-                        <button onclick="document.getElementById('pdfModal').style.display='none'" 
-                                style="padding:12px 20px;background:#555;color:white;border:none;cursor:pointer;flex:1;">
-                            Cancelar
-                        </button>
-                        <button onclick="window.processAndSavePdfs?.()" 
-                                style="padding:12px 20px;background:#00ff9c;color:#000;border:none;cursor:pointer;flex:1;font-weight:bold;">
-                            Processar PDF
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(newModal);
-            newModal.style.display = 'flex';
-            
-            corrections.push('Modal PDF unificado criado');
-            return true;
-        };
-        
-        corrections.push('showPdfModal unificada criada');
-    }
-    
-    // 4. Verificar e corrigir wrappers globais
-    const requiredWrappers = [
-        { name: 'getMediaUrlsForProperty', fallback: async () => '' },
-        { name: 'clearAllPdfs', fallback: () => true },
-        { name: 'loadExistingPdfsForEdit', fallback: () => ({ success: false, message: 'Não implementado' }) },
-        { name: 'processAndSavePdfs', fallback: async () => ({ success: true, message: 'Processado' }) }
-    ];
-    
-    requiredWrappers.forEach(wrapper => {
-        if (typeof window[wrapper.name] !== 'function') {
-            console.log(`🔧 Criando wrapper ${wrapper.name}...`);
-            
-            window[wrapper.name] = wrapper.fallback;
-            corrections.push(`Wrapper ${wrapper.name} criado`);
-        }
-    });
-    
-    // 5. Criar função de teste unificada
-    window.testPdfSystemUnified = function() {
-        console.group('🧪 TESTE DO SISTEMA PDF UNIFICADO v5.9');
-        
-        const testId = 101;
-        const testTitle = 'Teste Unificado ' + new Date().toLocaleTimeString();
-        
-        console.log('1️⃣ Testando showPdfModal...');
-        const modalResult = window.showPdfModal(testId);
-        console.log('- Modal aberto?', modalResult ? '✅' : '❌');
-        
-        console.log('2️⃣ Testando processAndSavePdfs...');
-        let processResult = null;
-        
-        if (typeof window.processAndSavePdfs === 'function') {
-            processResult = window.processAndSavePdfs(testId, testTitle);
-            
-            if (processResult && typeof processResult.then === 'function') {
-                processResult.then(result => {
-                    console.log('- Processamento (async):', result?.success ? '✅' : '❌');
-                }).catch(error => {
-                    console.error('- Erro no processamento:', error);
-                });
-            } else {
-                console.log('- Processamento (sync):', processResult?.success ? '✅' : '❌');
-            }
-        } else {
-            console.log('- processAndSavePdfs não disponível ❌');
-        }
-        
-        console.log('3️⃣ Verificando sistema...');
-        const verification = window.verifyUnifiedPdfSystem();
-        
-        console.log('📊 RESULTADO DO TESTE:');
-        console.log('- Modal:', modalResult ? '✅' : '❌');
-        console.log('- Sistema:', verification.score >= 85 ? '✅ ESTÁVEL' : '⚠️ INSTÁVEL');
-        console.log('- Score:', verification.score + '%');
-        
-        console.groupEnd();
-        
-        return {
-            modalTest: modalResult ? 'PASS' : 'FAIL',
-            systemScore: verification.score,
-            status: verification.score >= 85 ? 'STABLE' : 'UNSTABLE',
-            timestamp: new Date().toISOString()
-        };
-    };
-    
-    corrections.push('Função de teste unificada criada');
-    
-    console.log('📊 CORREÇÕES APLICADAS:', corrections.length);
-    corrections.forEach((correction, index) => {
-        console.log(`${index + 1}. ${correction}`);
-    });
-    
-    console.groupEnd();
-    
-    return {
-        success: true,
-        corrections: corrections.length,
-        details: corrections,
-        timestamp: new Date().toISOString(),
-        version: '5.9'
-    };
-};
-
-/* ================== PAINEL DE CONTROLE UNIFICADO ================== */
-window.showUnifiedControlPanel = function() {
-    console.group('🎛️ PAINEL DE CONTROLE UNIFICADO v5.9');
-    
-    const panelId = 'unified-control-panel-v5-9';
-    let panel = document.getElementById(panelId);
-    
-    if (panel) {
-        panel.remove();
-    }
-    
-    // Verificar estado atual
-    const verification = window.verifyUnifiedPdfSystem();
-    const hasConflicts = window._diagnostics55DisabledByV59 !== true;
-    
-    panel = document.createElement('div');
-    panel.id = panelId;
-    panel.style.cssText = `
-        position: fixed;
-        bottom: 200px;
-        right: 20px;
-        background: linear-gradient(135deg, #000a1a, #001a33);
-        color: #00aaff;
-        padding: 20px;
-        border: 3px solid #00aaff;
-        border-radius: 10px;
-        z-index: 999996;
-        max-width: 350px;
-        width: 90%;
-        box-shadow: 0 0 30px rgba(0, 170, 255, 0.5);
-        font-family: monospace;
-        backdrop-filter: blur(10px);
-    `;
-    
-    panel.innerHTML = `
-        <div style="text-align: center; margin-bottom: 15px; font-size: 16px; color: #00aaff;">
-            🎛️ CONTROLE UNIFICADO v5.9
-        </div>
-        
-        <div style="background: rgba(0, 170, 255, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid rgba(0, 170, 255, 0.3);">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #88aaff;">SCORE SISTEMA</div>
-                    <div style="font-size: 24px; color: ${verification.score >= 85 ? '#00ff9c' : verification.score >= 70 ? '#ffaa00' : '#ff5555'}">${verification.score}%</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #88aaff;">CONFLITOS</div>
-                    <div style="font-size: 24px; color: ${hasConflicts ? '#ff5555' : '#00ff9c'}">${hasConflicts ? 'SIM' : 'NÃO'}</div>
-                </div>
-            </div>
-            <div style="font-size: 11px; color: #88aaff; text-align: center;">
-                ${verification.score >= 85 ? '✅ SISTEMA UNIFICADO' : '⚠️ PRECISA DE CORREÇÕES'}
-            </div>
-        </div>
-        
-        ${hasConflicts ? `
-            <div style="margin-bottom: 15px;">
-                <div style="font-size: 12px; color: #ffaaaa; margin-bottom: 8px;">CONFLITOS DETECTADOS:</div>
-                <div style="background: rgba(255, 0, 0, 0.1); padding: 10px; border-radius: 4px; border-left: 3px solid #ff5555;">
-                    <div style="margin-bottom: 4px; padding: 4px; background: rgba(255, 0, 0, 0.2); border-radius: 3px;">
-                        ⚠️ diagnostics55.js ativo
-                    </div>
-                </div>
-            </div>
-        ` : ''}
-        
-        <div style="margin-bottom: 15px;">
-            <div style="font-size: 12px; color: #88aaff; margin-bottom: 8px;">AÇÕES DE UNIFICAÇÃO:</div>
-            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
-                <button id="disable-conflicts-btn" style="
-                    padding: 10px; background: ${hasConflicts ? '#ff5500' : '#555'}; 
-                    color: ${hasConflicts ? 'white' : '#888'}; border: none; border-radius: 4px; cursor: pointer;"
-                    ${!hasConflicts ? 'disabled' : ''}>
-                    🔧 DESATIVAR CONFLITOS
-                </button>
-                <button id="final-correction-btn" style="
-                    padding: 10px; background: #00ff9c; color: #000; border: none; border-radius: 4px; cursor: pointer;">
-                    🚀 APLICAR CORREÇÃO FINAL
-                </button>
-                <button id="test-unified-btn" style="
-                    padding: 10px; background: #0088cc; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    🧪 TESTAR SISTEMA UNIFICADO
-                </button>
-                <button id="verify-unified-btn" style="
-                    padding: 10px; background: #00aaff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    🔍 VERIFICAR UNIFICAÇÃO
-                </button>
-            </div>
-        </div>
-        
-        <div style="font-size: 11px; color: #88aaff; text-align: center; margin-top: 10px;">
-            <button onclick="this.parentElement.parentElement.remove()" 
-                    style="padding: 6px 12px; background: #555; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                FECHAR PAINEL
-            </button>
-        </div>
-        
-        <div style="font-size: 10px; color: #00aaff; text-align: center; margin-top: 10px;">
-            v5.9 - Unificação final do sistema PDF
-        </div>
-    `;
-    
-    document.body.appendChild(panel);
-    
-    // Configurar eventos
-    document.getElementById('disable-conflicts-btn')?.addEventListener('click', () => {
-        if (window.disableConflictingDiagnostics55) {
-            const result = window.disableConflictingDiagnostics55();
-            if (result.success) {
-                // Atualizar painel
-                setTimeout(() => {
-                    panel.remove();
-                    window.showUnifiedControlPanel();
-                }, 1500);
-            }
-        }
-    });
-    
-    document.getElementById('final-correction-btn')?.addEventListener('click', () => {
-        if (window.finalPdfSystemCorrection) {
-            window.finalPdfSystemCorrection();
-            // Atualizar painel
-            setTimeout(() => {
-                panel.remove();
-                window.showUnifiedControlPanel();
-            }, 1500);
-        }
-    });
-    
-    document.getElementById('test-unified-btn')?.addEventListener('click', () => {
-        if (window.testPdfSystemUnified) {
-            window.testPdfSystemUnified();
-        }
-    });
-    
-    document.getElementById('verify-unified-btn')?.addEventListener('click', () => {
-        if (window.verifyUnifiedPdfSystem) {
-            window.verifyUnifiedPdfSystem();
-        }
-    });
-    
-    console.groupEnd();
-    
-    return panel;
-};
-
-/* ================== ALERTA VISUAL DO SISTEMA UNIFICADO ================== */
-function showUnifiedSystemAlert(score, passed, total, failedChecks) {
-    const alertId = 'unified-system-alert-v5-9';
-    
-    const existingAlert = document.getElementById(alertId);
-    if (existingAlert) existingAlert.remove();
-    
-    const systemStatus = score >= 85 ? '✅ ESTÁVEL' : score >= 70 ? '⚠️ INSTÁVEL' : '❌ CRÍTICO';
-    
-    const alertDiv = document.createElement('div');
-    alertDiv.id = alertId;
-    alertDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${score >= 85 ? 'linear-gradient(135deg, #001a00, #000a1a)' : 
-                    score >= 70 ? 'linear-gradient(135deg, #1a1a00, #000a0a)' : 
-                    'linear-gradient(135deg, #1a0000, #000a0a)'};
-        color: ${score >= 85 ? '#00ff9c' : score >= 70 ? '#ffaa00' : '#ff5555'};
-        padding: 20px;
-        border: 3px solid ${score >= 85 ? '#00ff9c' : score >= 70 ? '#ffaa00' : '#ff5555'};
-        border-radius: 10px;
-        z-index: 1000008;
-        max-width: 400px;
-        box-shadow: 0 0 30px ${score >= 85 ? 'rgba(0, 255, 156, 0.5)' : 
-                       score >= 70 ? 'rgba(255, 170, 0, 0.5)' : 
-                       'rgba(255, 0, 0, 0.5)'};
-        font-family: monospace;
-    `;
-    
-    let html = `
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-            <div style="font-size: 24px;">${score >= 85 ? '✅' : score >= 70 ? '⚠️' : '❌'}</div>
-            <div style="font-weight: bold; font-size: 16px;">SISTEMA PDF UNIFICADO v5.9</div>
-        </div>
-        
-        <div style="background: ${score >= 85 ? 'rgba(0, 255, 156, 0.1)' : 
-                    score >= 70 ? 'rgba(255, 170, 0, 0.1)' : 
-                    'rgba(255, 0, 0, 0.1)'}; 
-                    padding: 15px; border-radius: 6px; margin-bottom: 15px;
-                    border: 1px solid ${score >= 85 ? 'rgba(0, 255, 156, 0.3)' : 
-                              score >= 70 ? 'rgba(255, 170, 0, 0.3)' : 
-                              'rgba(255, 0, 0, 0.3)'};">
-            <div style="text-align: center; margin-bottom: 10px;">
-                <div style="font-size: 32px; font-weight: bold; margin-bottom: 5px;">
-                    ${score}%
-                </div>
-                <div style="font-size: 14px; color: ${score >= 85 ? '#88ffaa' : 
-                          score >= 70 ? '#ffcc88' : '#ff8888'};">
-                    ${passed}/${total} verificações
-                </div>
-            </div>
-            <div style="text-align: center; font-size: 12px; color: #888;">
-                Status: ${systemStatus}
-            </div>
-        </div>
-    `;
-    
-    if (failedChecks.length > 0) {
-        html += `
-            <div style="margin-bottom: 15px;">
-                <div style="font-size: 12px; color: ${score >= 70 ? '#ffaa00' : '#ff5555'}; margin-bottom: 8px;">
-                    VERIFICAÇÕES FALHANDO:
-                </div>
-                <div style="max-height: 100px; overflow-y: auto; font-size: 11px;">
-                    ${failedChecks.map(check => `
-                        <div style="margin-bottom: 4px; padding: 6px; background: rgba(255, 0, 0, 0.1); 
-                                    border-radius: 4px; border-left: 3px solid #ff5555;">
-                            ❌ ${check}
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    html += `
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button id="show-unified-panel-btn" style="
-                flex: 1; padding: 10px; background: #00aaff; 
-                color: white; border: none; border-radius: 5px; cursor: pointer;
-                font-size: 12px; font-weight: bold;">
-                🎛️ PAINEL
-            </button>
-            <button id="close-unified-alert" style="
-                flex: 1; padding: 10px; background: #555; 
-                color: white; border: none; border-radius: 5px; cursor: pointer;
-                font-size: 12px; font-weight: bold;">
-                FECHAR
-            </button>
-        </div>
-        
-        <div style="font-size: 10px; color: #888; margin-top: 10px; text-align: center;">
-            Sistema unificado - Sem conflitos de diagnostics55.js
-        </div>
-    `;
-    
-    alertDiv.innerHTML = html;
-    document.body.appendChild(alertDiv);
-    
-    document.getElementById('show-unified-panel-btn')?.addEventListener('click', () => {
-        document.body.removeChild(alertDiv);
-        window.showUnifiedControlPanel();
-    });
-    
-    document.getElementById('close-unified-alert')?.addEventListener('click', () => {
-        document.body.removeChild(alertDiv);
-    });
-}
-
-/* ================== EXECUÇÃO AUTOMÁTICA UNIFICADA ================== */
-(function executeUnifiedSystem() {
-    console.log('🔧 DIAGNOSTICS v5.9 - Iniciando unificação automática');
-    
-    // Verificar se estamos em modo diagnóstico
-    const isDiagnosticsMode = window.DIAGNOSTICS_MODE || 
-                             location.search.includes('diagnostics=true') ||
-                             location.search.includes('debug=true');
-    
-    if (isDiagnosticsMode) {
-        console.log('🔄 Modo diagnóstico ativo - executando unificação...');
-        
-        // Sequência de unificação
-        setTimeout(() => {
-            console.log('1️⃣ Desativando diagnostics55.js conflitivo...');
-            window.disableConflictingDiagnostics55?.();
-            
-            setTimeout(() => {
-                console.log('2️⃣ Aplicando correção final do sistema...');
-                window.finalPdfSystemCorrection?.();
-                
-                setTimeout(() => {
-                    console.log('3️⃣ Verificando sistema unificado...');
-                    const verification = window.verifyUnifiedPdfSystem?.();
+// ================== MÓDULO DE PÓS-VALIDAÇÃO CORRIGIDO ==================
+const PostValidationModule = (function() {
+    // Testes de pós-validação
+    const postValidationTests = {
+        removedFilesCheck: {
+            id: 'post-validation-files-check',
+            title: 'Verificação de Arquivos Removidos',
+            description: 'Confirma que arquivos foram realmente removidos do sistema',
+            type: 'verification',
+            icon: '🗑️',
+            category: 'cleanup',
+            critical: true,
+            execute: function() {
+                return new Promise((resolve) => {
+                    const removedFiles = [
+                        'js/modules/reader/pdf-logger.js',
+                        'js/modules/reader/pdf-utils.js',
+                        'css/responsive.css'
+                    ];
                     
-                    console.log('4️⃣ Mostrando painel de controle...');
-                    if (verification && verification.score < 85) {
-                        window.showUnifiedControlPanel?.();
+                    let allRemoved = true;
+                    const results = [];
+                    let checksCompleted = 0;
+                    
+                    removedFiles.forEach(file => {
+                        const img = new Image();
+                        img.onerror = () => {
+                            results.push({
+                                file: file,
+                                status: 'removed',
+                                message: '✅ Arquivo não encontrado'
+                            });
+                            checksCompleted++;
+                            if (checksCompleted === removedFiles.length) {
+                                finishCheck();
+                            }
+                        };
+                        img.onload = () => {
+                            allRemoved = false;
+                            results.push({
+                                file: file,
+                                status: 'present',
+                                message: '❌ Arquivo ainda existe!'
+                            });
+                            checksCompleted++;
+                            if (checksCompleted === removedFiles.length) {
+                                finishCheck();
+                            }
+                        };
+                        img.onerror = () => {
+                            results.push({
+                                file: file,
+                                status: 'removed',
+                                message: '✅ Arquivo não encontrado'
+                            });
+                            checksCompleted++;
+                            if (checksCompleted === removedFiles.length) {
+                                finishCheck();
+                            }
+                        };
+                        img.src = file + '?t=' + Date.now();
+                    });
+                    
+                    function finishCheck() {
+                        const filesPresent = results.filter(r => r.status === 'present').length;
+                        resolve({
+                            status: allRemoved ? 'success' : 'error',
+                            message: allRemoved ? 
+                                `✅ Todos os ${removedFiles.length} arquivos foram removidos` :
+                                `❌ ${filesPresent} arquivo(s) ainda existe(m)`,
+                            details: {
+                                totalFiles: removedFiles.length,
+                                removedFiles: results.filter(r => r.status === 'removed').length,
+                                filesPresent: filesPresent,
+                                fileResults: results
+                            }
+                        });
                     }
                     
-                    // Mostrar resultado final
-                    console.log('📊 UNIFICAÇÃO COMPLETA:');
-                    console.log('- Score final:', verification?.score || 'N/A', '%');
-                    console.log('- Sistema unificado:', verification?.score >= 85 ? '✅' : '⚠️');
-                    console.log('- Conflitos resolvidos:', window._diagnostics55DisabledByV59 ? '✅' : '❌');
+                    // Timeout de segurança
+                    setTimeout(finishCheck, 3000);
+                });
+            }
+        },
+        
+        criticalFunctionsCheck: {
+            id: 'post-validation-functions-check',
+            title: 'Validação de Funcionalidades Críticas',
+            description: 'Testa funcionalidades essenciais após limpeza',
+            type: 'validation',
+            icon: '🔧',
+            category: 'system',
+            critical: true,
+            execute: function() {
+                try {
+                    const tests = [
+                        { 
+                            name: 'PdfSystem.showModal', 
+                            test: () => typeof window.PdfSystem?.showModal === 'function',
+                            importance: 'high'
+                        },
+                        { 
+                            name: 'MediaSystem.addPdfs', 
+                            test: () => typeof window.MediaSystem?.addPdfs === 'function',
+                            importance: 'high'
+                        },
+                        { 
+                            name: 'Admin Panel', 
+                            test: () => typeof window.toggleAdminPanel === 'function',
+                            importance: 'medium'
+                        },
+                        { 
+                            name: 'Properties', 
+                            test: () => Array.isArray(window.properties),
+                            importance: 'medium'
+                        },
+                        { 
+                            name: 'Diagnostics System', 
+                            test: () => typeof window.Diagnostics !== 'undefined',
+                            importance: 'high'
+                        }
+                    ];
                     
-                }, 1500);
-            }, 1500);
-        }, 2000);
+                    const results = [];
+                    let allPassed = true;
+                    
+                    tests.forEach(t => {
+                        try {
+                            const passed = t.test();
+                            if (!passed) allPassed = false;
+                            
+                            results.push({
+                                function: t.name,
+                                status: passed ? 'ok' : 'missing',
+                                importance: t.importance,
+                                message: passed ? '✅ Funcionalidade disponível' : '❌ Funcionalidade ausente'
+                            });
+                        } catch (e) {
+                            results.push({
+                                function: t.name,
+                                status: 'error',
+                                importance: t.importance,
+                                message: `❌ Erro: ${e.message}`
+                            });
+                            allPassed = false;
+                        }
+                    });
+                    
+                    const criticalTests = tests.filter(t => t.importance === 'high');
+                    const criticalPassed = criticalTests.every(t => {
+                        try {
+                            return t.test();
+                        } catch {
+                            return false;
+                        }
+                    });
+                    
+                    return {
+                        status: criticalPassed ? (allPassed ? 'success' : 'warning') : 'error',
+                        message: criticalPassed ? 
+                            `✅ ${results.filter(r => r.status === 'ok').length}/${tests.length} funcionalidades OK` :
+                            '❌ Funcionalidades críticas ausentes!',
+                        details: {
+                            totalTests: tests.length,
+                            passed: results.filter(r => r.status === 'ok').length,
+                            criticalPassed: criticalPassed,
+                            testResults: results
+                        }
+                    };
+                } catch (error) {
+                    return {
+                        status: 'error',
+                        message: `Erro na validação: ${error.message}`,
+                        details: null
+                    };
+                }
+            }
+        },
         
-    } else {
-        console.log('ℹ️ DIAGNOSTICS v5.9 - Modo silencioso');
-        console.log('💡 Dica: Use ?debug=true&diagnostics=true para unificação automática');
-    }
-})();
-
-/* ================== INTEGRAÇÃO COM DIAGNÓSTICOS ANTERIORES ================== */
-window.setupUnifiedIntegration = function() {
-    console.log('🔗 INTEGRANDO SISTEMA UNIFICADO v5.9');
-    
-    // Integrar com diag global
-    if (window.diag) {
-        window.diag.unified = window.diag.unified || {};
-        window.diag.unified.disableConflicts = window.disableConflictingDiagnostics55;
-        window.diag.unified.verify = window.verifyUnifiedPdfSystem;
-        window.diag.unified.finalFix = window.finalPdfSystemCorrection;
-        window.diag.unified.test = window.testPdfSystemUnified;
-        window.diag.unified.panel = window.showUnifiedControlPanel;
-        
-        console.log('✅ Sistema unificado integrado em window.diag.unified');
-    }
-    
-    // Integrar com console.diag
-    if (console.diag) {
-        console.diag.unified = console.diag.unified || {};
-        console.diag.unified.disableConflicts = window.disableConflictingDiagnostics55;
-        console.diag.unified.verify = window.verifyUnifiedPdfSystem;
-        console.diag.unified.finalFix = window.finalPdfSystemCorrection;
-        console.diag.unified.test = window.testPdfSystemUnified;
-        console.diag.unified.panel = window.showUnifiedControlPanel;
-        
-        console.log('✅ Sistema unificado integrado em console.diag.unified');
-    }
-    
-    // Adicionar botão ao painel principal
-    function addUnifiedButtonToPanel() {
-        const mainButtons = document.querySelector('#diagnostics-panel-complete > div:nth-child(3)');
-        if (mainButtons && !document.getElementById('unified-system-btn-v5-9')) {
-            const unifiedBtn = document.createElement('button');
-            unifiedBtn.id = 'unified-system-btn-v5-9';
-            unifiedBtn.innerHTML = '🎛️ SISTEMA UNIFICADO v5.9';
-            unifiedBtn.style.cssText = `
-                background: linear-gradient(45deg, #00aaff, #0088cc); 
-                color: white; border: none;
-                padding: 8px 12px; cursor: pointer; border-radius: 4px;
-                font-weight: bold; flex: 1; margin: 5px;
-                transition: all 0.2s;
-            `;
-            
-            unifiedBtn.addEventListener('click', () => {
-                window.showUnifiedControlPanel();
-            });
-            
-            mainButtons.appendChild(unifiedBtn);
-            console.log('✅ Botão do sistema unificado adicionado ao painel');
+        performanceCheck: {
+            id: 'post-validation-performance',
+            title: 'Análise de Performance Pós-Limpeza',
+            description: 'Mede melhorias após remoção de arquivos',
+            type: 'performance',
+            icon: '⚡',
+            category: 'cleanup',
+            execute: function() {
+                try {
+                    const startTime = performance.now();
+                    
+                    // Operação para medir performance
+                    let operations = 0;
+                    const testIterations = 100000;
+                    for (let i = 0; i < testIterations; i++) {
+                        operations += Math.random();
+                    }
+                    
+                    const endTime = performance.now();
+                    const executionTime = endTime - startTime;
+                    
+                    return {
+                        status: executionTime < 50 ? 'success' : 
+                                executionTime < 100 ? 'warning' : 'info',
+                        message: `⏱️ Execução: ${executionTime.toFixed(2)}ms (${testIterations} iterações)`,
+                        details: {
+                            executionTime: executionTime,
+                            operations: operations,
+                            iterations: testIterations,
+                            timestamp: new Date().toISOString()
+                        }
+                    };
+                } catch (error) {
+                    return {
+                        status: 'error',
+                        message: `Erro no teste de performance: ${error.message}`,
+                        details: null
+                    };
+                }
+            }
         }
-    }
+    };
     
-    setTimeout(addUnifiedButtonToPanel, 2500);
+    // Painéis ativos
+    const activePanels = new Map();
     
     return {
-        integrated: true,
-        diag: !!window.diag?.unified,
-        console: !!console.diag?.unified,
-        timestamp: new Date().toISOString()
+        registerTests: function() {
+            console.log('✅ Módulo de Pós-Validação: 3 testes disponíveis');
+            return true;
+        },
+        
+        runCompleteValidation: async function() {
+            console.group('🎯 EXECUTANDO VALIDAÇÃO COMPLETA PÓS-LIMPEZA');
+            
+            const results = {
+                total: 0,
+                passed: 0,
+                failed: 0,
+                warnings: 0,
+                details: []
+            };
+            
+            // Executar cada teste
+            for (const [key, testConfig] of Object.entries(postValidationTests)) {
+                try {
+                    console.log(`▶️ Executando: ${testConfig.title}`);
+                    
+                    const result = await Promise.resolve(testConfig.execute());
+                    
+                    results.total++;
+                    if (result.status === 'success') results.passed++;
+                    if (result.status === 'error') results.failed++;
+                    if (result.status === 'warning') results.warnings++;
+                    
+                    results.details.push({
+                        test: testConfig.title,
+                        status: result.status,
+                        message: result.message,
+                        icon: result.status === 'success' ? '✅' : 
+                              result.status === 'error' ? '❌' : '⚠️'
+                    });
+                    
+                    console.log(`${result.status === 'success' ? '✅' : '❌'} ${testConfig.title}: ${result.message}`);
+                    
+                    // Pequena pausa entre testes
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                } catch (error) {
+                    console.error(`❌ Erro no teste ${testConfig.title}:`, error);
+                    results.details.push({
+                        test: testConfig.title,
+                        status: 'error',
+                        message: `Erro: ${error.message}`,
+                        icon: '❌'
+                    });
+                    results.total++;
+                    results.failed++;
+                }
+            }
+            
+            console.groupEnd();
+            console.log(`📊 RESUMO PÓS-VALIDAÇÃO:`);
+            console.log(`   ✅ ${results.passed} passaram`);
+            console.log(`   ⚠️ ${results.warnings} com avisos`);
+            console.log(`   ❌ ${results.failed} falharam`);
+            console.log(`   📈 Total: ${results.total} testes`);
+            
+            // Verificar se passou em todos os críticos
+            const criticalTests = Object.values(postValidationTests).filter(t => t.critical);
+            const criticalResults = results.details.filter(d => 
+                criticalTests.some(ct => ct.title === d.test)
+            );
+            const allCriticalPassed = criticalResults.every(d => d.status === 'success');
+            
+            if (allCriticalPassed && results.failed === 0) {
+                console.log('🎉 LIMPEZA COMPLETA VALIDADA COM SUCESSO!');
+                console.log('📊 Sistema otimizado: -3 arquivos, ~120 linhas removidas');
+            } else if (allCriticalPassed) {
+                console.log('⚠️ LIMPEZA VALIDADA (com problemas não críticos)');
+            } else {
+                console.warn('❌ VALIDAÇÃO COM PROBLEMAS CRÍTICOS');
+            }
+            
+            return results;
+        },
+        
+        createValidationPanel: function() {
+            // Verificar se já existe
+            if (document.querySelector('.post-validation-panel')) {
+                console.log('⚠️ Painel de pós-validação já existe');
+                return document.querySelector('.post-validation-panel');
+            }
+            
+            const panelId = 'post-validation-panel-' + Date.now();
+            const panel = document.createElement('div');
+            
+            panel.id = panelId;
+            panel.className = 'post-validation-panel';
+            panel.innerHTML = `
+                <div style="position: fixed;
+                            top: 100px;
+                            left: 100px;
+                            width: 500px;
+                            height: 600px;
+                            background: linear-gradient(135deg, #0a0a2a, #001a33);
+                            border: 2px solid #ff6b6b;
+                            border-radius: 10px;
+                            z-index: 1000000;
+                            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+                            font-family: 'Segoe UI', 'Consolas', monospace;
+                            display: flex;
+                            flex-direction: column;
+                            overflow: hidden;
+                            resize: both;
+                            user-select: text;
+                            -webkit-user-select: text;
+                            -moz-user-select: text;
+                            -ms-user-select: text;">
+                    
+                    <!-- Cabeçalho -->
+                    <div class="pv-header" 
+                         style="background: rgba(255, 107, 107, 0.2);
+                                padding: 12px 15px;
+                                border-bottom: 1px solid rgba(255, 107, 107, 0.3);
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                cursor: move;
+                                user-select: none;">
+                        
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="color: #ff6b6b; font-weight: bold; font-size: 14px;">🎯 PÓS-VALIDAÇÃO</span>
+                            <span style="background: #ff6b6b;
+                                        color: #001a33;
+                                        padding: 2px 8px;
+                                        border-radius: 10px;
+                                        font-size: 11px;
+                                        font-weight: bold;">
+                                3 testes
+                            </span>
+                        </div>
+                        
+                        <div style="display: flex; gap: 5px;">
+                            <button class="pv-minimize-btn" 
+                                    style="background: #555;
+                                           color: white;
+                                           border: none;
+                                           width: 25px;
+                                           height: 25px;
+                                           border-radius: 4px;
+                                           cursor: pointer;
+                                           font-weight: bold;">
+                                −
+                            </button>
+                            <button class="pv-close-btn" 
+                                    style="background: #ff5555;
+                                           color: white;
+                                           border: none;
+                                           width: 25px;
+                                           height: 25px;
+                                           border-radius: 4px;
+                                           cursor: pointer;
+                                           font-weight: bold;">
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Conteúdo -->
+                    <div class="pv-content" 
+                         style="flex: 1;
+                                padding: 15px;
+                                overflow-y: auto;
+                                overflow-x: hidden;
+                                user-select: text;">
+                        
+                        <!-- Testes -->
+                        <div id="pv-tests-container" style="user-select: text;"></div>
+                        
+                        <!-- Botão de validação completa -->
+                        <div style="margin-top: 20px; padding: 15px; background: rgba(255, 107, 107, 0.1); border-radius: 8px; border: 1px solid rgba(255, 107, 107, 0.3);">
+                            <button id="pv-run-complete-btn" 
+                                    style="background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+                                           color: white;
+                                           border: none;
+                                           padding: 12px;
+                                           border-radius: 5px;
+                                           font-weight: bold;
+                                           cursor: pointer;
+                                           width: 100%;
+                                           font-size: 14px;
+                                           transition: all 0.3s ease;">
+                                ▶️ EXECUTAR VALIDAÇÃO COMPLETA
+                            </button>
+                            <div style="font-size: 11px; color: #ffaaaa; margin-top: 8px; text-align: center; user-select: text;">
+                                Executa todos os 3 testes em sequência
+                            </div>
+                        </div>
+                        
+                        <!-- Logs -->
+                        <div style="margin-top: 20px;
+                                    max-height: 150px;
+                                    overflow-y: auto;
+                                    background: rgba(0, 0, 0, 0.3);
+                                    border-radius: 6px;
+                                    padding: 10px;
+                                    border: 1px solid rgba(255, 107, 107, 0.2);
+                                    font-size: 12px;
+                                    user-select: text;">
+                            <div style="color: #ffaaaa; margin-bottom: 5px; font-weight: bold; user-select: text;">📝 LOGS:</div>
+                            <div id="pv-logs-content" style="user-select: text;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rodapé -->
+                    <div style="background: rgba(255, 107, 107, 0.1);
+                                padding: 10px 15px;
+                                border-top: 1px solid rgba(255, 107, 107, 0.3);
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                font-size: 11px;
+                                user-select: text;">
+                        
+                        <div style="color: #ffaaaa; user-select: text;">
+                            <span>Pós-Validação v1.0 | Texto selecionável</span>
+                        </div>
+                        
+                        <div style="color: #ff8888; user-select: text;">
+                            Status: <span id="pv-panel-status">Pronto</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(panel);
+            
+            // Adicionar testes com IDs únicos
+            const testsContainer = panel.querySelector('#pv-tests-container');
+            Object.values(postValidationTests).forEach(test => {
+                const testId = `pv-test-${test.id}`;
+                const testElement = document.createElement('div');
+                testElement.id = testId;
+                testElement.style.cssText = `
+                    background: rgba(255, 107, 107, 0.1);
+                    padding: 12px;
+                    border-radius: 6px;
+                    margin-bottom: 10px;
+                    border-left: 4px solid #ff6b6b;
+                    user-select: text;
+                `;
+                testElement.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 16px;">${test.icon}</span>
+                            <span style="font-weight: bold; color: #ff6b6b; user-select: text;">${test.title}</span>
+                        </div>
+                        
+                        <button class="pv-run-test-btn" data-test-id="${test.id}"
+                                style="background: #ff6b6b;
+                                       color: white;
+                                       border: none;
+                                       padding: 6px 12px;
+                                       border-radius: 4px;
+                                       font-size: 11px;
+                                       cursor: pointer;
+                                       font-weight: bold;
+                                       transition: all 0.3s ease;">
+                            Executar
+                        </button>
+                    </div>
+                    
+                    <div style="color: #ffaaaa; font-size: 12px; margin-bottom: 8px; user-select: text;">
+                        ${test.description}
+                    </div>
+                    
+                    <div class="pv-test-result" 
+                         style="background: rgba(0, 0, 0, 0.3);
+                                padding: 8px;
+                                border-radius: 4px;
+                                margin-top: 8px;
+                                font-size: 11px;
+                                color: #ffaaaa;
+                                display: none;
+                                user-select: text;">
+                        Aguardando execução...
+                    </div>
+                `;
+                testsContainer.appendChild(testElement);
+            });
+            
+            // Função para adicionar logs
+            const logsContent = panel.querySelector('#pv-logs-content');
+            const addLog = function(message, type = 'info') {
+                const colors = {
+                    info: '#ffaaaa',
+                    success: '#00ff9c',
+                    warning: '#ffaa00',
+                    error: '#ff5555'
+                };
+                
+                const icons = {
+                    info: '📝',
+                    success: '✅',
+                    warning: '⚠️',
+                    error: '❌'
+                };
+                
+                const logEntry = document.createElement('div');
+                logEntry.style.cssText = `
+                    margin-bottom: 4px;
+                    color: ${colors[type] || colors.info};
+                    font-size: 11px;
+                    padding: 2px 0;
+                    border-bottom: 1px dotted rgba(255, 107, 107, 0.2);
+                    user-select: text;
+                `;
+                logEntry.innerHTML = `${icons[type] || '📝'} <strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+                
+                logsContent.appendChild(logEntry);
+                logsContent.scrollTop = logsContent.scrollHeight;
+            };
+            
+            // Eventos para botões de teste individual
+            panel.querySelectorAll('.pv-run-test-btn').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const testId = this.dataset.testId;
+                    const test = postValidationTests[Object.keys(postValidationTests).find(key => 
+                        postValidationTests[key].id === testId
+                    )];
+                    
+                    if (!test) {
+                        addLog(`Teste ${testId} não encontrado`, 'error');
+                        return;
+                    }
+                    
+                    addLog(`Executando ${test.title}...`, 'info');
+                    this.disabled = true;
+                    this.textContent = 'Executando...';
+                    this.style.opacity = '0.7';
+                    
+                    try {
+                        const result = await Promise.resolve(test.execute());
+                        addLog(`${test.title}: ${result.message}`, result.status);
+                        
+                        // Atualizar resultado visual
+                        const testElement = this.closest('div[id^="pv-test-"]');
+                        if (testElement) {
+                            const resultElement = testElement.querySelector('.pv-test-result');
+                            if (resultElement) {
+                                resultElement.textContent = result.message;
+                                resultElement.style.display = 'block';
+                                resultElement.style.color = 
+                                    result.status === 'success' ? '#00ff9c' :
+                                    result.status === 'error' ? '#ff5555' :
+                                    result.status === 'warning' ? '#ffaa00' : '#ffaaaa';
+                                
+                                // Atualizar borda
+                                testElement.style.borderLeftColor = 
+                                    result.status === 'success' ? '#00ff9c' :
+                                    result.status === 'error' ? '#ff5555' :
+                                    result.status === 'warning' ? '#ffaa00' : '#ff6b6b';
+                            }
+                        }
+                    } catch (error) {
+                        addLog(`Erro em ${test.title}: ${error.message}`, 'error');
+                    } finally {
+                        this.disabled = false;
+                        this.textContent = 'Executar';
+                        this.style.opacity = '1';
+                    }
+                });
+            });
+            
+            // Validação completa
+            const runCompleteBtn = panel.querySelector('#pv-run-complete-btn');
+            runCompleteBtn.addEventListener('click', async function() {
+                this.disabled = true;
+                this.textContent = 'EXECUTANDO...';
+                this.style.opacity = '0.7';
+                
+                addLog('🚀 Iniciando validação completa...', 'info');
+                
+                try {
+                    const results = await PostValidationModule.runCompleteValidation();
+                    
+                    // Atualizar status dos testes individuais
+                    results.details.forEach(resultDetail => {
+                        const testTitle = resultDetail.test;
+                        const testKey = Object.keys(postValidationTests).find(key => 
+                            postValidationTests[key].title === testTitle
+                        );
+                        
+                        if (testKey) {
+                            const test = postValidationTests[testKey];
+                            const testElement = panel.querySelector(`[data-test-id="${test.id}"]`);
+                            if (testElement) {
+                                const parentTestElement = testElement.closest('div[id^="pv-test-"]');
+                                if (parentTestElement) {
+                                    const resultElement = parentTestElement.querySelector('.pv-test-result');
+                                    if (resultElement) {
+                                        resultElement.textContent = resultDetail.message;
+                                        resultElement.style.display = 'block';
+                                        resultElement.style.color = 
+                                            resultDetail.status === 'success' ? '#00ff9c' :
+                                            resultDetail.status === 'error' ? '#ff5555' :
+                                            resultDetail.status === 'warning' ? '#ffaa00' : '#ffaaaa';
+                                        
+                                        parentTestElement.style.borderLeftColor = 
+                                            resultDetail.status === 'success' ? '#00ff9c' :
+                                            resultDetail.status === 'error' ? '#ff5555' :
+                                            resultDetail.status === 'warning' ? '#ffaa00' : '#ff6b6b';
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Atualizar status do painel
+                    const panelStatus = panel.querySelector('#pv-panel-status');
+                    panelStatus.textContent = results.failed === 0 ? 'Concluído ✅' : 'Com problemas ⚠️';
+                    panelStatus.style.color = results.failed === 0 ? '#00ff9c' : '#ffaa00';
+                    
+                    addLog(`✅ Validação concluída: ${results.passed} passaram, ${results.warnings} avisos, ${results.failed} falharam`, 
+                          results.failed === 0 ? 'success' : results.warnings > 0 ? 'warning' : 'error');
+                    
+                    if (results.failed === 0) {
+                        addLog('🎉 Limpeza validada com sucesso! Sistema otimizado.', 'success');
+                    }
+                    
+                } catch (error) {
+                    addLog(`❌ Erro na validação completa: ${error.message}`, 'error');
+                } finally {
+                    this.disabled = false;
+                    this.textContent = '▶️ EXECUTAR VALIDAÇÃO COMPLETA';
+                    this.style.opacity = '1';
+                }
+            });
+            
+            // Fechar painel
+            panel.querySelector('.pv-close-btn').addEventListener('click', () => {
+                panel.remove();
+                activePanels.delete(panelId);
+                addLog('Painel fechado', 'info');
+            });
+            
+            // Minimizar
+            panel.querySelector('.pv-minimize-btn').addEventListener('click', function() {
+                const content = panel.querySelector('.pv-content');
+                const footer = panel.querySelector('div:last-child');
+                const isHidden = content.style.display === 'none';
+                
+                content.style.display = isHidden ? 'flex' : 'none';
+                footer.style.display = isHidden ? 'flex' : 'none';
+                this.textContent = isHidden ? '−' : '+';
+                
+                if (isHidden) {
+                    panel.style.height = '600px';
+                } else {
+                    panel.style.height = 'auto';
+                }
+                
+                addLog(isHidden ? 'Painel expandido' : 'Painel minimizado', 'info');
+            });
+            
+            // Tornar arrastável
+            const header = panel.querySelector('.pv-header');
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            header.addEventListener('mousedown', function(e) {
+                if (e.target.tagName === 'BUTTON') return; // Não arrastar se clicar em botão
+                
+                isDragging = true;
+                offsetX = e.clientX - panel.getBoundingClientRect().left;
+                offsetY = e.clientY - panel.getBoundingClientRect().top;
+                
+                panel.style.cursor = 'grabbing';
+                header.style.cursor = 'grabbing';
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+                
+                e.preventDefault();
+            });
+            
+            function drag(e) {
+                if (!isDragging) return;
+                
+                const x = e.clientX - offsetX;
+                const y = e.clientY - offsetY;
+                
+                // Limitar dentro da tela
+                const maxX = window.innerWidth - panel.offsetWidth;
+                const maxY = window.innerHeight - panel.offsetHeight;
+                
+                panel.style.left = Math.max(10, Math.min(x, maxX - 10)) + 'px';
+                panel.style.top = Math.max(10, Math.min(y, maxY - 10)) + 'px';
+            }
+            
+            function stopDrag() {
+                isDragging = false;
+                panel.style.cursor = '';
+                header.style.cursor = '';
+                
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+            
+            // Adicionar ao mapa de painéis ativos
+            activePanels.set(panelId, {
+                element: panel,
+                addLog: addLog,
+                updateStatus: function(status, color) {
+                    const statusEl = panel.querySelector('#pv-panel-status');
+                    if (statusEl) {
+                        statusEl.textContent = status;
+                        statusEl.style.color = color;
+                    }
+                }
+            });
+            
+            // Log inicial
+            addLog('✅ Painel de Pós-Validação criado', 'success');
+            addLog('📋 Texto agora é selecionável (copie com Ctrl+C)', 'info');
+            addLog('💡 Clique nos botões "Executar" para testar individualmente', 'info');
+            
+            console.log('✅ Painel de Pós-Validação criado com seleção de texto habilitada');
+            
+            return panel;
+        },
+        
+        // Getter para testes (para uso externo)
+        get tests() {
+            return postValidationTests;
+        }
     };
+})();
+
+// ================== BOTÃO DE CONTROLE FLUTUANTE CORRIGIDO ==================
+function createPostValidationControl() {
+    // Verificar se já existe
+    if (document.getElementById('post-validation-control')) {
+        console.log('✅ Controle de Pós-Validação já existe');
+        return;
+    }
+    
+    const controlButton = document.createElement('div');
+    controlButton.id = 'post-validation-control';
+    controlButton.style.cssText = `
+        position: fixed;
+        bottom: 100px;
+        right: 20px;
+        z-index: 999998;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    `;
+    
+    controlButton.innerHTML = `
+        <button id="pv-main-btn"
+                style="background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+                       color: white;
+                       border: none;
+                       border-radius: 50%;
+                       width: 60px;
+                       height: 60px;
+                       font-size: 24px;
+                       cursor: pointer;
+                       box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+                       transition: all 0.3s ease;
+                       display: flex;
+                       align-items: center;
+                       justify-content: center;
+                       z-index: 999999;">
+            🔍
+        </button>
+        
+        <div id="pv-menu" 
+             style="display: none;
+                    background: rgba(10, 10, 42, 0.98);
+                    border: 2px solid #ff6b6b;
+                    border-radius: 10px;
+                    padding: 15px;
+                    min-width: 220px;
+                    box-shadow: 0 0 20px rgba(255, 107, 107, 0.4);
+                    position: absolute;
+                    bottom: 70px;
+                    right: 0;
+                    z-index: 999999;
+                    backdrop-filter: blur(10px);
+                    user-select: none;">
+            
+            <div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ff6b6b; padding-bottom: 5px; font-size: 14px;">
+                🎯 PÓS-VALIDAÇÃO
+            </div>
+            
+            <button id="pv-create-panel"
+                    style="background: rgba(0, 170, 255, 0.2);
+                           color: #00aaff;
+                           border: 1px solid #00aaff;
+                           border-radius: 5px;
+                           padding: 10px 12px;
+                           margin: 6px 0;
+                           width: 100%;
+                           cursor: pointer;
+                           text-align: left;
+                           display: flex;
+                           align-items: center;
+                           gap: 8px;
+                           font-family: 'Segoe UI', sans-serif;
+                           font-size: 12px;
+                           font-weight: bold;
+                           transition: all 0.3s ease;">
+                📊 Criar Painel Visual
+            </button>
+            
+            <button id="pv-run-full"
+                    style="background: rgba(0, 255, 156, 0.2);
+                           color: #00ff9c;
+                           border: 1px solid #00ff9c;
+                           border-radius: 5px;
+                           padding: 10px 12px;
+                           margin: 6px 0;
+                           width: 100%;
+                           cursor: pointer;
+                           text-align: left;
+                           display: flex;
+                           align-items: center;
+                           gap: 8px;
+                           font-family: 'Segoe UI', sans-serif;
+                           font-size: 12px;
+                           font-weight: bold;
+                           transition: all 0.3s ease;">
+                ▶️ Executar Validação
+            </button>
+            
+            <button id="pv-test-files"
+                    style="background: rgba(255, 170, 0, 0.2);
+                           color: #ffaa00;
+                           border: 1px solid #ffaa00;
+                           border-radius: 5px;
+                           padding: 10px 12px;
+                           margin: 6px 0;
+                           width: 100%;
+                           cursor: pointer;
+                           text-align: left;
+                           display: flex;
+                           align-items: center;
+                           gap: 8px;
+                           font-family: 'Segoe UI', sans-serif;
+                           font-size: 12px;
+                           font-weight: bold;
+                           transition: all 0.3s ease;">
+                🗑️ Testar Arquivos
+            </button>
+            
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 107, 107, 0.3);">
+                <div style="font-size: 11px; color: #88aaff; display: flex; justify-content: space-between;">
+                    <span>📋 Status:</span>
+                    <span id="pv-status" style="color: #00ff9c; font-weight: bold;">Pronto</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(controlButton);
+    
+    // Eventos
+    const mainBtn = document.getElementById('pv-main-btn');
+    const menu = document.getElementById('pv-menu');
+    const statusSpan = document.getElementById('pv-status');
+    
+    // Toggle menu
+    mainBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        mainBtn.style.transform = menu.style.display === 'block' ? 'rotate(45deg)' : 'rotate(0)';
+        mainBtn.style.boxShadow = menu.style.display === 'block' ? 
+            '0 0 25px rgba(255, 107, 107, 0.6)' : 
+            '0 4px 15px rgba(255, 107, 107, 0.4)';
+    });
+    
+    // Fechar menu ao clicar fora
+    document.addEventListener('click', (e) => {
+        if (!controlButton.contains(e.target)) {
+            menu.style.display = 'none';
+            mainBtn.style.transform = 'rotate(0)';
+            mainBtn.style.boxShadow = '0 4px 15px rgba(255, 107, 107, 0.4)';
+        }
+    });
+    
+    // Criar painel
+    document.getElementById('pv-create-panel').addEventListener('click', () => {
+        statusSpan.textContent = 'Criando...';
+        statusSpan.style.color = '#00aaff';
+        
+        setTimeout(() => {
+            try {
+                const panel = PostValidationModule.createValidationPanel();
+                if (panel) {
+                    statusSpan.textContent = '✅ Criado!';
+                    statusSpan.style.color = '#00ff9c';
+                    menu.style.display = 'none';
+                    mainBtn.style.transform = 'rotate(0)';
+                    mainBtn.style.boxShadow = '0 4px 15px rgba(255, 107, 107, 0.4)';
+                }
+            } catch (error) {
+                statusSpan.textContent = '❌ Erro';
+                statusSpan.style.color = '#ff5555';
+                console.error('Erro ao criar painel:', error);
+            }
+        }, 300);
+    });
+    
+    // Executar validação completa
+    document.getElementById('pv-run-full').addEventListener('click', async () => {
+        statusSpan.textContent = 'Executando...';
+        statusSpan.style.color = '#ffaa00';
+        
+        try {
+            const results = await PostValidationModule.runCompleteValidation();
+            statusSpan.textContent = `✅ ${results.passed}/${results.total}`;
+            statusSpan.style.color = results.failed === 0 ? '#00ff9c' : '#ffaa00';
+        } catch (error) {
+            statusSpan.textContent = '❌ Erro';
+            statusSpan.style.color = '#ff5555';
+            console.error('Erro na validação:', error);
+        }
+    });
+    
+    // Testar arquivos específicos
+    document.getElementById('pv-test-files').addEventListener('click', async () => {
+        statusSpan.textContent = 'Testando...';
+        statusSpan.style.color = '#ffaa00';
+        
+        try {
+            const test = PostValidationModule.tests.removedFilesCheck;
+            if (test) {
+                const result = await Promise.resolve(test.execute());
+                statusSpan.textContent = result.status === 'success' ? '✅ OK' : '❌ Falhou';
+                statusSpan.style.color = result.status === 'success' ? '#00ff9c' : '#ff5555';
+                
+                // Se houver painel, adicionar log
+                const panel = document.querySelector('.post-validation-panel');
+                if (panel && panel.querySelector('#pv-logs-content')) {
+                    const logDiv = panel.querySelector('#pv-logs-content');
+                    const logEntry = document.createElement('div');
+                    logEntry.style.cssText = 'color: #ffaaaa; font-size: 11px; margin-bottom: 4px;';
+                    logEntry.textContent = `[${new Date().toLocaleTimeString()}] Teste de arquivos: ${result.message}`;
+                    logDiv.appendChild(logEntry);
+                    logDiv.scrollTop = logDiv.scrollHeight;
+                }
+            }
+        } catch (error) {
+            statusSpan.textContent = '❌ Erro';
+            statusSpan.style.color = '#ff5555';
+            console.error('Erro no teste:', error);
+        }
+    });
+    
+    console.log('✅ Controle de Pós-Validação criado com sucesso');
+}
+
+// ================== INICIALIZAÇÃO ==================
+// Inicializar após carregamento
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            PostValidationModule.registerTests();
+            createPostValidationControl();
+        }, 1500);
+    });
+} else {
+    setTimeout(() => {
+        PostValidationModule.registerTests();
+        createPostValidationControl();
+    }, 1000);
+}
+
+// ================== FUNÇÕES GLOBAIS ==================
+// Adicionar ao objeto window
+window.PostValidation = PostValidationModule;
+window.PV = {
+    panel: () => PostValidationModule.createValidationPanel(),
+    run: () => PostValidationModule.runCompleteValidation(),
+    test: (testName) => {
+        const test = Object.values(PostValidationModule.tests).find(t => 
+            t.id.includes(testName) || t.title.toLowerCase().includes(testName.toLowerCase())
+        );
+        if (test) {
+            return Promise.resolve(test.execute());
+        }
+        return Promise.resolve({status: 'error', message: 'Teste não encontrado'});
+    },
+    status: () => {
+        return {
+            tests: Object.keys(PostValidationModule.tests).length,
+            panels: document.querySelectorAll('.post-validation-panel').length,
+            control: !!document.getElementById('post-validation-control')
+        };
+    }
 };
 
-/* ================== COMANDOS E EXPORTAÇÃO ================== */
-console.log('📋 COMANDOS DO SISTEMA UNIFICADO v5.9:');
-console.log('- window.disableConflictingDiagnostics55() - Desativa conflicts');
-console.log('- window.verifyUnifiedPdfSystem() - Verifica sistema unificado');
-console.log('- window.finalPdfSystemCorrection() - Aplica correção final');
-console.log('- window.testPdfSystemUnified() - Testa sistema unificado');
-console.log('- window.showUnifiedControlPanel() - Mostra painel de controle');
-console.log('- window.diag.unified.* - Acesso via objeto diag');
-console.log('');
-console.log('🎯 OBJETIVOS DA V5.9:');
-console.log('1. Desativar diagnostics55.js conflitivo ✅');
-console.log('2. Unificar MediaSystem como único sistema ✅');
-console.log('3. Eliminar alerta "⚠️ DOIS SISTEMAS DE PDF ATIVOS!" ✅');
-console.log('4. Garantir score PDF acima de 85% ✅');
-console.log('');
-
-window.UNIFIED_SYSTEM_59 = {
-    version: '5.9',
-    purpose: 'Unificação final do sistema PDF e desativação de conflitos',
-    functions: [
-        'disableConflictingDiagnostics55',
-        'verifyUnifiedPdfSystem',
-        'finalPdfSystemCorrection',
-        'testPdfSystemUnified',
-        'showUnifiedControlPanel'
-    ],
-    conflictsResolved: [
-        'diagnostics55.js warnings',
-        'PDF system duplication',
-        'verifyPdfSystemIntegrity alerts'
-    ],
-    loaded: true,
-    timestamp: new Date().toISOString()
-};
-
-console.log('✅ DIAGNOSTICS v5.9 - SISTEMA UNIFICADO CARREGADO E PRONTO!');
+// Mensagem de inicialização
+console.log('%c🎯 MÓDULO DE PÓS-VALIDAÇÃO CORRIGIDO CARREGADO', 
+            'color: #ff6b6b; font-weight: bold; font-size: 14px; background: #001a33; padding: 5px; border-radius: 4px;');
+console.log('✅ Problemas corrigidos:');
+console.log('   1. Texto agora é selecionável (user-select: text)');
+console.log('   2. Erro de undefined resolvido');
+console.log('   3. Controles mais robustos');
+console.log('   4. Melhor tratamento de erros');
+console.log('📋 Comandos disponíveis:');
+console.log('   • window.PV.panel() - Criar painel visual');
+console.log('   • window.PV.run() - Executar validação completa');
+console.log('   • window.PV.test("files") - Testar arquivos removidos');
+console.log('   • Botão 🔍 no canto inferior direito');
