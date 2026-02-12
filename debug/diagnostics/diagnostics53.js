@@ -1,6 +1,6 @@
-// debug/diagnostics/diagnostics53.js - VERSÃO 5.3.4 CORRIGIDA
+// debug/diagnostics/diagnostics53.js - VERSÃO 5.3.5 CORRIGIDA
 // CORREÇÃO RADICAL: Múltiplas camadas de proteção e monitoramento
-// + ADIÇÃO: Funções runSupportChecks() e checkModuleDuplications() para cadeia de diagnóstico
+// + ADIÇÃO: Funções runSupportChecks(), checkModuleDuplications() e verifySystemFunctions()
 
 /* ================== FALLBACK SUPREMO - EXECUTA ANTES DE TUDO ================== */
 // Esta definição NÃO está em IIFE, é direta no escopo global
@@ -137,7 +137,40 @@ console.log('✅ [DIAGNOSTICS] Fallbacks supremos definidos e CONGELADOS:', {
     console.log('🔒 Monitor de integridade iniciado - verificando a cada', CHECK_INTERVAL, 'ms');
 })();
 
-/* ================== NOVAS FUNÇÕES PARA CADEIA DE DIAGNÓSTICO (v5.3.4) ================== */
+/* ================== NOVAS FUNÇÕES PARA CADEIA DE DIAGNÓSTICO (v5.3.5) ================== */
+/* ================== verifySystemFunctions() - VERIFICAÇÃO DE FUNÇÕES CRÍTICAS ================== */
+window.verifySystemFunctions = function() {
+    console.group('🔍 [DIAG] Verificando funções críticas do sistema');
+    
+    const criticalFunctions = [
+        'loadPropertiesData',
+        'renderProperties',
+        'savePropertiesToStorage',
+        'addNewProperty',
+        'updateProperty',
+        'deleteProperty',
+        'PdfSystem',
+        'MediaSystem',
+        'SharedCore'
+    ];
+    
+    const results = {};
+    let allPresent = true;
+    
+    criticalFunctions.forEach(fn => {
+        const exists = typeof window[fn] !== 'undefined';
+        results[fn] = exists;
+        if (!exists) allPresent = false;
+        
+        console.log(`${exists ? '✅' : '❌'} ${fn}: ${exists ? 'disponível' : 'AUSENTE'}`);
+    });
+    
+    console.log(`📊 Resultado: ${allPresent ? 'TODAS FUNÇÕES OK' : 'FUNÇÕES AUSENTES DETECTADAS'}`);
+    console.groupEnd();
+    
+    return results;
+};
+
 /* ================== runSupportChecks() - VERIFICAÇÃO DE SUPORTE ================== */
 window.runSupportChecks = function() {
     console.group('🧪 [DIAG] Executando verificações automáticas de suporte');
@@ -218,11 +251,56 @@ window.checkModuleDuplications = function() {
     return { duplicates, count: duplicates.length };
 };
 
+/* ================== FUNÇÃO DE LOGGING PARA PAINEL ================== */
+window.logToPanel = function(message, type = 'info') {
+    const timestamp = new Date().toLocaleTimeString();
+    const prefix = `[${timestamp}] [DIAG]`;
+    
+    switch(type) {
+        case 'success':
+            console.log(`${prefix} ✅ ${message}`);
+            break;
+        case 'warning':
+            console.warn(`${prefix} ⚠️ ${message}`);
+            break;
+        case 'error':
+            console.error(`${prefix} ❌ ${message}`);
+            break;
+        default:
+            console.log(`${prefix} ℹ️ ${message}`);
+    }
+    
+    // Atualizar painel se existir
+    const panel = document.getElementById('diagnostics-panel-complete');
+    if (panel) {
+        const logContainer = panel.querySelector('.diagnostics-log');
+        if (logContainer) {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.innerHTML = `<span class="timestamp">${timestamp}</span> <span class="message">${message}</span>`;
+            entry.style.cssText = `
+                padding: 4px 8px;
+                margin: 2px 0;
+                border-radius: 4px;
+                background: ${type === 'error' ? 'rgba(255,0,0,0.1)' : 
+                            type === 'warning' ? 'rgba(255,255,0,0.1)' : 
+                            type === 'success' ? 'rgba(0,255,0,0.1)' : 'rgba(255,255,255,0.05)'};
+                color: ${type === 'error' ? '#ff8888' : 
+                        type === 'warning' ? '#ffaa00' : 
+                        type === 'success' ? '#88ff88' : '#cccccc'};
+                font-size: 11px;
+            `;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+    }
+};
+
 /* ================== OBJETO DIAG GLOBAL (ATUALIZADO) ================== */
 window.diag = window.diag || {};
 
 // Versão do módulo base
-window.diag.version = '5.3.4';
+window.diag.version = '5.3.5';
 window.diag.baseModule = true;
 
 // Exportar funções (incluindo as novas)
@@ -241,7 +319,7 @@ window.diag.system = {
 
 /* ================== VERIFICAÇÃO DE INTEGRIDADE DO PRÓPRIO MÓDULO ================== */
 (function selfDiagnostic() {
-    console.log('🔍 [DIAG v5.3.4] Auto-diagnóstico do módulo base');
+    console.log('🔍 [DIAG v5.3.5] Auto-diagnóstico do módulo base');
     
     const requiredExports = [
         'logToPanel',
@@ -255,19 +333,19 @@ window.diag.system = {
     requiredExports.forEach(fn => {
         if (typeof window[fn] !== 'function') {
             missing.push(fn);
-            console.error(`❌ [v5.3.4] FUNÇÃO AUSENTE: ${fn}`);
+            console.error(`❌ [v5.3.5] FUNÇÃO AUSENTE: ${fn}`);
         } else {
-            console.log(`✅ [v5.3.4] Função exportada: ${fn}`);
+            console.log(`✅ [v5.3.5] Função exportada: ${fn}`);
         }
     });
     
     if (missing.length > 0) {
-        console.error(`❌ [v5.3.4] MÓDULO BASE INCOMPLETO! Funções ausentes: ${missing.join(', ')}`);
-        console.error('❌ [v5.3.4] Isso AFETARÁ todos os módulos de diagnóstico superiores!');
+        console.error(`❌ [v5.3.5] MÓDULO BASE INCOMPLETO! Funções ausentes: ${missing.join(', ')}`);
+        console.error('❌ [v5.3.5] Isso AFETARÁ todos os módulos de diagnóstico superiores!');
     } else {
-        console.log('✅ [v5.3.4] Módulo base íntegro - TODAS as funções exportadas');
+        console.log('✅ [v5.3.5] Módulo base íntegro - TODAS as funções exportadas');
         if (typeof window.logToPanel === 'function') {
-            window.logToPanel('✅ diagnostics53.js v5.3.4 carregado - Módulo base íntegro', 'success');
+            window.logToPanel('✅ diagnostics53.js v5.3.5 carregado - Módulo base íntegro', 'success');
         }
     }
 })();
@@ -4678,7 +4756,7 @@ function updateOverview(data) {
     
     let html = `
         <div style="margin-bottom: 20px;">
-            <h3 style="color: #00ff9c; margin-bottom: 10px;">📊 RESUMO DO SISTEMA v5.3.4</h3>
+            <h3 style="color: #00ff9c; margin-bottom: 10px;">📊 RESUMO DO SISTEMA v5.3.5</h3>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
                 <div style="background: #111; padding: 15px; border-radius: 6px;">
                     <div style="color: #888; font-size: 11px;">SCRIPTS</div>
@@ -4749,7 +4827,7 @@ function updateOverview(data) {
                     🔍 DIAGNÓSTICO ÍCONE PDF
                 </button>
                 <div style="font-size: 11px; color: #888; margin-top: 5px;">
-                    v5.3.4: Correção crítica + Funções runSupportChecks/checkModuleDuplications
+                    v5.3.5: Correção crítica + Todas as funções base disponíveis
                 </div>
             </div>
         </div>
@@ -4940,7 +5018,7 @@ function updateTestsTab(testResults) {
                     </button>
                 </div>
                 <div style="font-size: 11px; color: #888; margin-top: 10px;">
-                    v5.3.4: Correção de ordem de execução + Funções base adicionadas
+                    v5.3.5: Correção de ordem de execução + Todas as funções base
                 </div>
             </div>
         `;
@@ -5127,7 +5205,7 @@ function updateTestsTab(testResults) {
             </button>
         </div>
         <div style="font-size: 11px; color: #888; text-align: center; margin-top: 10px;">
-            v5.3.4: Correção de ordem de execução + Funções base adicionadas
+            v5.3.5: Correção de ordem de execução + Todas as funções base
         </div>
     `;
     
@@ -5436,7 +5514,7 @@ function applyMobilePdfFixes(results) {
 /* ================== FUNÇÕES PRINCIPAIS ================== */
 async function runCompleteDiagnosis() {
     try {
-        logToPanel('🚀 Iniciando diagnóstico completo v5.3.4...', 'debug');
+        logToPanel('🚀 Iniciando diagnóstico completo v5.3.5...', 'debug');
         updateStatus('Diagnóstico em andamento...', 'info');
         
         const systemData = analyzeSystem();
@@ -5523,19 +5601,20 @@ function exportReport() {
         referenceAnalysisStatus: window.analyzeBrokenReferences ? 'Função disponível v5.3' : 'Função não disponível',
         pdfIconDiagnosisStatus: window.diagnosePdfIconProblem ? 'Função disponível v5.3' : 'Função não disponível',
         pdfCompatibilityStatus: window.runPdfCompatibilityCheck ? 'Função disponível v5.3' : 'Função não disponível',
-        runSupportChecksStatus: typeof window.runSupportChecks === 'function' ? 'Função disponível v5.3.4' : 'Função não disponível',
-        checkModuleDuplicationsStatus: typeof window.checkModuleDuplications === 'function' ? 'Função disponível v5.3.4' : 'Função não disponível'
+        runSupportChecksStatus: typeof window.runSupportChecks === 'function' ? 'Função disponível v5.3.5' : 'Função não disponível',
+        checkModuleDuplicationsStatus: typeof window.checkModuleDuplications === 'function' ? 'Função disponível v5.3.5' : 'Função não disponível',
+        verifySystemFunctionsStatus: typeof window.verifySystemFunctions === 'function' ? 'Função disponível v5.3.5' : 'Função não disponível'
     };
     
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `diagnostico-sistema-v5.3.4-${Date.now()}.json`;
+    a.download = `diagnostico-sistema-v5.3.5-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     
-    logToPanel('📊 Relatório exportado como JSON (v5.3.4)', 'success');
+    logToPanel('📊 Relatório exportado como JSON (v5.3.5)', 'success');
 }
 
 /* ================== FUNÇÕES PRINCIPAIS (CONTINUAÇÃO) ================== */
@@ -5613,7 +5692,7 @@ function createDiagnosticsPanel() {
     diagnosticsPanel.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <div style="font-size: 16px; font-weight: bold; color: #00ff9c;">
-                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA v5.3.4
+                🚀 DIAGNÓSTICO COMPLETO DO SISTEMA v5.3.5
             </div>
             <div style="display: flex; gap: 8px;">
                 <button id="test-compatibility-main" style="
@@ -5682,7 +5761,7 @@ function createDiagnosticsPanel() {
         <div style="color: #888; font-size: 11px; margin-bottom: 20px; display: flex; justify-content: space-between;">
             <div>
                 Modo: ${DEBUG_MODE ? 'DEBUG' : 'NORMAL'} | 
-                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'} | v5.3.4
+                ${DIAGNOSTICS_MODE ? 'DIAGNÓSTICO ATIVO' : 'DIAGNÓSTICO INATIVO'} | v5.3.5
             </div>
             <div id="device-indicator" style="background: #333; padding: 2px 8px; border-radius: 3px;">
                 📱 Detectando dispositivo...
@@ -5693,7 +5772,7 @@ function createDiagnosticsPanel() {
                 background: #00ff9c; color: #000; border: none;
                 padding: 8px 12px; cursor: pointer; border-radius: 4px;
                 font-weight: bold; flex: 1;">
-                🧪 TESTE COMPLETO v5.3.4
+                🧪 TESTE COMPLETO v5.3.5
             </button>
             <button id="test-pdf-mobile" style="
                 background: #0088cc; color: white; border: none;
@@ -6068,7 +6147,7 @@ window.testPdfIcon = function() {
 
 window.runDiagnostics = runCompleteDiagnosis;
 window.diagnosticsLoaded = true;
-console.log('✅ diagnostics.js v5.3.4 carregado com sucesso! (correção de ordem de execução + funções base)');
+console.log('✅ diagnostics.js v5.3.5 carregado com sucesso! (Todas as funções base disponíveis)');
 
 // Adicionar listener para capturar erros 404 em tempo real
 window.addEventListener('error', function(e) {
@@ -6139,5 +6218,5 @@ window.runPdfMobileDiagnosis = runPdfMobileDiagnosis;
 window.createDiagnosticsPanel = createDiagnosticsPanel;
 window.addPdfDiagnosticButton = addPdfDiagnosticButton;
 
-console.log('%c🎯 DIAGNÓSTICOS v5.3.4 - FALLBACK SUPREMO + FUNÇÕES BASE COMPLETAS!', 
+console.log('%c🎯 DIAGNÓSTICOS v5.3.5 - TODAS AS FUNÇÕES BASE DISPONÍVEIS!', 
            'color: #00ff9c; font-weight: bold; font-size: 18px; background: #000; padding: 10px;');
