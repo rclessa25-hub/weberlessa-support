@@ -1,14 +1,14 @@
 // ============================================================
-// debug/diagnostics/diagnostics56.js - SISTEMA DE DIAGNÓSTICO MODULAR
+// debug/diagnostics/diagnostics54.js - SISTEMA DE DIAGNÓSTICO MODULAR
 // ============================================================
 // Data: 11/02/2026
-// Versão: 5.6
+// Versão: 5.4
 // Status: ✅ PRODUÇÃO - 100% FUNCIONAL
 // Integração: Core System v16.1 - Weber Lessa Imóveis
 // ============================================================
 
 /* ================== CONFIGURAÇÕES GLOBAIS ================== */
-console.log('🚀 diagnostics56.js - Sistema de Diagnóstico Modular v5.6');
+console.log('🚀 diagnostics54.js - Sistema de Diagnóstico Modular v5.4');
 console.log('🔧 Integrado com Core System Weber Lessa - Versão 16.1');
 
 // ================== CONSTANTES E FLAGS ==================
@@ -17,7 +17,7 @@ const DIAG_CONFIG = {
     MAX_PANELS_PER_FILE: 4,
     CURRENT_PANEL_COUNT: 0,
     PANEL_CAPACITY_WARNING: 80,
-    VERSION: '5.6',
+    VERSION: '5.4',
     CORE_VERSION: '16.1',
     BASE_URL: 'https://rclessa25-hub.github.io/imoveis-maceio/',
     SUPPORT_URL: 'https://rclessa25-hub.github.io/weberlessa-support/',
@@ -1619,7 +1619,7 @@ function exportSystemReport() {
 }
 
 function showCapacityReport() {
-    console.group('📊 RELATÓRIO DE CAPACIDADE - diagnostics56.js');
+    console.group('📊 RELATÓRIO DE CAPACIDADE - diagnostics54.js');
     
     console.log(`📋 Versão: ${DIAG_CONFIG.VERSION}`);
     console.log(`🖥️ Core System: v${DIAG_CONFIG.CORE_VERSION}`);
@@ -1684,7 +1684,7 @@ function initializeDiagnosticsSystem() {
     createMainControlPanel();
     
     // 3. Adicionar comandos ao console
-    window.diag56 = {
+    window.diag54 = {
         version: DIAG_CONFIG.VERSION,
         core: {
             verify: CoreSystemDiagnosticsPanel.verifyCoreModules,
@@ -1750,7 +1750,7 @@ function initializeDiagnosticsSystem() {
     }, 1000);
     
     console.log('\n✅ Sistema de diagnóstico inicializado com sucesso!');
-    console.log('🎮 Use window.diag56 para acessar todas as funcionalidades');
+    console.log('🎮 Use window.diag54 para acessar todas as funcionalidades');
     console.log('📊 Painéis disponíveis: Core, Media, Support, References\n');
 }
 
@@ -1766,7 +1766,7 @@ if (window.location.search.includes('debug=true') && window.location.search.incl
 }
 
 // ================== EXPORTAÇÕES GLOBAIS ==================
-window.DiagnosticsSystem56 = {
+window.DiagnosticsSystem54 = {
     version: DIAG_CONFIG.VERSION,
     coreVersion: DIAG_CONFIG.CORE_VERSION,
     config: DIAG_CONFIG,
@@ -1781,5 +1781,5 @@ window.DiagnosticsSystem56 = {
     windows: WindowManager
 };
 
-console.log(`✅ diagnostics56.js v${DIAG_CONFIG.VERSION} - Sistema de diagnóstico modular carregado`);
+console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema de diagnóstico modular carregado`);
 console.log(`🎯 Integrado com Core System v${DIAG_CONFIG.CORE_VERSION} - 100% funcional`);
