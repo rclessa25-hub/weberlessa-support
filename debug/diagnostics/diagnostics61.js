@@ -1,24 +1,18 @@
 // debug/diagnostics/diagnostics61.js
 // =====================================================================
-// DIAGNÓSTICO AVANÇADO DO SISTEMA - VERSÃO 6.1
+// DIAGNÓSTICO AVANÇADO DO SISTEMA - VERSÃO 6.1.1
 // =====================================================================
 // Data: 13/02/2026
 // Status: ATIVO (Elo 6 da cadeia progressiva de diagnóstico)
 //
-// INTEGRAÇÃO NA CADEIA:
-// diagnostics53.js (Base) ← diagnostics54.js ← diagnostics55.js ←
-// diagnostics56.js ← diagnostics57.js ← diagnostics58.js ←
-// diagnostics59.js ← diagnostics60.js ← diagnostics61.js (ATUAL)
-//
-// FUNÇÕES ADICIONADAS NESTA VERSÃO:
-// 1. Análise de integridade de módulos do Core System (properties, admin, gallery)
-// 2. Verificação de consistência de dados (localStorage vs memória)
-// 3. Testes de performance de renderização da galeria
-// 4. Sistema de logs consolidado não conflitante
-// 5. Posicionamento inteligente do painel para evitar sobreposição
+// MELHORIAS NESTA VERSÃO (6.1.1):
+// 1. Posicionamento inteligente do painel: agora detecta colisões e reposiciona.
+// 2. Verificação de módulos adaptativa: não depende mais da existência de objetos
+//    window.admin/window.gallery, mas sim das funções-chave exportadas.
+// 3. Relatório mais detalhado sobre o estado de cada módulo.
 // =====================================================================
 
-console.log(`🔍 [DIAGNOSTICS61] Carregado - Versão 6.1 (Elo ${window.__diagnostics_chain_length || 6} da cadeia)`);
+console.log(`🔍 [DIAGNOSTICS61] Carregado - Versão 6.1.1 (Elo ${window.__diagnostics_chain_length || 6} da cadeia)`);
 
 // Incrementar contador da cadeia de diagnóstico
 window.__diagnostics_chain_length = (window.__diagnostics_chain_length || 5) + 1;
@@ -29,14 +23,14 @@ window.DiagnosticsV61 = (function() {
     
     // ==================== CONFIGURAÇÃO ====================
     const CONFIG = {
-        version: '6.1',
+        version: '6.1.1',
         panelId: 'diagnostics-panel-v61',
         logContainerId: 'diagnostics-log-v61',
         panelZIndex: 10000,
         panelOffset: 20, // pixels de espaçamento entre painéis
         defaultPosition: {
             top: '120px',
-            left: '820px'  // Posicionado à direita para não conflitar com outros painéis (ex: v57 em 20px, 20px)
+            left: '820px'  // Posição inicial deslocada para a direita
         },
         colors: {
             primary: '#ffaa00',
@@ -60,35 +54,221 @@ window.DiagnosticsV61 = (function() {
         panelElement: null,
         logElement: null,
         lastRunTimestamp: null,
-        positionAdjusted: false // Flag para ajuste de posição
+        positionAdjusted: false
     };
+
+    // ==================== FUNÇÕES DE UTILIDADE ====================
+    
+    /**
+     * Verifica se dois retângulos colidem
+     */
+    function rectsCollide(rect1, rect2) {
+        return !(rect2.left > rect1.right ||
+                 rect2.right < rect1.left ||
+                 rect2.top > rect1.bottom ||
+                 rect2.bottom < rect1.top);
+    }
+
+    /**
+     * Ajusta a posição do painel para evitar sobreposição com outros painéis de diagnóstico
+     */
+    function adjustPanelPosition() {
+        if (!state.panelElement) return;
+        
+        // Encontrar todos os painéis de diagnóstico existentes
+        const existingPanels = Array.from(document.querySelectorAll('[id^="diagnostics-panel-"]'))
+            .filter(panel => panel.id !== CONFIG.panelId && panel.style.display !== 'none');
+        
+        if (existingPanels.length === 0) {
+            // Se não houver outros painéis, usar a posição padrão
+            state.panelElement.style.top = CONFIG.defaultPosition.top;
+            state.panelElement.style.left = CONFIG.defaultPosition.left;
+            addLog(`Nenhum outro painel detectado. Posição: ${CONFIG.defaultPosition.top}, ${CONFIG.defaultPosition.left}`, 'info');
+            return;
+        }
+
+        // Posições candidatas: padrão, abaixo de cada painel, à direita de cada painel
+        const candidatePositions = [];
+        
+        // Posição padrão
+        candidatePositions.push({
+            top: parseInt(CONFIG.defaultPosition.top),
+            left: parseInt(CONFIG.defaultPosition.left)
+        });
+        
+        // Abaixo de cada painel existente
+        existingPanels.forEach(panel => {
+            const rect = panel.getBoundingClientRect();
+            candidatePositions.push({
+                top: rect.bottom + CONFIG.panelOffset,
+                left: rect.left
+            });
+        });
+        
+        // À direita de cada painel existente
+        existingPanels.forEach(panel => {
+            const rect = panel.getBoundingClientRect();
+            candidatePositions.push({
+                top: rect.top,
+                left: rect.right + CONFIG.panelOffset
+            });
+        });
+        
+        // Também tentar no canto superior direito como fallback
+        candidatePositions.push({ top: 20, left: window.innerWidth - 520 }); // 500px largura + 20 offset
+        
+        // Testar cada posição candidata
+        const panelRect = {
+            width: 500,
+            height: 650
+        };
+        
+        let bestPosition = null;
+        
+        for (const pos of candidatePositions) {
+            // Limitar à viewport
+            pos.top = Math.max(5, Math.min(window.innerHeight - panelRect.height - 5, pos.top));
+            pos.left = Math.max(5, Math.min(window.innerWidth - panelRect.width - 5, pos.left));
+            
+            const candidateRect = {
+                left: pos.left,
+                top: pos.top,
+                right: pos.left + panelRect.width,
+                bottom: pos.top + panelRect.height
+            };
+            
+            // Verificar se colide com algum painel existente
+            let collides = false;
+            for (const panel of existingPanels) {
+                const existingRect = panel.getBoundingClientRect();
+                if (rectsCollide(candidateRect, existingRect)) {
+                    collides = true;
+                    break;
+                }
+            }
+            
+            if (!collides) {
+                bestPosition = pos;
+                break;
+            }
+        }
+        
+        // Se todas as posições colidirem, usar a primeira candidata (padrão) e adicionar um offset
+        if (!bestPosition) {
+            bestPosition = candidatePositions[0];
+            // Adicionar um offset aleatório para tentar minimizar sobreposição total
+            bestPosition.top += 30;
+            bestPosition.left += 30;
+            addLog('Todos os espaços ocupados. Usando posição com offset.', 'warning');
+        }
+        
+        // Aplicar posição
+        state.panelElement.style.top = bestPosition.top + 'px';
+        state.panelElement.style.left = bestPosition.left + 'px';
+        addLog(`Painel posicionado em (${bestPosition.left}px, ${bestPosition.top}px)`, 'success');
+        
+        state.positionAdjusted = true;
+    }
+
+    /**
+     * Verifica a funcionalidade do módulo admin de forma adaptativa
+     */
+    function checkAdminModule() {
+        const results = {
+            objectExists: typeof window.admin !== 'undefined',
+            functions: {}
+        };
+        
+        // Funções-chave do admin
+        const adminFunctions = [
+            'toggleAdminPanel',
+            'saveProperty',
+            'editProperty',
+            'cancelEdit',
+            'resetAdminFormCompletely'
+        ];
+        
+        adminFunctions.forEach(fnName => {
+            results.functions[fnName] = typeof window[fnName] === 'function';
+        });
+        
+        // Calcular score do módulo admin
+        const functionCount = Object.values(results.functions).filter(Boolean).length;
+        const totalFunctions = adminFunctions.length;
+        const score = totalFunctions > 0 ? Math.round((functionCount / totalFunctions) * 100) : 0;
+        
+        results.status = score >= 80 ? 'ok' : score >= 50 ? 'partial' : 'critical';
+        results.score = score;
+        results.functionCount = functionCount;
+        
+        return results;
+    }
+    
+    /**
+     * Verifica a funcionalidade do módulo gallery de forma adaptativa
+     */
+    function checkGalleryModule() {
+        const results = {
+            objectExists: typeof window.gallery !== 'undefined',
+            functions: {}
+        };
+        
+        // Funções-chave da galeria
+        const galleryFunctions = [
+            'openGallery',
+            'closeGallery',
+            'nextGalleryImage',
+            'prevGalleryImage',
+            'createPropertyGallery'
+        ];
+        
+        galleryFunctions.forEach(fnName => {
+            results.functions[fnName] = typeof window[fnName] === 'function';
+        });
+        
+        // Calcular score do módulo gallery
+        const functionCount = Object.values(results.functions).filter(Boolean).length;
+        const totalFunctions = galleryFunctions.length;
+        const score = totalFunctions > 0 ? Math.round((functionCount / totalFunctions) * 100) : 0;
+        
+        results.status = score >= 80 ? 'ok' : score >= 50 ? 'partial' : 'critical';
+        results.score = score;
+        results.functionCount = functionCount;
+        
+        return results;
+    }
 
     // ==================== TESTES DEFINIDOS NESTA VERSÃO ====================
     const tests = {
-        // Teste 1: Integridade dos Módulos do Core
+        // Teste 1: Integridade dos Módulos do Core (VERSÃO ADAPTATIVA)
         coreModulesIntegrity: {
             id: 'core-modules-integrity-v61',
-            name: '🧩 Integridade dos Módulos do Core',
-            description: 'Verifica se os módulos principais (properties, admin, gallery) estão íntegros',
+            name: '🧩 Integridade dos Módulos do Core (Adaptativo)',
+            description: 'Verifica se os módulos principais estão funcionais, considerando diferentes formas de exposição',
             category: 'core',
             critical: true,
             execute: async function() {
-                console.group('🧩 [V61] Verificando integridade dos módulos do Core...');
+                console.group('🧩 [V61.1] Verificando integridade adaptativa dos módulos do Core...');
                 
-                const modulesToCheck = [
+                // Módulos que são objetos (verificação direta)
+                const objectModules = [
                     { name: 'properties', obj: window.properties, type: 'array', required: true },
-                    { name: 'admin', obj: window.admin, type: 'object', required: false },
-                    { name: 'gallery', obj: window.gallery, type: 'object', required: false },
                     { name: 'PdfSystem', obj: window.PdfSystem, type: 'object', required: false },
                     { name: 'MediaSystem', obj: window.MediaSystem, type: 'object', required: false },
                     { name: 'LoadingManager', obj: window.LoadingManager, type: 'object', required: false },
                     { name: 'SharedCore', obj: window.SharedCore, type: 'object', required: true }
                 ];
                 
+                // Módulos baseados em funções (verificação adaptativa)
+                const adminResults = checkAdminModule();
+                const galleryResults = checkGalleryModule();
+                
                 const results = [];
                 let passed = 0;
+                let totalScore = 0;
                 
-                modulesToCheck.forEach(module => {
+                // Processar módulos-objeto
+                objectModules.forEach(module => {
                     const exists = module.obj !== undefined && module.obj !== null;
                     const typeOk = module.type === 'array' ? Array.isArray(module.obj) : typeof module.obj === module.type;
                     const isOk = exists && typeOk;
@@ -100,31 +280,69 @@ window.DiagnosticsV61 = (function() {
                         exists: exists,
                         typeOk: typeOk,
                         required: module.required,
-                        status: isOk ? 'ok' : (module.required ? 'critical' : 'warning')
+                        status: isOk ? 'ok' : (module.required ? 'critical' : 'warning'),
+                        score: isOk ? 100 : 0
                     });
+                    
+                    totalScore += isOk ? 100 : 0;
                     
                     console.log(`${isOk ? '✅' : (module.required ? '❌' : '⚠️')} ${module.name}: ${exists ? (typeOk ? 'OK' : 'Tipo inválido') : 'Não encontrado'}`);
                 });
                 
-                const score = Math.round((passed / modulesToCheck.length) * 100);
+                // Adicionar admin ao total
+                results.push({
+                    name: 'admin (funções)',
+                    exists: adminResults.functionCount > 0,
+                    status: adminResults.status === 'ok' ? 'ok' : (adminResults.status === 'partial' ? 'warning' : 'critical'),
+                    required: true,
+                    details: adminResults,
+                    score: adminResults.score
+                });
                 
-                console.log(`📊 Score: ${score}% (${passed}/${modulesToCheck.length})`);
+                totalScore += adminResults.score;
+                if (adminResults.status === 'ok') passed++;
+                else if (adminResults.status === 'partial') passed += 0.5; // Crédito parcial
+                
+                console.log(`${adminResults.status === 'ok' ? '✅' : (adminResults.status === 'partial' ? '⚠️' : '❌')} admin (funções): ${adminResults.functionCount}/${Object.keys(adminResults.functions).length} funções disponíveis (Score: ${adminResults.score}%)`);
+                
+                // Adicionar gallery ao total
+                results.push({
+                    name: 'gallery (funções)',
+                    exists: galleryResults.functionCount > 0,
+                    status: galleryResults.status === 'ok' ? 'ok' : (galleryResults.status === 'partial' ? 'warning' : 'critical'),
+                    required: true,
+                    details: galleryResults,
+                    score: galleryResults.score
+                });
+                
+                totalScore += galleryResults.score;
+                if (galleryResults.status === 'ok') passed++;
+                else if (galleryResults.status === 'partial') passed += 0.5;
+                
+                console.log(`${galleryResults.status === 'ok' ? '✅' : (galleryResults.status === 'partial' ? '⚠️' : '❌')} gallery (funções): ${galleryResults.functionCount}/${Object.keys(galleryResults.functions).length} funções disponíveis (Score: ${galleryResults.score}%)`);
+                
+                const totalModules = objectModules.length + 2; // +2 para admin e gallery
+                const averageScore = Math.round(totalScore / totalModules);
+                
+                console.log(`📊 Score médio: ${averageScore}% (Pontuação bruta: ${passed}/${totalModules})`);
                 console.groupEnd();
                 
                 return {
-                    status: score >= 80 ? 'success' : score >= 60 ? 'warning' : 'error',
-                    message: `🧩 Módulos Core: ${score}% íntegros`,
+                    status: averageScore >= 80 ? 'success' : averageScore >= 60 ? 'warning' : 'error',
+                    message: `🧩 Módulos Core: ${averageScore}% funcional | Admin: ${adminResults.score}% | Gallery: ${galleryResults.score}%`,
                     details: {
-                        total: modulesToCheck.length,
-                        passed: passed,
-                        score: score,
-                        results: results
+                        totalModules: totalModules,
+                        passedModules: passed,
+                        averageScore: averageScore,
+                        results: results,
+                        adminDetails: adminResults,
+                        galleryDetails: galleryResults
                     }
                 };
             }
         },
         
-        // Teste 2: Consistência de Dados (localStorage vs Memória)
+        // Teste 2: Consistência de Dados (localStorage vs Memória) - [MANTIDO IGUAL]
         dataConsistency: {
             id: 'data-consistency-v61',
             name: '💾 Consistência de Dados',
@@ -213,7 +431,7 @@ window.DiagnosticsV61 = (function() {
             }
         },
         
-        // Teste 3: Performance de Renderização da Galeria
+        // Teste 3: Performance de Renderização da Galeria - [MANTIDO IGUAL]
         galleryPerformance: {
             id: 'gallery-performance-v61',
             name: '⚡ Performance da Galeria',
@@ -307,15 +525,29 @@ window.DiagnosticsV61 = (function() {
             }
         },
         
-        // Teste 4: Análise de Dependências (versão específica V61)
+        // Teste 4: Análise de Dependências (VERSÃO ADAPTATIVA)
         dependencyAnalysis: {
             id: 'dependency-analysis-v61',
-            name: '🔗 Análise de Dependências',
+            name: '🔗 Análise de Dependências (Adaptativa)',
             description: 'Verifica dependências críticas entre módulos do Core',
             category: 'architecture',
             critical: true,
             execute: async function() {
-                console.group('🔗 [V61] Analisando dependências...');
+                console.group('🔗 [V61.1] Analisando dependências adaptativas...');
+                
+                // Função auxiliar para verificar disponibilidade de módulo
+                function isModuleAvailable(moduleName) {
+                    if (moduleName === 'admin') {
+                        const adminCheck = checkAdminModule();
+                        return adminCheck.functionCount >= 3; // Pelo menos 3 funções admin disponíveis
+                    }
+                    if (moduleName === 'gallery') {
+                        const galleryCheck = checkGalleryModule();
+                        return galleryCheck.functionCount >= 3; // Pelo menos 3 funções gallery disponíveis
+                    }
+                    // Módulos-objeto
+                    return window[moduleName] !== undefined;
+                }
                 
                 const dependencies = [
                     { from: 'properties', to: 'SharedCore', required: true },
@@ -332,9 +564,9 @@ window.DiagnosticsV61 = (function() {
                 let criticalFails = 0;
                 
                 dependencies.forEach(dep => {
-                    const fromExists = window[dep.from] !== undefined;
-                    const toExists = window[dep.to] !== undefined;
-                    const chainOk = fromExists && toExists;
+                    const fromAvailable = isModuleAvailable(dep.from);
+                    const toAvailable = isModuleAvailable(dep.to);
+                    const chainOk = fromAvailable && toAvailable;
                     
                     if (chainOk) passed++;
                     else if (dep.required) criticalFails++;
@@ -342,13 +574,13 @@ window.DiagnosticsV61 = (function() {
                     results.push({
                         from: dep.from,
                         to: dep.to,
-                        fromExists: fromExists,
-                        toExists: toExists,
+                        fromAvailable: fromAvailable,
+                        toAvailable: toAvailable,
                         required: dep.required,
                         status: chainOk ? 'ok' : (dep.required ? 'critical' : 'warning')
                     });
                     
-                    console.log(`${chainOk ? '✅' : (dep.required ? '❌' : '⚠️')} ${dep.from} → ${dep.to}: ${fromExists ? (toExists ? 'OK' : `${dep.to} não encontrado`) : `${dep.from} não encontrado`}`);
+                    console.log(`${chainOk ? '✅' : (dep.required ? '❌' : '⚠️')} ${dep.from} → ${dep.to}: ${fromAvailable ? (toAvailable ? 'OK' : `${dep.to} não disponível`) : `${dep.from} não disponível`}`);
                 });
                 
                 const score = Math.round((passed / dependencies.length) * 100);
@@ -372,7 +604,7 @@ window.DiagnosticsV61 = (function() {
             }
         },
         
-        // Teste 5: Integridade do CSS (específico V61)
+        // Teste 5: Integridade do CSS - [MANTIDO IGUAL]
         cssIntegrity: {
             id: 'css-integrity-v61',
             name: '🎨 Integridade do CSS',
@@ -424,53 +656,6 @@ window.DiagnosticsV61 = (function() {
 
     // ==================== FUNÇÕES DO PAINEL ====================
     
-    /**
-     * Ajusta a posição do painel para evitar sobreposição com outros painéis de diagnóstico
-     */
-    function adjustPanelPosition() {
-        if (state.positionAdjusted) return;
-        
-        // Encontrar todos os painéis de diagnóstico existentes
-        const existingPanels = document.querySelectorAll('[id^="diagnostics-panel-"]');
-        let maxTop = 20;
-        let maxLeft = 20;
-        
-        existingPanels.forEach(panel => {
-            if (panel.id === CONFIG.panelId) return; // Ignorar a si mesmo
-            
-            const rect = panel.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0) {
-                // Posicionar este painel abaixo ou à direita dos existentes
-                maxTop = Math.max(maxTop, rect.bottom + CONFIG.panelOffset);
-                maxLeft = Math.max(maxLeft, rect.right + CONFIG.panelOffset);
-            }
-        });
-        
-        // Limitar para não sair da tela
-        const viewportHeight = window.innerHeight;
-        const viewportWidth = window.innerWidth;
-        
-        if (maxTop + 600 > viewportHeight) {
-            // Se não couber embaixo, posicionar à direita
-            maxTop = 20;
-            maxLeft = maxLeft + 320; // Largura aproximada do painel
-        }
-        
-        if (maxLeft + 500 > viewportWidth) {
-            // Último recurso: posicionar no canto superior esquerdo com offset
-            maxLeft = 20;
-            maxTop = 20;
-        }
-        
-        if (state.panelElement) {
-            state.panelElement.style.top = maxTop + 'px';
-            state.panelElement.style.left = maxLeft + 'px';
-            console.log(`📐 [V61] Painel posicionado em (${maxLeft}px, ${maxTop}px)`);
-        }
-        
-        state.positionAdjusted = true;
-    }
-
     /**
      * Cria o painel de diagnóstico V61
      */
@@ -698,14 +883,16 @@ window.DiagnosticsV61 = (function() {
         state.panelElement = panel;
         state.panelVisible = true;
         
-        // Ajustar posição para evitar conflitos
-        adjustPanelPosition();
+        // Ajustar posição para evitar conflitos (AGORA COM LÓGICA MELHORADA)
+        setTimeout(() => {
+            adjustPanelPosition();
+        }, 100);
         
         // Configurar eventos
         setupPanelEvents(panel, header);
         
         // Inicializar logs
-        addLog('Painel de diagnóstico V61 criado', 'info');
+        addLog('Painel de diagnóstico V61.1 criado', 'info');
         addLog(`Posicionado em (${panel.style.left}, ${panel.style.top})`, 'info');
         
         return panel;
@@ -823,7 +1010,7 @@ window.DiagnosticsV61 = (function() {
         }
         
         // Também logar no console com prefixo V61
-        console.log(`[V61] ${message}`);
+        console.log(`[V61.1] ${message}`);
     }
     
     /**
@@ -866,7 +1053,7 @@ window.DiagnosticsV61 = (function() {
             };
         } catch (error) {
             addLog(`Erro em ${test.name}: ${error.message}`, 'error');
-            console.error(`[V61] Erro no teste ${testId}:`, error);
+            console.error(`[V61.1] Erro no teste ${testId}:`, error);
             
             return {
                 testId: testId,
@@ -1042,10 +1229,13 @@ window.DiagnosticsV61 = (function() {
         const modulesSpan = document.getElementById('v61-active-modules');
         if (!modulesSpan) return;
         
+        const adminCheck = checkAdminModule();
+        const galleryCheck = checkGalleryModule();
+        
         const modules = [];
         if (window.properties) modules.push('properties');
-        if (window.admin) modules.push('admin');
-        if (window.gallery) modules.push('gallery');
+        if (adminCheck.functionCount >= 3) modules.push(`admin (${adminCheck.functionCount} fn)`);
+        if (galleryCheck.functionCount >= 3) modules.push(`gallery (${galleryCheck.functionCount} fn)`);
         if (window.PdfSystem) modules.push('PdfSystem');
         if (window.MediaSystem) modules.push('MediaSystem');
         if (window.LoadingManager) modules.push('LoadingManager');
@@ -1065,7 +1255,7 @@ window.DiagnosticsV61 = (function() {
         init: function() {
             if (state.initialized) return this;
             
-            console.log(`🔧 [V61] Inicializando módulo de diagnóstico...`);
+            console.log(`🔧 [V61.1] Inicializando módulo de diagnóstico...`);
             
             // Atualizar módulos ativos periodicamente
             updateActiveModules();
@@ -1080,7 +1270,7 @@ window.DiagnosticsV61 = (function() {
             }
             
             state.initialized = true;
-            addLog('Módulo de diagnóstico V61 inicializado', 'success');
+            addLog('Módulo de diagnóstico V61.1 inicializado', 'success');
             
             return this;
         },
@@ -1132,6 +1322,14 @@ window.DiagnosticsV61 = (function() {
          */
         adjustPosition: function() {
             adjustPanelPosition();
+        },
+        
+        /**
+         * Utilitários de diagnóstico
+         */
+        utils: {
+            checkAdmin: checkAdminModule,
+            checkGallery: checkGalleryModule
         }
     };
 })();
@@ -1144,8 +1342,9 @@ setTimeout(() => {
         // Expor globalmente
         window.diagnosticsV61 = window.DiagnosticsV61;
         
-        console.log('%c🔍 DIAGNÓSTICO V61 PRONTO', 'color: #ffaa00; font-weight: bold; font-size: 12px;');
+        console.log('%c🔍 DIAGNÓSTICO V61.1 PRONTO', 'color: #ffaa00; font-weight: bold; font-size: 12px;');
         console.log('📋 Comandos: window.DiagnosticsV61.createPanel()');
+        console.log('📋 Utilitários: window.DiagnosticsV61.utils.checkAdmin()');
         console.log('📋 Para ver painel: adicione ?debug=true&diagnostics=true à URL');
     }
 }, 1000);
