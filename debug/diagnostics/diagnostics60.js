@@ -1,733 +1,725 @@
-/* ================== DIAGNOSTICS60.JS - INTERCEPTAÇÃO DO DIAGNOSTICS53.JS ================== */
-// OBJETIVO: Corrigir os problemas na fonte, interceptando as verificações do diagnostics53.js
-
-console.log('🔧 DIAGNOSTICS v6.0 - Interceptação do diagnostics53.js iniciada');
-
-/* ================== INTERCEPTAR E CORRIGIR testMediaUnifiedComplete ================== */
-window.interceptDiagnostics53 = function() {
-    console.group('🎯 INTERCEPTANDO DIAGNOSTICS53.JS');
-    
-    const interceptions = [];
-    
-    // 1. INTERCEPTAR: testMediaUnifiedComplete (linha 3967 nos logs)
-    if (typeof window.testMediaUnifiedComplete === 'function') {
-        console.log('🔍 Interceptando testMediaUnifiedComplete...');
-        
-        const originalTestMediaUnifiedComplete = window.testMediaUnifiedComplete;
-        
-        window.testMediaUnifiedComplete = async function() {
-            console.log('🔄 testMediaUnifiedComplete INTERCEPTADO - aplicando correções');
-            
-            // Primeiro, garantir que os wrappers existam
-            ensureCriticalWrappers();
-            
-            // Depois executar o teste original
-            const originalResult = await originalTestMediaUnifiedComplete();
-            
-            // Corrigir os resultados
-            const correctedResult = {
-                ...originalResult,
-                // Forçar que os wrappers existam no resultado
-                tests: originalResult.tests ? originalResult.tests.map(test => {
-                    if (test.name.includes('getMediaUrlsForProperty') || 
-                        test.name.includes('clearAllPdfs') || 
-                        test.name.includes('loadExistingPdfsForEdit')) {
-                        return {
-                            ...test,
-                            passed: true, // Forçar como passado
-                            message: 'Wrapper corrigido via interceptação v6.0'
-                        };
-                    }
-                    return test;
-                }) : originalResult.tests,
-                passed: originalResult.tests ? 
-                    originalResult.tests.filter(t => t.passed).length + 3 : // Adicionar 3 wrappers
-                    originalResult.passed,
-                total: originalResult.total || 0
-            };
-            
-            interceptions.push('testMediaUnifiedComplete interceptado e corrigido');
-            return correctedResult;
-        };
-        
-        interceptions.push('testMediaUnifiedComplete interceptado');
-    }
-    
-    // 2. INTERCEPTAR: testModuleCompatibility (linha 3183 nos logs)
-    if (typeof window.testModuleCompatibility === 'function') {
-        console.log('🔍 Interceptando testModuleCompatibility...');
-        
-        const originalTestModuleCompatibility = window.testModuleCompatibility;
-        
-        window.testModuleCompatibility = function() {
-            console.log('🔄 testModuleCompatibility INTERCEPTADO - prevenindo falsos positivos');
-            
-            // Garantir wrappers antes do teste
-            ensureCriticalWrappers();
-            
-            // Executar teste original
-            const originalResult = originalTestModuleCompatibility();
-            
-            // Corrigir resultado
-            const correctedResult = {
-                ...originalResult,
-                details: originalResult.details ? originalResult.details.map(detail => {
-                    if (detail.name === 'Funções duplicadas') {
-                        return {
-                            ...detail,
-                            passed: true, // Forçar como passado
-                            message: 'Wrappers corrigidos via interceptação v6.0',
-                            details: {
-                                ...detail.details,
-                                missingWrappers: [], // Limpar lista de wrappers ausentes
-                                recommendations: detail.details.recommendations?.filter(
-                                    rec => !rec.includes('wrapper global para')
-                                ) || []
-                            }
-                        };
-                    }
-                    return detail;
-                }) : originalResult.details
-            };
-            
-            interceptions.push('testModuleCompatibility interceptado');
-            return correctedResult;
-        };
-    }
-    
-    // 3. INTERCEPTAR: immediatePdfValidation (linha 573 nos logs)
-    const immediatePdfValidationMatch = /immediatePdfValidation.*diagnostics53\.js:573/;
-    if (typeof window.immediatePdfValidation === 'function') {
-        console.log('🔍 Interceptando immediatePdfValidation...');
-        
-        const originalImmediatePdfValidation = window.immediatePdfValidation;
-        
-        window.immediatePdfValidation = function() {
-            console.log('🔄 immediatePdfValidation INTERCEPTADO - prevenindo alertas falsos');
-            
-            // Garantir que o sistema PDF esteja configurado
-            ensurePdfSystem();
-            
-            // Executar original silenciosamente
-            const originalResult = originalImmediatePdfValidation();
-            
-            // Corrigir score se necessário
-            if (originalResult && originalResult.score < 85) {
-                console.log('📊 Corrigindo score PDF de', originalResult.score, 'para 90%');
-                return {
-                    ...originalResult,
-                    score: 90,
-                    passed: 7, // 7/8 = 87.5%
-                    message: 'Sistema PDF verificado e corrigido (v6.0)'
-                };
-            }
-            
-            interceptions.push('immediatePdfValidation interceptado');
-            return originalResult;
-        };
-    }
-    
-    // 4. INTERCEPTAR: logToPanel específico do diagnostics53.js
-    if (typeof window.logToPanel === 'function') {
-        console.log('🔍 Interceptando logToPanel para filtrar mensagens...');
-        
-        const originalLogToPanel = window.logToPanel;
-        
-        window.logToPanel = function(message, type = 'info') {
-            // Filtrar mensagens indesejadas do diagnostics53
-            const unwantedMessages = [
-                '❌ window.getMediaUrlsForProperty',
-                '❌ window.clearAllPdfs (wrapper)',
-                '❌ window.loadExistingPdfsForEdit (wrapper)',
-                '⚠️ Funções duplicadas: Wrappers globais ausentes:',
-                '⚠️  SISTEMA PDF PODE PRECISAR DE AJUSTES',
-                '📊 Verificação PDF: 5/8 (63%)'
-            ];
-            
-            const isUnwanted = unwantedMessages.some(unwanted => 
-                message.includes(unwanted)
-            );
-            
-            if (isUnwanted) {
-                console.log(`🔇 logToPanel FILTRADO: "${message.substring(0, 50)}..."`);
+// ================== MÓDULO DE VERIFICAÇÃO DE INTEGRIDADE DO SISTEMA (VISUAL) ==================
+const SystemIntegrityModule = (function() {
+    // Testes de integridade do sistema
+    const integrityTests = {
+        systemIntegrityCheck: {
+            id: 'system-integrity-final',
+            title: '🔍 TESTE FINAL DE INTEGRIDADE DO SISTEMA',
+            description: 'Verificação completa de todos os módulos e funcionalidades críticas após otimização',
+            type: 'validation',
+            icon: '🔍',
+            category: 'integrity',
+            critical: true,
+            version: '16.0',
+            execute: function() {
+                console.group('🔍 TESTE FINAL DE INTEGRIDADE - SISTEMA OTIMIZADO v16.0');
                 
-                // Em vez de bloquear completamente, mostrar versão corrigida
-                if (message.includes('❌ window.')) {
-                    const wrapperName = message.match(/❌ (window\.\w+)/)?.[1];
-                    if (wrapperName) {
-                        const correctedMessage = `✅ ${wrapperName} - Corrigido via v6.0`;
-                        return originalLogToPanel(correctedMessage, 'success');
+                const tests = [
+                    // MÓDULOS CRÍTICOS
+                    { 
+                        name: 'PdfSystem', 
+                        test: () => window.PdfSystem && typeof window.PdfSystem.showModal === 'function',
+                        importance: 'critical'
+                    },
+                    { 
+                        name: 'MediaSystem', 
+                        test: () => window.MediaSystem && typeof window.MediaSystem.addPdfs === 'function',
+                        importance: 'critical'
+                    },
+                    { 
+                        name: 'Supabase Client', 
+                        test: () => window.supabaseClient || window.SUPABASE_CONFIG,
+                        importance: 'high'
+                    },
+                    { 
+                        name: 'Properties Array', 
+                        test: () => Array.isArray(window.properties),
+                        importance: 'high'
+                    },
+                    { 
+                        name: 'Admin Functions', 
+                        test: () => typeof window.toggleAdminPanel === 'function' && typeof window.editProperty === 'function',
+                        importance: 'medium'
+                    },
+                    { 
+                        name: 'Upload de PDFs', 
+                        test: () => typeof window.handleNewPdfFiles === 'function' || (window.MediaSystem && typeof window.MediaSystem.addPdfs === 'function'),
+                        importance: 'high'
+                    },
+                    { 
+                        name: 'Modal de Galeria', 
+                        test: () => typeof window.openGallery === 'function',
+                        importance: 'medium'
+                    },
+                    { 
+                        name: 'Filtros', 
+                        test: () => typeof window.setupFilters === 'function',
+                        importance: 'medium'
+                    },
+                    { 
+                        name: 'Sincronização', 
+                        test: () => typeof window.syncWithSupabase === 'function' || typeof window.forceSyncProperties === 'function',
+                        importance: 'high'
+                    },
+                    { 
+                        name: 'Modo Debug', 
+                        test: () => window.location.search.includes('debug=true') ? typeof window.runSupportChecks === 'function' : true,
+                        importance: 'low'
+                    },
+                    { 
+                        name: 'Fallbacks', 
+                        test: () => window.PdfLogger !== undefined && window.MediaLogger !== undefined,
+                        importance: 'medium'
                     }
-                } else if (message.includes('Verificação PDF:')) {
-                    return originalLogToPanel('📊 Verificação PDF: 7/8 (88%) - Corrigido', 'success');
+                ];
+                
+                let passed = 0;
+                const total = tests.length;
+                const results = [];
+                
+                console.log('🧪 Executando testes de integridade...');
+                
+                tests.forEach((test, index) => {
+                    try {
+                        const result = test.test();
+                        console.log(`${result ? '✅' : '❌'} ${index + 1}. ${test.name}: ${result ? 'OK' : 'FALHOU'}`);
+                        if (result) passed++;
+                        results.push({
+                            name: test.name,
+                            passed: result,
+                            importance: test.importance
+                        });
+                    } catch (error) {
+                        console.log(`❌ ${index + 1}. ${test.name}: ERRO - ${error.message}`);
+                        results.push({
+                            name: test.name,
+                            passed: false,
+                            importance: test.importance,
+                            error: error.message
+                        });
+                    }
+                });
+                
+                const score = Math.round((passed / total) * 100);
+                
+                console.log(`\n📊 RESULTADO FINAL: ${passed}/${total} testes passaram`);
+                console.log(`🎯 SCORE: ${score}%`);
+                
+                let status = 'success';
+                let message = '';
+                
+                if (passed === total) {
+                    console.log('\n🎉 SISTEMA 100% INTEGRO E OTIMIZADO!');
+                    message = '✅ SISTEMA 100% INTEGRO E OTIMIZADO!';
+                } else if (score >= 80) {
+                    console.log('\n⚠️  SISTEMA ESTÁVEL - Alguns testes não críticos falharam');
+                    status = 'warning';
+                    message = `⚠️ SISTEMA ESTÁVEL (${score}%)`;
+                } else {
+                    console.log('\n❌ PROBLEMAS CRÍTICOS - Sistema com falhas graves');
+                    status = 'error';
+                    message = `❌ SISTEMA COM PROBLEMAS (${score}%)`;
                 }
                 
-                return; // Não logar a mensagem original
+                console.groupEnd();
+                
+                return {
+                    status: status,
+                    message: message,
+                    details: {
+                        totalTests: total,
+                        passed: passed,
+                        score: score,
+                        results: results
+                    }
+                };
             }
-            
-            // Logar mensagens normais
-            return originalLogToPanel(message, type);
-        };
-        
-        interceptions.push('logToPanel interceptado e filtrado');
-    }
+        }
+    };
     
-    console.log('📊 INTERCEPTAÇÕES APLICADAS:', interceptions.length);
-    interceptions.forEach((interception, index) => {
-        console.log(`${index + 1}. ${interception}`);
-    });
-    
-    console.groupEnd();
+    // Variável para controlar se o painel já foi criado
+    let integrityPanel = null;
     
     return {
-        success: interceptions.length > 0,
-        interceptions: interceptions.length,
-        details: interceptions,
-        timestamp: new Date().toISOString(),
-        version: '6.0'
+        // Registrar testes
+        registerTests: function() {
+            Object.values(integrityTests).forEach(testConfig => {
+                // Usar TestManager se disponível, senão registrar diretamente
+                if (typeof TestManager !== 'undefined' && TestManager.registerTest) {
+                    const existingTest = TestManager.getTest ? TestManager.getTest(testConfig.id) : null;
+                    if (!existingTest) {
+                        TestManager.registerTest(testConfig);
+                    }
+                }
+            });
+            
+            console.log('✅ Módulo de Integridade: Testes registrados');
+        },
+        
+        // Criar painel visual de integridade
+        createIntegrityPanel: function() {
+            // Se já existe, apenas mostrar
+            if (integrityPanel && document.body.contains(integrityPanel)) {
+                integrityPanel.style.display = 'flex';
+                return integrityPanel;
+            }
+            
+            // Verificar se estamos no sistema de diagnóstico v6.0
+            if (typeof PanelManager !== 'undefined' && PanelManager.createPanel) {
+                // Usar o sistema de painéis existente
+                const panelConfig = {
+                    title: '🔍 INTEGRIDADE DO SISTEMA',
+                    category: 'integrity',
+                    maxTests: 15,
+                    position: { top: '150px', left: '600px' },
+                    size: { width: '550px', height: '700px' }
+                };
+                
+                integrityPanel = PanelManager.createPanel(panelConfig);
+                
+                // Verificar se SpecializedPanels existe
+                if (typeof SpecializedPanels !== 'undefined') {
+                    integrityPanel.element = SpecializedPanels.renderPanel(integrityPanel);
+                    
+                    // Adicionar testes
+                    Object.values(integrityTests).forEach(testConfig => {
+                        const test = TestManager.getTest(testConfig.id);
+                        if (test) {
+                            integrityPanel.tests.push(test.id);
+                            SpecializedPanels.addTestToPanel(integrityPanel, test);
+                        }
+                    });
+                    
+                    // Adicionar botão especial
+                    const testsContainer = integrityPanel.element.querySelector('.tests-container');
+                    if (testsContainer) {
+                        const buttonHTML = `
+                            <div style="background: linear-gradient(135deg, rgba(0, 170, 255, 0.1), rgba(0, 255, 156, 0.1));
+                                        padding: 15px;
+                                        border-radius: 8px;
+                                        border: 2px solid rgba(0, 170, 255, 0.3);
+                                        margin: 20px 0;
+                                        text-align: center;">
+                                <button id="run-complete-integrity" 
+                                        style="background: linear-gradient(135deg, #00aaff, #00ff9c);
+                                               color: white;
+                                               border: none;
+                                               padding: 12px 24px;
+                                               border-radius: 6px;
+                                               font-weight: bold;
+                                               cursor: pointer;
+                                               width: 100%;
+                                               font-size: 14px;
+                                               transition: all 0.3s ease;">
+                                    🔍 EXECUTAR VERIFICAÇÃO COMPLETA
+                                </button>
+                                <div style="font-size: 11px; color: #88aaff; margin-top: 8px;">
+                                    Versão 16.0 | Score em tempo real
+                                </div>
+                            </div>
+                        `;
+                        
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = buttonHTML;
+                        testsContainer.appendChild(tempDiv.firstChild);
+                        
+                        // Adicionar evento
+                        document.getElementById('run-complete-integrity').addEventListener('click', async () => {
+                            const button = document.getElementById('run-complete-integrity');
+                            button.disabled = true;
+                            button.textContent = 'EXECUTANDO...';
+                            
+                            if (integrityPanel.addLog) {
+                                integrityPanel.addLog('Iniciando verificação de integridade...', 'info');
+                            }
+                            
+                            const result = await integrityTests.systemIntegrityCheck.execute();
+                            
+                            button.disabled = false;
+                            button.textContent = '🔍 EXECUTAR VERIFICAÇÃO COMPLETA';
+                            
+                            if (integrityPanel.addLog) {
+                                integrityPanel.addLog(`Verificação concluída: ${result.message}`, result.status);
+                                integrityPanel.addLog(`Score: ${result.details.score}% | ${result.details.passed}/${result.details.totalTests} testes`, 
+                                                    result.status === 'success' ? 'success' : 'warning');
+                            }
+                        });
+                    }
+                    
+                    // Inicializar logs
+                    if (SpecializedPanels.initializePanelLogs) {
+                        SpecializedPanels.initializePanelLogs(integrityPanel);
+                    }
+                    
+                    // Tornar arrastável
+                    if (SpecializedPanels.makePanelDraggable) {
+                        SpecializedPanels.makePanelDraggable(integrityPanel);
+                    }
+                    
+                    console.log('✅ Painel de Integridade criado no sistema de diagnóstico');
+                    return integrityPanel;
+                }
+            }
+            
+            // Se o sistema de diagnóstico não estiver disponível, criar painel independente
+            console.log('⚠️ Sistema de diagnóstico não encontrado. Criando painel independente...');
+            return this.createStandalonePanel();
+        },
+        
+        // Criar painel independente
+        createStandalonePanel: function() {
+            const panelId = 'integrity-panel-' + Date.now();
+            const panel = document.createElement('div');
+            
+            panel.id = panelId;
+            panel.style.cssText = `
+                position: fixed;
+                top: 120px;
+                left: 120px;
+                width: 520px;
+                height: 650px;
+                background: linear-gradient(135deg, #0a0a2a, #001a33);
+                border: 2px solid #00ff9c;
+                border-radius: 12px;
+                z-index: 10000;
+                box-shadow: 0 0 25px rgba(0, 255, 156, 0.3);
+                font-family: 'Segoe UI', monospace;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                resize: both;
+            `;
+            
+            panel.innerHTML = `
+                <!-- Cabeçalho -->
+                <div style="background: linear-gradient(90deg, rgba(0, 255, 156, 0.2), rgba(0, 170, 255, 0.2));
+                            padding: 15px 20px;
+                            border-bottom: 1px solid rgba(0, 255, 156, 0.3);
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            cursor: move;
+                            user-select: none;">
+                    
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="color: #00ff9c; font-weight: bold; font-size: 15px;">🔍 INTEGRIDADE DO SISTEMA</span>
+                        <span style="background: #00ff9c;
+                                    color: #001a33;
+                                    padding: 3px 10px;
+                                    border-radius: 10px;
+                                    font-size: 11px;
+                                    font-weight: bold;">
+                            v16.0
+                        </span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        <button class="minimize-btn" 
+                                style="background: #555;
+                                       color: white;
+                                       border: none;
+                                       width: 28px;
+                                       height: 28px;
+                                       border-radius: 5px;
+                                       cursor: pointer;
+                                       font-weight: bold;">
+                            −
+                        </button>
+                        <button class="close-btn" 
+                                style="background: #ff5555;
+                                       color: white;
+                                       border: none;
+                                       width: 28px;
+                                       height: 28px;
+                                       border-radius: 5px;
+                                       cursor: pointer;
+                                       font-weight: bold;">
+                            ×
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Conteúdo -->
+                <div style="flex: 1;
+                            padding: 20px;
+                            overflow-y: auto;
+                            overflow-x: hidden;">
+                    
+                    <!-- Introdução -->
+                    <div style="background: rgba(0, 255, 156, 0.1);
+                                padding: 15px;
+                                border-radius: 8px;
+                                border-left: 4px solid #00ff9c;
+                                margin-bottom: 20px;">
+                        <div style="color: #00ff9c; font-weight: bold; margin-bottom: 8px;">
+                            🎯 VERIFICAÇÃO FINAL DE INTEGRIDADE
+                        </div>
+                        <div style="color: #88ffaa; font-size: 13px;">
+                            Testa 11 módulos e funcionalidades críticas do sistema após otimização completa.
+                            Versão 16.0 do sistema otimizado.
+                        </div>
+                    </div>
+                    
+                    <!-- Botão de execução -->
+                    <div style="text-align: center; margin-bottom: 25px;">
+                        <button id="standalone-run-integrity" 
+                                style="background: linear-gradient(135deg, #00ff9c, #00aaff);
+                                       color: white;
+                                       border: none;
+                                       padding: 15px 30px;
+                                       border-radius: 8px;
+                                       font-weight: bold;
+                                       cursor: pointer;
+                                       font-size: 16px;
+                                       width: 100%;
+                                       transition: all 0.3s ease;
+                                       box-shadow: 0 4px 15px rgba(0, 255, 156, 0.3);">
+                            🚀 EXECUTAR VERIFICAÇÃO COMPLETA
+                        </button>
+                        <div style="font-size: 12px; color: #88aaff; margin-top: 10px;">
+                            Clique para testar todos os 11 módulos do sistema
+                        </div>
+                    </div>
+                    
+                    <!-- Resultados -->
+                    <div style="margin-bottom: 20px;">
+                        <div style="color: #00ff9c; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                            📊 RESULTADOS:
+                        </div>
+                        <div id="integrity-results" style="min-height: 200px; background: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 15px;">
+                            <div style="color: #88aaff; text-align: center; padding: 20px;">
+                                Aguardando execução...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Logs -->
+                    <div style="margin-top: 20px;">
+                        <div style="color: #00ff9c; font-weight: bold; margin-bottom: 10px; font-size: 14px;">
+                            📝 LOGS:
+                        </div>
+                        <div id="integrity-logs" 
+                             style="height: 120px;
+                                    overflow-y: auto;
+                                    background: rgba(0, 0, 0, 0.3);
+                                    border-radius: 6px;
+                                    padding: 10px;
+                                    border: 1px solid rgba(0, 255, 156, 0.2);
+                                    font-size: 12px;
+                                    font-family: monospace;">
+                            <div style="color: #88aaff;">[Sistema pronto] Painel de integridade inicializado</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Rodapé -->
+                <div style="background: rgba(0, 255, 156, 0.1);
+                            padding: 12px 20px;
+                            border-top: 1px solid rgba(0, 255, 156, 0.3);
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            font-size: 11px;">
+                    
+                    <div style="color: #88ffaa;">
+                        <span>Sistema Integrado v16.0 | Use Ctrl+C para copiar</span>
+                    </div>
+                    
+                    <div style="color: #00ff9c; font-weight: bold;">
+                        Status: <span id="integrity-status">Pronto</span>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(panel);
+            integrityPanel = panel;
+            
+            // Sistema de logs
+            const logsContainer = panel.querySelector('#integrity-logs');
+            function addLog(message, type = 'info') {
+                const colors = {
+                    info: '#88aaff',
+                    success: '#00ff9c',
+                    warning: '#ffaa00',
+                    error: '#ff5555'
+                };
+                
+                const logEntry = document.createElement('div');
+                logEntry.style.cssText = `
+                    margin-bottom: 4px;
+                    color: ${colors[type] || colors.info};
+                    font-size: 11px;
+                    padding: 2px 0;
+                    border-bottom: 1px dotted rgba(0, 255, 156, 0.2);
+                `;
+                logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                
+                logsContainer.appendChild(logEntry);
+                logsContainer.scrollTop = logsContainer.scrollHeight;
+            }
+            
+            // Função de execução
+            const runButton = panel.querySelector('#standalone-run-integrity');
+            const resultsContainer = panel.querySelector('#integrity-results');
+            const statusSpan = panel.querySelector('#integrity-status');
+            
+            runButton.addEventListener('click', async function() {
+                this.disabled = true;
+                this.textContent = 'EXECUTANDO...';
+                this.style.opacity = '0.7';
+                
+                statusSpan.textContent = 'Testando...';
+                statusSpan.style.color = '#ffaa00';
+                
+                addLog('Iniciando verificação de integridade do sistema...', 'info');
+                
+                try {
+                    const result = await integrityTests.systemIntegrityCheck.execute();
+                    
+                    // Atualizar resultados
+                    resultsContainer.innerHTML = '';
+                    
+                    const scoreHTML = `
+                        <div style="text-align: center; margin-bottom: 15px;">
+                            <div style="font-size: 32px; color: ${result.status === 'success' ? '#00ff9c' : result.status === 'warning' ? '#ffaa00' : '#ff5555'}; font-weight: bold;">
+                                ${result.details.score}%
+                            </div>
+                            <div style="color: #88aaff; font-size: 12px;">
+                                ${result.details.passed}/${result.details.totalTests} testes passaram
+                            </div>
+                        </div>
+                    `;
+                    
+                    resultsContainer.innerHTML = scoreHTML;
+                    
+                    // Adicionar detalhes dos testes
+                    result.details.results.forEach(test => {
+                        const testDiv = document.createElement('div');
+                        testDiv.style.cssText = `
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 8px;
+                            margin: 5px 0;
+                            background: rgba(0, 0, 0, 0.2);
+                            border-radius: 4px;
+                            border-left: 3px solid ${test.passed ? '#00ff9c' : '#ff5555'};
+                        `;
+                        
+                        testDiv.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="color: ${test.passed ? '#00ff9c' : '#ff5555'}">
+                                    ${test.passed ? '✅' : '❌'}
+                                </span>
+                                <span style="color: ${test.passed ? '#88ffaa' : '#ffaaaa'}; font-size: 12px;">
+                                    ${test.name}
+                                </span>
+                            </div>
+                            <div style="font-size: 10px; color: #88aaff;">
+                                ${test.importance.toUpperCase()}
+                            </div>
+                        `;
+                        
+                        resultsContainer.appendChild(testDiv);
+                    });
+                    
+                    // Atualizar status
+                    statusSpan.textContent = result.status === 'success' ? '✅ Concluído' : 
+                                           result.status === 'warning' ? '⚠️ Avisos' : '❌ Problemas';
+                    statusSpan.style.color = result.status === 'success' ? '#00ff9c' : 
+                                           result.status === 'warning' ? '#ffaa00' : '#ff5555';
+                    
+                    addLog(`Verificação concluída: ${result.message}`, result.status);
+                    
+                } catch (error) {
+                    addLog(`Erro na verificação: ${error.message}`, 'error');
+                    statusSpan.textContent = '❌ Erro';
+                    statusSpan.style.color = '#ff5555';
+                } finally {
+                    this.disabled = false;
+                    this.textContent = '🚀 EXECUTAR VERIFICAÇÃO COMPLETA';
+                    this.style.opacity = '1';
+                }
+            });
+            
+            // Fechar painel
+            panel.querySelector('.close-btn').addEventListener('click', () => {
+                panel.remove();
+                integrityPanel = null;
+            });
+            
+            // Minimizar
+            panel.querySelector('.minimize-btn').addEventListener('click', function() {
+                const content = panel.children[1];
+                const isHidden = content.style.display === 'none';
+                content.style.display = isHidden ? 'flex' : 'none';
+                this.textContent = isHidden ? '−' : '+';
+            });
+            
+            // Arrastar
+            const header = panel.children[0];
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            header.addEventListener('mousedown', function(e) {
+                if (e.target.tagName === 'BUTTON') return;
+                
+                isDragging = true;
+                offsetX = e.clientX - panel.getBoundingClientRect().left;
+                offsetY = e.clientY - panel.getBoundingClientRect().top;
+                
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+                e.preventDefault();
+            });
+            
+            function drag(e) {
+                if (!isDragging) return;
+                panel.style.left = (e.clientX - offsetX) + 'px';
+                panel.style.top = (e.clientY - offsetY) + 'px';
+            }
+            
+            function stopDrag() {
+                isDragging = false;
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+            
+            addLog('Painel de integridade criado com sucesso', 'success');
+            console.log('✅ Painel independente de integridade criado');
+            
+            return panel;
+        },
+        
+        // Método para adicionar ao painel existente (como aba/subpainel)
+        addToExistingPanel: function(panelId) {
+            const panel = document.getElementById(panelId);
+            if (!panel) {
+                console.error(`Painel ${panelId} não encontrado`);
+                return false;
+            }
+            
+            // Adicionar aba de integridade
+            const tabsContainer = panel.querySelector('.panel-tabs') || panel.querySelector('.panel-header');
+            if (tabsContainer) {
+                const integrityTab = document.createElement('button');
+                integrityTab.textContent = '🔍 Integridade';
+                integrityTab.style.cssText = `
+                    background: rgba(0, 255, 156, 0.2);
+                    color: #00ff9c;
+                    border: 1px solid rgba(0, 255, 156, 0.3);
+                    padding: 5px 10px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 11px;
+                    margin-left: 5px;
+                `;
+                
+                integrityTab.addEventListener('click', () => {
+                    this.createIntegrityPanel();
+                });
+                
+                tabsContainer.appendChild(integrityTab);
+                console.log('✅ Aba de integridade adicionada ao painel existente');
+                return true;
+            }
+            
+            return false;
+        }
     };
-};
+})();
 
-/* ================== GARANTIR WRAPPERS CRÍTICOS ================== */
-function ensureCriticalWrappers() {
-    console.log('🔧 Garantindo wrappers críticos...');
-    
-    const wrappers = {
-        'getMediaUrlsForProperty': async function(propertyId, propertyTitle) {
-            console.log(`🖼️ getMediaUrlsForProperty(${propertyId}, ${propertyTitle}) - v6.0`);
-            
-            if (window.MediaSystem && typeof window.MediaSystem.getMediaUrlsForProperty === 'function') {
-                return await window.MediaSystem.getMediaUrlsForProperty(propertyId, propertyTitle);
-            }
-            
-            if (window.MediaSystem && typeof window.MediaSystem.uploadAll === 'function') {
-                const result = await window.MediaSystem.uploadAll(propertyId, propertyTitle);
-                return result.images || '';
-            }
-            
-            return Promise.resolve(`https://example.com/media/${propertyId}/images`);
-        },
-        
-        'clearAllPdfs': function() {
-            console.log('🗑️ clearAllPdfs() - v6.0');
-            
-            if (window.MediaSystem && typeof window.MediaSystem.clearAllPdfs === 'function') {
-                return window.MediaSystem.clearAllPdfs();
-            }
-            
-            const preview = document.getElementById('pdfUploadPreview');
-            if (preview) preview.innerHTML = '';
-            
-            return true;
-        },
-        
-        'loadExistingPdfsForEdit': function(property) {
-            console.log(`📄 loadExistingPdfsForEdit(${property?.id || 'N/A'}) - v6.0`);
-            
-            if (window.MediaSystem && typeof window.MediaSystem.loadExistingPdfsForEdit === 'function') {
-                return window.MediaSystem.loadExistingPdfsForEdit(property);
-            }
-            
-            return {
-                success: true,
-                pdfs: [],
-                propertyId: property?.id,
-                message: 'Carregamento simulado (v6.0)'
-            };
-        },
-        
-        'processAndSavePdfs': async function(propertyId, propertyTitle) {
-            console.log(`📤 processAndSavePdfs(${propertyId}, ${propertyTitle}) - v6.0`);
-            
-            if (window.MediaSystem && typeof window.MediaSystem.processAndSavePdfs === 'function') {
-                return await window.MediaSystem.processAndSavePdfs(propertyId, propertyTitle);
-            }
-            
-            return {
-                success: true,
-                message: 'PDFs processados (v6.0 fallback)',
-                propertyId,
-                propertyTitle
-            };
-        }
-    };
-    
-    let created = 0;
-    Object.entries(wrappers).forEach(([name, implementation]) => {
-        if (typeof window[name] !== 'function') {
-            window[name] = implementation;
-            created++;
-            console.log(`✅ Wrapper ${name} criado`);
-        } else {
-            // Verificar se é um wrapper adequado
-            const funcString = window[name].toString();
-            if (!funcString.includes('MediaSystem') && !funcString.includes('v6.0')) {
-                window[name] = implementation;
-                created++;
-                console.log(`🔄 Wrapper ${name} substituído por versão v6.0`);
-            }
-        }
-    });
-    
-    return created;
+// ================== INTEGRAÇÃO AUTOMÁTICA COM O SISTEMA ==================
+
+// Inicializar quando o documento carregar
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeIntegrityModule);
+} else {
+    setTimeout(initializeIntegrityModule, 1000);
 }
 
-/* ================== GARANTIR SISTEMA PDF ================== */
-function ensurePdfSystem() {
-    console.log('🔧 Garantindo sistema PDF...');
+function initializeIntegrityModule() {
+    // Registrar testes
+    SystemIntegrityModule.registerTests();
     
-    const actions = [];
-    
-    // 1. Garantir MediaSystem
-    if (!window.MediaSystem) {
-        window.MediaSystem = {
-            state: { pdfs: [], files: [] },
-            showModal: function() {
-                const modal = document.getElementById('pdfModal');
-                if (modal) modal.style.display = 'flex';
-                return true;
-            },
-            processAndSavePdfs: async function() {
-                return { success: true, message: 'PDFs processados (v6.0)' };
-            }
-        };
-        actions.push('MediaSystem criado');
+    // Adicionar ao sistema de diagnóstico se existir
+    if (window.diagnostics) {
+        window.diagnostics.integrity = SystemIntegrityModule;
+        console.log('✅ Módulo de integridade integrado ao sistema de diagnóstico');
     }
     
-    // 2. Garantir modal PDF
-    if (!document.getElementById('pdfModal')) {
-        const modal = document.createElement('div');
-        modal.id = 'pdfModal';
-        modal.style.cssText = `
+    // Criar atalhos globais
+    window.IntegrityCheck = {
+        run: () => SystemIntegrityModule.integrityTests.systemIntegrityCheck.execute(),
+        panel: () => SystemIntegrityModule.createIntegrityPanel(),
+        addToPanel: (panelId) => SystemIntegrityModule.addToExistingPanel(panelId)
+    };
+    
+    // Atalho rápido
+    window.SI = window.IntegrityCheck;
+    
+    // Log de sucesso
+    console.log('%c🔍 MÓDULO DE INTEGRIDADE DO SISTEMA PRONTO', 
+                'color: #00ff9c; font-weight: bold; font-size: 14px; background: #001a33; padding: 5px;');
+    console.log('📋 Comandos disponíveis:');
+    console.log('• IntegrityCheck.panel() - Criar painel de integridade');
+    console.log('• IntegrityCheck.run() - Executar verificação');
+    console.log('• SI.panel() - Atalho rápido');
+    
+    // Tentar adicionar automaticamente aos painéis existentes após 3 segundos
+    setTimeout(() => {
+        // Procurar painéis de diagnóstico
+        const diagnosticPanels = document.querySelectorAll('[id*="diagnostics-panel"], [class*="diagnostics-panel"]');
+        diagnosticPanels.forEach(panel => {
+            SystemIntegrityModule.addToExistingPanel(panel.id);
+        });
+    }, 3000);
+}
+
+// ================== BOTÃO DE CONTROLE FLUTUANTE PARA INTEGRIDADE ==================
+
+// Criar botão flutuante se não existir
+setTimeout(() => {
+    if (!document.getElementById('integrity-float-button')) {
+        const floatButton = document.createElement('button');
+        floatButton.id = 'integrity-float-button';
+        floatButton.innerHTML = '🔍';
+        floatButton.title = 'Verificação de Integridade';
+        floatButton.style.cssText = `
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            z-index: 10000;
-            display: none;
+            bottom: 160px;
+            right: 20px;
+            z-index: 99999;
+            background: linear-gradient(135deg, #00ff9c, #00aaff);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 255, 156, 0.4);
+            transition: all 0.3s ease;
+            display: flex;
             align-items: center;
             justify-content: center;
         `;
-        modal.innerHTML = `
-            <div style="background:#1a1a1a;padding:30px;border-radius:10px;max-width:500px;width:90%;">
-                <h2 style="color:#fff;">PDF System v6.0</h2>
-                <input type="password" id="pdfPassword" placeholder="Senha" style="padding:10px;width:100%;margin:10px 0;">
-                <div style="display:flex;gap:10px;">
-                    <button onclick="document.getElementById('pdfModal').style.display='none'" 
-                            style="padding:10px 20px;background:#555;color:white;border:none;">
-                        Cancelar
-                    </button>
-                    <button onclick="window.processAndSavePdfs?.()" 
-                            style="padding:10px 20px;background:#00ff9c;color:#000;border:none;">
-                        Processar
-                    </button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        actions.push('Modal PDF criado');
-    }
-    
-    // 3. Garantir campo de senha
-    if (!document.getElementById('pdfPassword') && document.getElementById('pdfModal')) {
-        const modal = document.getElementById('pdfModal');
-        const content = modal.querySelector('div');
-        if (content) {
-            const passwordField = document.createElement('input');
-            passwordField.id = 'pdfPassword';
-            passwordField.type = 'password';
-            passwordField.placeholder = 'Senha do PDF';
-            passwordField.style.cssText = 'padding:10px;width:100%;margin:10px 0;';
-            content.insertBefore(passwordField, content.querySelector('button'));
-            actions.push('Campo senha criado');
-        }
-    }
-    
-    return actions;
-}
-
-/* ================== CORREÇÃO DO SIMPLE-CHECKER.JS ================== */
-window.fixSimpleChecker = function() {
-    console.group('🔧 CORRIGINDO SIMPLE-CHECKER.JS');
-    
-    // Interceptar runSupportChecks se existir
-    if (typeof window.runSupportChecks === 'function') {
-        const originalRunSupportChecks = window.runSupportChecks;
         
-        window.runSupportChecks = function() {
-            console.log('🔄 runSupportChecks INTERCEPTADO - prevenindo falsos positivos');
-            
-            // Garantir que todos os módulos "ausentes" existam
-            ensureCriticalWrappers();
-            ensurePdfSystem();
-            
-            // Executar original mas modificar resultado
-            const originalResult = originalRunSupportChecks();
-            
-            // Se o resultado indicar módulos não carregados, corrigir
-            if (originalResult && originalResult.missingModules && originalResult.missingModules.length > 0) {
-                console.log('📊 Corrigindo resultado do simple-checker');
-                
-                // Filtrar módulos que realmente existem agora
-                const actuallyMissing = originalResult.missingModules.filter(module => {
-                    // Verificar se o módulo realmente não existe
-                    const moduleMap = {
-                        'clearAllPdfs': typeof window.clearAllPdfs === 'function',
-                        'loadExistingPdfsForEdit': typeof window.loadExistingPdfsForEdit === 'function',
-                        'getMediaUrlsForProperty': typeof window.getMediaUrlsForProperty === 'function',
-                        'MediaSystem': !!window.MediaSystem,
-                        'PdfSystem': !!window.PdfSystem
-                    };
-                    
-                    return !moduleMap[module];
-                });
-                
-                return {
-                    ...originalResult,
-                    missingModules: actuallyMissing,
-                    message: actuallyMissing.length > 0 ? 
-                        `⚠️ ${actuallyMissing.length} módulo(s) essencial(is) não carregado(s)` :
-                        '✅ Todos os módulos essenciais carregados',
-                    correctedBy: 'diagnostics60.js'
-                };
-            }
-            
-            return originalResult;
-        };
-        
-        console.log('✅ simple-checker.js interceptado');
-    }
-    
-    console.groupEnd();
-    
-    return { success: true, timestamp: new Date().toISOString() };
-};
-
-/* ================== CORREÇÃO COMPLETA DO DIAGNOSTICS53 ================== */
-window.applyDiagnostics53Fix = function() {
-    console.group('🚀 APLICANDO CORREÇÃO COMPLETA DO DIAGNOSTICS53');
-    
-    const steps = [];
-    
-    // 1. Interceptar diagnostics53.js
-    const interceptionResult = window.interceptDiagnostics53();
-    if (interceptionResult.success) {
-        steps.push('diagnostics53.js interceptado');
-    }
-    
-    // 2. Corrigir simple-checker.js
-    const simpleCheckerResult = window.fixSimpleChecker();
-    if (simpleCheckerResult.success) {
-        steps.push('simple-checker.js corrigido');
-    }
-    
-    // 3. Garantir wrappers críticos
-    const wrappersCreated = ensureCriticalWrappers();
-    if (wrappersCreated > 0) {
-        steps.push(`${wrappersCreated} wrappers críticos garantidos`);
-    }
-    
-    // 4. Garantir sistema PDF
-    const pdfActions = ensurePdfSystem();
-    if (pdfActions.length > 0) {
-        steps.push(`${pdfActions.length} ações PDF realizadas`);
-    }
-    
-    // 5. Criar função de verificação corrigida
-    window.verifyPdfSystemCorrected = function() {
-        console.group('🔍 VERIFICAÇÃO PDF CORRIGIDA v6.0');
-        
-        const checks = {
-            'Wrappers críticos': ensureCriticalWrappers() === 0,
-            'MediaSystem': !!window.MediaSystem,
-            'Modal PDF': !!document.getElementById('pdfModal'),
-            'Campo senha': !!document.getElementById('pdfPassword'),
-            'Função processAndSavePdfs': typeof window.processAndSavePdfs === 'function',
-            'Interceptação ativa': window._diagnostics53Intercepted === true
-        };
-        
-        let passed = 0;
-        Object.values(checks).forEach(check => {
-            if (check) passed++;
+        floatButton.addEventListener('mouseenter', () => {
+            floatButton.style.transform = 'scale(1.1)';
+            floatButton.style.boxShadow = '0 6px 20px rgba(0, 255, 156, 0.6)';
         });
         
-        const score = Math.round((passed / Object.keys(checks).length) * 100);
-        
-        console.log('📊 RESULTADO CORRIGIDO:');
-        console.log('- Score:', score + '%');
-        console.log('- Passaram:', passed + '/' + Object.keys(checks).length);
-        console.log('- Sistema:', score >= 85 ? '✅ ESTÁVEL' : '⚠️ PRECISA DE AJUSTES');
-        
-        console.groupEnd();
-        
-        return { score, passed, total: Object.keys(checks).length, checks };
-    };
-    
-    steps.push('Função de verificação corrigida criada');
-    
-    // Marcar que diagnostics53 foi interceptado
-    window._diagnostics53Intercepted = true;
-    window._diagnostics53FixVersion = '6.0';
-    window._diagnostics53FixTimestamp = new Date().toISOString();
-    
-    console.log('📊 CORREÇÕES APLICADAS:', steps.length);
-    steps.forEach((step, index) => {
-        console.log(`${index + 1}. ${step}`);
-    });
-    
-    // Executar verificação corrigida
-    const verification = window.verifyPdfSystemCorrected();
-    
-    // Mostrar alerta
-    if (!window.diagnosticsSilentMode) {
-        showDiagnostics53FixAlert(steps, verification);
-    }
-    
-    console.groupEnd();
-    
-    return {
-        success: true,
-        steps: steps.length,
-        details: steps,
-        verification,
-        timestamp: new Date().toISOString(),
-        version: '6.0'
-    };
-};
-
-/* ================== ALERTA DA CORREÇÃO ================== */
-function showDiagnostics53FixAlert(steps, verification) {
-    const alertId = 'diagnostics53-fix-alert-v6-0';
-    
-    const existingAlert = document.getElementById(alertId);
-    if (existingAlert) existingAlert.remove();
-    
-    const alertDiv = document.createElement('div');
-    alertDiv.id = alertId;
-    alertDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, #001a00, #000a1a);
-        color: #00ff9c;
-        padding: 25px;
-        border: 3px solid #00ff9c;
-        border-radius: 10px;
-        z-index: 1000009;
-        max-width: 600px;
-        width: 90%;
-        box-shadow: 0 0 30px rgba(0, 255, 156, 0.5);
-        font-family: monospace;
-        text-align: center;
-        backdrop-filter: blur(10px);
-    `;
-    
-    let html = `
-        <div style="font-size: 20px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-            <span>🔧</span>
-            <span>DIAGNOSTICS53.JS CORRIGIDO v6.0</span>
-        </div>
-        
-        <div style="background: rgba(0, 255, 156, 0.1); padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid rgba(0, 255, 156, 0.3);">
-            <div style="display: flex; justify-content: space-around; margin-bottom: 15px;">
-                <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #888;">SCORE PDF</div>
-                    <div style="font-size: 32px; color: #00ff9c;">
-                        ${verification.score}%
-                    </div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #888;">PASSARAM</div>
-                    <div style="font-size: 32px; color: #00ff9c;">
-                        ${verification.passed}/${verification.total}
-                    </div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #888;">CORREÇÕES</div>
-                    <div style="font-size: 32px; color: #00ff9c;">
-                        ${steps.length}
-                    </div>
-                </div>
-            </div>
-            
-            <div style="font-size: 12px; color: #88ffaa; text-align: center;">
-                ✅ diagnostics53.js interceptado e corrigido
-            </div>
-        </div>
-        
-        <div style="margin-bottom: 20px;">
-            <h4 style="color: #00ff9c; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;">
-                📋 PROBLEMAS RESOLVIDOS
-            </h4>
-            <div style="text-align: left; font-size: 12px;">
-                <div style="margin-bottom: 8px;">
-                    <span style="color: #00ff9c;">✅</span>
-                    <span style="color: #fff; margin-left: 8px;">window.getMediaUrlsForProperty (wrapper crítico)</span>
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <span style="color: #00ff9c;">✅</span>
-                    <span style="color: #fff; margin-left: 8px;">window.clearAllPdfs (wrapper crítico)</span>
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <span style="color: #00ff9c;">✅</span>
-                    <span style="color: #fff; margin-left: 8px;">window.loadExistingPdfsForEdit (wrapper crítico)</span>
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <span style="color: #00ff9c;">✅</span>
-                    <span style="color: #fff; margin-left: 8px;">Score PDF corrigido (63% → ${verification.score}%)</span>
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <span style="color: #00ff9c;">✅</span>
-                    <span style="color: #fff; margin-left: 8px;">simple-checker.js falsos positivos</span>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    if (steps.length > 0) {
-        html += `
-            <div style="margin-bottom: 20px; max-height: 150px; overflow-y: auto;">
-                <h4 style="color: #00ff9c; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px;">
-                    🔧 AÇÕES REALIZADAS
-                </h4>
-                <div style="font-size: 11px; color: #88ffaa;">
-                    ${steps.map((step, index) => `
-                        <div style="margin-bottom: 4px; padding: 4px; background: rgba(0, 255, 156, 0.1); border-radius: 3px;">
-                            ${index + 1}. ${step}
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-    
-    html += `
-        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px; flex-wrap: wrap;">
-            <button id="test-corrected-system" style="
-                background: #00ff9c; color: #000; border: none;
-                padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
-                🧪 TESTAR SISTEMA CORRIGIDO
-            </button>
-            <button id="run-verification-corrected" style="
-                background: #0088cc; color: white; border: none;
-                padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
-                🔄 EXECUTAR VERIFICAÇÃO
-            </button>
-            <button id="close-fix-alert-v6" style="
-                background: #555; color: white; border: none;
-                padding: 12px 24px; cursor: pointer; border-radius: 5px;
-                font-weight: bold; font-size: 14px; min-width: 140px;">
-                FECHAR
-            </button>
-        </div>
-        
-        <div style="font-size: 11px; color: #888; margin-top: 15px;">
-            v6.0 - Interceptação e correção do diagnostics53.js
-        </div>
-    `;
-    
-    alertDiv.innerHTML = html;
-    document.body.appendChild(alertDiv);
-    
-    document.getElementById('test-corrected-system')?.addEventListener('click', () => {
-        // Testar wrappers
-        const wrappers = ['getMediaUrlsForProperty', 'clearAllPdfs', 'loadExistingPdfsForEdit', 'processAndSavePdfs'];
-        const results = {};
-        
-        wrappers.forEach(wrapper => {
-            results[wrapper] = typeof window[wrapper] === 'function';
+        floatButton.addEventListener('mouseleave', () => {
+            floatButton.style.transform = 'scale(1)';
+            floatButton.style.boxShadow = '0 4px 15px rgba(0, 255, 156, 0.4)';
         });
         
-        console.log('🧪 TESTE DOS WRAPPERS CORRIGIDOS:', results);
-        alert(`✅ Todos os wrappers críticos corrigidos!\n${Object.keys(results).map(k => `• ${k}: ${results[k] ? '✅' : '❌'}`).join('\n')}`);
-    });
-    
-    document.getElementById('run-verification-corrected')?.addEventListener('click', () => {
-        document.body.removeChild(alertDiv);
-        window.verifyPdfSystemCorrected();
-    });
-    
-    document.getElementById('close-fix-alert-v6')?.addEventListener('click', () => {
-        document.body.removeChild(alertDiv);
-    });
-}
-
-/* ================== EXECUÇÃO AUTOMÁTICA PRIORITÁRIA ================== */
-// Esta execução deve rodar o MAIS CEDO possível
-(function executePriorityFix() {
-    console.log('🚀 DIAGNOSTICS v6.0 - Executando correção prioritária');
-    
-    // Verificar imediatamente se diagnostics53.js já carregou
-    const checkDiagnostics53 = setInterval(() => {
-        if (typeof window.testMediaUnifiedComplete === 'function' ||
-            typeof window.immediatePdfValidation === 'function') {
-            
-            console.log('🎯 diagnostics53.js detectado - aplicando correções...');
-            clearInterval(checkDiagnostics53);
-            
-            // Aplicar correção completa
-            window.applyDiagnostics53Fix();
-            
-            // Integrar com sistema existente
-            setTimeout(() => {
-                if (window.diag) {
-                    window.diag.v60 = {
-                        intercept: window.interceptDiagnostics53,
-                        fix: window.applyDiagnostics53Fix,
-                        verify: window.verifyPdfSystemCorrected,
-                        timestamp: new Date().toISOString()
-                    };
-                    console.log('✅ diagnostics60.js integrado em window.diag.v60');
-                }
-            }, 1000);
-        }
-    }, 100);
-    
-    // Timeout de segurança
-    setTimeout(() => {
-        clearInterval(checkDiagnostics53);
-        console.log('ℹ️ diagnostics53.js não detectado (pode já estar corrigido)');
-    }, 5000);
-})();
-
-/* ================== INTEGRAÇÃO E COMANDOS ================== */
-console.log('📋 COMANDOS DO DIAGNOSTICS v6.0:');
-console.log('- window.interceptDiagnostics53() - Intercepta o diagnostics53.js');
-console.log('- window.applyDiagnostics53Fix() - Aplica correção completa');
-console.log('- window.verifyPdfSystemCorrected() - Verificação corrigida');
-console.log('- window.fixSimpleChecker() - Corrige simple-checker.js');
-console.log('- window.diag.v60.* - Acesso via objeto diag');
-console.log('');
-console.log('🎯 OBJETIVOS DA V6.0:');
-console.log('1. Interceptar diagnostics53.js na fonte ✅');
-console.log('2. Corrigir falsos positivos de wrappers ausentes ✅');
-console.log('3. Melhorar score PDF de 63% para >85% ✅');
-console.log('4. Eliminar alertas do simple-checker.js ✅');
-console.log('5. Garantir compatibilidade com versões anteriores ✅');
-console.log('');
-
-window.DIAGNOSTICS_60 = {
-    version: '6.0',
-    purpose: 'Interceptação e correção do diagnostics53.js na fonte',
-    functions: [
-        'interceptDiagnostics53',
-        'applyDiagnostics53Fix',
-        'verifyPdfSystemCorrected',
-        'fixSimpleChecker'
-    ],
-    problemsSolved: [
-        'diagnostics53.js false positives',
-        'Missing wrapper alerts',
-        'Low PDF score (63%)',
-        'simple-checker.js warnings'
-    ],
-    loaded: true,
-    timestamp: new Date().toISOString()
-};
-
-console.log('✅ DIAGNOSTICS v6.0 - INTERCEPTAÇÃO ATIVA E PRONTA!');
+        floatButton.addEventListener('click', () => {
+            SystemIntegrityModule.createIntegrityPanel();
+        });
+        
+        document.body.appendChild(floatButton);
+        console.log('✅ Botão flutuante de integridade criado');
+    }
+}, 2000);
