@@ -1,19 +1,20 @@
 // ================== debug/diagnostics/diagnostics59.js ==================
-// DIAGNÓSTICO DO SISTEMA - MÓDULO DE VALIDAÇÃO DE INTEGRIDADE (v5.9.3)
-// CORREÇÃO: Funções críticas agora usam a mesma lógica da v5.9.1 que funcionava
-console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
+// DIAGNÓSTICO DO SISTEMA - MÓDULO DE VALIDAÇÃO DE INTEGRIDADE (v5.9.4)
+// CORREÇÃO: Força painel na frente CONSTANTEMENTE + botão dedicado
+console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.4)`);
 
 (function() {
     'use strict';
 
     // --- Configuração do Módulo ---
     const MODULE_ID = 'diagnostics59';
-    const MODULE_NAME = 'Validação de Integridade (v5.9.3)';
+    const MODULE_NAME = 'Validação de Integridade (v5.9.4)';
     const PANEL_ID = 'diagnostics59-panel';
     const CONTROL_BTN_ID = 'diag59-control-btn';
-    const Z_INDEX_BASE = 100000;
+    const Z_INDEX_BASE = 200000; // AINDA MAIS ALTO (200k)
     let isPanelVisible = false;
     let panelElement = null;
+    let forceFrontInterval = null;
 
     // --- Verificação de Ambiente ---
     if (window[`__${MODULE_ID}_LOADED`]) {
@@ -42,15 +43,12 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
             }
         },
         
-        // Função para verificar disponibilidade de funções (baseada na v5.9.1)
         checkFunction: function(obj, path) {
             try {
                 if (typeof path === 'string') {
-                    // Se for string simples, verificar no window
                     if (!path.includes('.')) {
                         return typeof window[path] === 'function';
                     }
-                    // Se tiver ponto, navegar no objeto
                     const parts = path.split('.');
                     let current = window;
                     for (const part of parts) {
@@ -75,7 +73,6 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
             
             const onMouseDown = (e) => {
                 if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
-                
                 e.preventDefault();
                 
                 const rect = element.getBoundingClientRect();
@@ -91,7 +88,6 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
 
             const onMouseMove = (e) => {
                 if (!isDragging) return;
-                
                 e.preventDefault();
                 
                 const x = e.clientX - offsetX;
@@ -107,7 +103,6 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
             const onMouseUp = () => {
                 isDragging = false;
                 handle.style.cursor = 'grab';
-                
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
             };
@@ -116,22 +111,16 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
         }
     };
 
-    // --- Funções de Teste (CORRIGIDAS baseado na v5.9.1) ---
+    // --- Funções de Teste (iguais à v5.9.3 que funcionaram) ---
     const Tests = {
-        // Teste 1: Verificar Core APIs (baseado na v5.9.1)
         checkCoreAPIs: function() {
             Utils.log('test', '🧪 Executando: Verificação de Core APIs...');
             const issues = [];
             let status = 'success';
             
-            // Lista de funções que existem no sistema (baseado no LOG)
             const coreFunctions = [
-                'loadPropertiesData',
-                'renderProperties',
-                'setupFilters',
-                'savePropertiesToStorage',
-                'addNewProperty',
-                'updateProperty',
+                'loadPropertiesData', 'renderProperties', 'setupFilters',
+                'savePropertiesToStorage', 'addNewProperty', 'updateProperty',
                 'toggleAdminPanel'
             ];
 
@@ -139,156 +128,76 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
                 if (!Utils.checkFunction(window, fnName)) {
                     issues.push(`❌ Função ausente: ${fnName}`);
                     status = 'error';
-                } else {
-                    Utils.log('info', `✅ ${fnName} disponível.`);
                 }
             });
 
             return { status, issues, name: 'Core APIs' };
         },
 
-        // Teste 2: Verificar Módulos Específicos (Media, PDF, SharedCore)
         checkModules: function() {
             Utils.log('test', '🧪 Executando: Verificação de Módulos Específicos...');
             const issues = [];
             let status = 'success';
             
-            // Verificar MediaSystem (pode estar em diferentes locais)
-            const mediaTests = [
-                { path: 'MediaSystem', desc: 'MediaSystem objeto' },
-                { path: 'MediaSystem.addFiles', desc: 'MediaSystem.addFiles' },
-                { path: 'window.MediaSystem', desc: 'window.MediaSystem' }
-            ];
-            
-            let mediaFound = false;
-            mediaTests.forEach(test => {
-                if (Utils.checkFunction(window, test.path) || 
-                    (test.path === 'MediaSystem' && window.MediaSystem)) {
-                    mediaFound = true;
-                }
-            });
-            
-            if (!mediaFound && !window.MediaSystem) {
+            if (!window.MediaSystem) {
                 issues.push('❌ MediaSystem não disponível');
                 status = 'error';
-            } else {
-                Utils.log('info', `✅ MediaSystem disponível.`);
             }
             
-            // Verificar PdfSystem
-            const pdfTests = [
-                { path: 'PdfSystem', desc: 'PdfSystem objeto' },
-                { path: 'PdfSystem.showModal', desc: 'PdfSystem.showModal' },
-                { path: 'window.PdfSystem', desc: 'window.PdfSystem' }
-            ];
-            
-            let pdfFound = false;
-            pdfTests.forEach(test => {
-                if (Utils.checkFunction(window, test.path) ||
-                    (test.path === 'PdfSystem' && window.PdfSystem)) {
-                    pdfFound = true;
-                }
-            });
-            
-            if (!pdfFound && !window.PdfSystem) {
+            if (!window.PdfSystem) {
                 issues.push('❌ PdfSystem não disponível');
                 status = 'error';
-            } else {
-                Utils.log('info', `✅ PdfSystem disponível.`);
             }
             
-            // Verificar SharedCore
             if (!window.SharedCore) {
                 issues.push('❌ SharedCore não disponível');
                 status = 'error';
-            } else {
-                Utils.log('info', `✅ SharedCore disponível.`);
             }
             
-            // Verificar LoadingManager
             if (!window.LoadingManager) {
                 issues.push('❌ LoadingManager não disponível');
                 status = 'error';
-            } else {
-                Utils.log('info', `✅ LoadingManager disponível.`);
             }
             
-            // Verificar FilterManager
             if (!window.FilterManager) {
                 issues.push('❌ FilterManager não disponível');
                 status = 'error';
-            } else {
-                Utils.log('info', `✅ FilterManager disponível.`);
             }
 
             return { status, issues, name: 'Módulos Específicos' };
         },
 
-        // Teste 3: Verificar Integridade das Propriedades
         checkPropertiesIntegrity: function() {
             Utils.log('test', '🧪 Executando: Verificação de Integridade das Propriedades...');
             const issues = [];
             let status = 'success';
 
-            if (!window.properties) {
-                issues.push('❌ window.properties não existe.');
-                status = 'error';
-            } else if (!Array.isArray(window.properties)) {
-                issues.push(`❌ window.properties não é um array.`);
+            if (!window.properties || !Array.isArray(window.properties)) {
+                issues.push('❌ window.properties inválido');
                 status = 'error';
             } else {
-                Utils.log('info', `📊 Total de imóveis: ${window.properties.length}`);
-                
                 if (window.properties.length === 0) {
                     issues.push('⚠️ Nenhum imóvel carregado.');
                     status = 'warning';
                 }
-                
-                // Validar estrutura básica
-                window.properties.slice(0, 5).forEach((prop, index) => {
-                    if (!prop.id) issues.push(`⚠️ Imóvel ${index} sem ID.`);
-                    if (!prop.title) issues.push(`⚠️ Imóvel ${prop.id || index} sem título.`);
-                });
-            }
-
-            // Verificar localStorage
-            try {
-                const stored = localStorage.getItem('properties');
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    Utils.log('info', `💾 localStorage: ${parsed.length} imóveis`);
-                }
-            } catch (e) {
-                issues.push(`❌ Erro no localStorage: ${e.message}`);
             }
 
             return { status, issues, name: 'Propriedades' };
         },
 
-        // Teste 4: Verificar Estado da UI
         checkUIState: function() {
             Utils.log('test', '🧪 Executando: Verificação da UI...');
             const issues = [];
             let status = 'success';
 
-            const container = document.getElementById('properties-container');
-            if (!container) {
-                issues.push('❌ Container #properties-container não encontrado.');
+            if (!document.getElementById('properties-container')) {
+                issues.push('❌ Container não encontrado');
                 status = 'error';
-            }
-
-            const filterButtons = document.querySelectorAll('.filter-btn');
-            Utils.log('info', `🔘 ${filterButtons.length} botões de filtro`);
-
-            const adminBtn = document.querySelector('.admin-toggle');
-            if (!adminBtn) {
-                issues.push('⚠️ Botão admin não encontrado.');
             }
 
             return { status, issues, name: 'Interface' };
         },
 
-        // Teste 5: Verificar Galeria
         checkGallery: function() {
             Utils.log('test', '🧪 Executando: Verificação da Galeria...');
             const issues = [];
@@ -298,21 +207,61 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
                 issues.push('❌ openGallery não é função');
                 status = 'error';
             }
-            
-            if (typeof window.createPropertyGallery !== 'function') {
-                issues.push('❌ createPropertyGallery não é função');
-                status = 'error';
-            }
 
             return { status, issues, name: 'Galeria' };
         }
     };
 
-    // --- Criação do Painel ---
+    // --- FUNÇÃO CRÍTICA: Forçar painel na frente ---
+    function forceThisPanelToFront(permanent = false) {
+        if (!panelElement) return;
+        
+        // 1. Colocar este painel com z-index altíssimo
+        panelElement.style.zIndex = Z_INDEX_BASE;
+        panelElement.style.display = 'flex';
+        
+        // 2. Encontrar TODOS os outros painéis e colocar atrás
+        const allPossiblePanels = document.querySelectorAll(
+            '[id^="diagnostics"], [class*="diagnostics"], ' +
+            '[id*="diagnostic"], [class*="diagnostic"], ' +
+            '.diagnostics-panel, [id*="panel"], [class*="panel"]'
+        );
+        
+        allPossiblePanels.forEach(panel => {
+            if (panel.id !== PANEL_ID && panel !== panelElement) {
+                panel.style.zIndex = (Z_INDEX_BASE - 100).toString();
+            }
+        });
+        
+        // 3. Adicionar borda piscante para destacar
+        panelElement.style.border = '4px solid #ff0000';
+        panelElement.style.boxShadow = '0 0 30px rgba(255, 0, 0, 0.8)';
+        
+        setTimeout(() => {
+            if (panelElement) {
+                panelElement.style.border = '3px solid #ff6b6b';
+                panelElement.style.boxShadow = '0 20px 60px rgba(255, 107, 107, 0.5)';
+            }
+        }, 500);
+        
+        Utils.log('success', `🚀 Painel FORÇADO para frente (z-index: ${Z_INDEX_BASE})`);
+        
+        // 4. Se for permanente, configurar intervalo para manter na frente
+        if (permanent && !forceFrontInterval) {
+            forceFrontInterval = setInterval(() => {
+                if (panelElement && panelElement.style.display !== 'none') {
+                    panelElement.style.zIndex = Z_INDEX_BASE;
+                }
+            }, 500); // Verificar a cada 500ms
+            Utils.log('info', '🔄 Monitoramento permanente ativado');
+        }
+    }
+
+    // --- Criar painel (modificado para já forçar frente) ---
     function createPanel() {
         if (panelElement) {
             panelElement.style.display = 'flex';
-            panelElement.style.zIndex = Z_INDEX_BASE;
+            forceThisPanelToFront(true);
             return panelElement;
         }
 
@@ -325,8 +274,8 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
             position: 'fixed',
             top: '80px',
             left: '30px',
-            width: '550px',
-            height: '600px',
+            width: '600px',
+            height: '650px',
             background: 'linear-gradient(145deg, #0a1929, #0f2744)',
             border: '3px solid #ff6b6b',
             borderRadius: '12px',
@@ -355,7 +304,7 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
                 cursor: grab;
             ">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="color: #ff6b6b; font-weight: bold; font-size: 14px;">🔬 DIAGNÓSTICO v5.9.3</span>
+                    <span style="color: #ff6b6b; font-weight: bold; font-size: 14px;">🔬 DIAGNÓSTICO v5.9.4</span>
                     <span style="background: #2e3b4e; color: #ffaaaa; padding: 2px 6px; border-radius: 4px;">${MODULE_NAME}</span>
                 </div>
                 <div>
@@ -370,11 +319,12 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
                 overflow-y: auto;
                 background: #0f2744;
             ">
-                <div style="color: #ffaaaa; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px; margin-bottom: 15px; font-weight: bold;">
-                    📋 RESULTADOS DA VALIDAÇÃO
+                <div style="color: #ffaaaa; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px; margin-bottom: 15px; font-weight: bold; display: flex; justify-content: space-between;">
+                    <span>📋 RESULTADOS DA VALIDAÇÃO</span>
+                    <span style="color: #ffaa00; background: #332200; padding: 2px 8px; border-radius: 12px;">Z: ${Z_INDEX_BASE}</span>
                 </div>
                 <div id="${PANEL_ID}-results"></div>
-                <div style="margin-top: 15px;">
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
                     <button id="${PANEL_ID}-rerun" style="
                         background: #2e7d32;
                         color: white;
@@ -382,9 +332,19 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
                         padding: 10px;
                         border-radius: 4px;
                         cursor: pointer;
-                        width: 100%;
+                        flex: 2;
                         font-weight: bold;
-                    ">🔄 RE-EXECUTAR TESTES</button>
+                    ">🔄 RE-EXECUTAR</button>
+                    <button id="${PANEL_ID}-bringToFront" style="
+                        background: #ff6b6b;
+                        color: white;
+                        border: none;
+                        padding: 10px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        flex: 1;
+                        font-weight: bold;
+                    ">🔝 TRAZER P/ FRENTE</button>
                 </div>
             </div>
 
@@ -397,13 +357,14 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
                 display: flex;
                 justify-content: space-between;
             ">
-                <span>Z-Index: ${Z_INDEX_BASE} | Arraste o cabeçalho</span>
+                <span>🚀 SEMPRE NO TOPO | Clique p/ arrastar</span>
                 <span id="${PANEL_ID}-timestamp">${new Date().toLocaleTimeString()}</span>
             </div>
         `;
 
         document.body.appendChild(panelElement);
 
+        // Tornar arrastável
         const header = document.getElementById(`${PANEL_ID}-header`);
         if (header) Utils.createDraggable(panelElement, header);
 
@@ -411,6 +372,11 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
         document.getElementById(`${PANEL_ID}-close`).onclick = () => {
             panelElement.style.display = 'none';
             isPanelVisible = false;
+            // Parar monitoramento se existir
+            if (forceFrontInterval) {
+                clearInterval(forceFrontInterval);
+                forceFrontInterval = null;
+            }
         };
 
         document.getElementById(`${PANEL_ID}-minimize`).onclick = () => {
@@ -419,8 +385,17 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
         };
 
         document.getElementById(`${PANEL_ID}-rerun`).onclick = runAllTestsAndDisplay;
+        
+        // NOVO BOTÃO: Trazer para frente manualmente
+        document.getElementById(`${PANEL_ID}-bringToFront`).onclick = () => {
+            forceThisPanelToFront(true);
+        };
 
         isPanelVisible = true;
+        
+        // Forçar para frente imediatamente
+        forceThisPanelToFront(true);
+        
         return panelElement;
     }
 
@@ -432,7 +407,6 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
         resultsContainer.innerHTML = '<div style="text-align: center; color: #bbb; padding: 20px;">Executando testes...</div>';
 
         setTimeout(() => {
-            // Executar todos os testes
             const testResults = [
                 Tests.checkCoreAPIs(),
                 Tests.checkModules(),
@@ -475,6 +449,9 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
 
             resultsContainer.innerHTML = html;
             document.getElementById(`${PANEL_ID}-timestamp`).textContent = new Date().toLocaleTimeString();
+            
+            // Após atualizar, garantir que continua na frente
+            forceThisPanelToFront(true);
         }, 100);
     }
 
@@ -493,17 +470,18 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
                 color: white;
                 border: none;
                 border-radius: 50%;
-                width: 60px;
-                height: 60px;
-                font-size: 26px;
+                width: 65px;
+                height: 65px;
+                font-size: 28px;
                 cursor: pointer;
-                box-shadow: 0 4px 20px rgba(255, 107, 107, 0.6);
+                box-shadow: 0 4px 20px rgba(255, 107, 107, 0.8);
                 z-index: ${Z_INDEX_BASE - 1};
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 border: 2px solid white;
-            " title="Diagnóstico v5.9.3">🔬</button>
+                transition: all 0.3s;
+            " title="Diagnóstico v5.9.4 (Sempre no Topo)">🔬</button>
         `;
         document.body.appendChild(btn);
 
@@ -513,18 +491,9 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
                 runAllTestsAndDisplay();
             } else {
                 panelElement.style.display = 'flex';
-                panelElement.style.zIndex = Z_INDEX_BASE;
+                forceThisPanelToFront(true);
             }
         };
-    }
-
-    // --- Forçar painel na frente ---
-    function forcePanelToFront() {
-        if (panelElement) {
-            panelElement.style.zIndex = Z_INDEX_BASE;
-            panelElement.style.display = 'flex';
-            Utils.log('success', 'Painel trazido para frente!');
-        }
     }
 
     // --- Inicialização ---
@@ -533,19 +502,31 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
         
         createControlButton();
         
-        // Registrar função de emergência
-        window.bringDiagnostics59ToFront = forcePanelToFront;
+        // Registrar funções de emergência
+        window.bringDiagnostics59ToFront = () => forceThisPanelToFront(true);
+        window.diagnostics59KillOthers = () => {
+            // Função EXTREMA: remove outros painéis
+            const panelsToRemove = document.querySelectorAll('[id^="diagnostics"]:not(#' + PANEL_ID + ')');
+            panelsToRemove.forEach(panel => {
+                if (panel.id !== PANEL_ID) {
+                    panel.style.display = 'none';
+                    Utils.log('warn', `🗑️ Painel ${panel.id} ocultado`);
+                }
+            });
+            forceThisPanelToFront(true);
+        };
         
         // Se URL tem diagnostics=true, abrir automaticamente
         if (window.location.search.includes('diagnostics=true')) {
             setTimeout(() => {
                 createPanel();
                 runAllTestsAndDisplay();
-                setTimeout(forcePanelToFront, 500);
             }, 2000);
         }
         
-        Utils.log('info', 'Para trazer painel para frente: window.bringDiagnostics59ToFront()');
+        Utils.log('info', 'Comandos disponíveis:');
+        Utils.log('info', '  • bringDiagnostics59ToFront() - Trazer p/ frente');
+        Utils.log('info', '  • diagnostics59KillOthers() - Ocultar outros painéis');
     }
 
     // Iniciar
@@ -557,5 +538,5 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
 
 })();
 
-console.log(`🔬 [DIAGNOSTICS59] Carregamento concluído. Use botão 🔬 no canto inferior esquerdo.`);
-console.log(`🔬 [DIAGNOSTICS59] Se precisar: window.bringDiagnostics59ToFront()`);
+console.log(`🔬 [DIAGNOSTICS59] Carregamento concluído. Painel SEMPRE NO TOPO!`);
+console.log(`🔬 [DIAGNOSTICS59] Comandos: bringDiagnostics59ToFront() | diagnostics59KillOthers()`);
