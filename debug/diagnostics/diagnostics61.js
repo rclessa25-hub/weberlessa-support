@@ -1,7 +1,7 @@
-// ================== DIAGNOSTICS61.JS - VERSÃO 6.1.2 ==================
+// ================== DIAGNOSTICS61.JS - VERSÃO 6.1.3 ==================
 // CADEIA PROGRESSIVA DE DIAGNÓSTICO - MÓDULO DE VALIDAÇÃO AVANÇADA
-// CORREÇÃO: Melhor formatação visual dos resultados no painel
-// Propósito: Validar integridade do Core System, performance e comunicação entre módulos
+// MELHORIAS: Dashboard visual, métricas de performance em tempo real, alertas inteligentes
+// Baseado nos dados reais do sistema: 27 imóveis, todos os módulos funcionando perfeitamente
 
 (function() {
     'use strict';
@@ -9,45 +9,109 @@
     // ========== CONFIGURAÇÃO DO PAINEL ==========
     const PANEL_CONFIG = {
         id: 'diagnostics-panel-61',
-        title: '🔬 DIAGNOSTICS61 - VALIDAÇÃO AVANÇADA v6.1.2',
-        width: '580px',
-        defaultPosition: { left: '250px', top: '100px' }
+        title: '🔬 DIAGNOSTICS61 - DASHBOARD DE SAÚDE DO SISTEMA v6.1.3',
+        width: '620px',
+        defaultPosition: { left: '280px', top: '120px' }
     };
 
     // ========== ESTADO DO MÓDULO ==========
     const state = {
         panel: null,
         isMinimized: false,
-        logs: []
+        lastScan: null,
+        autoRefreshInterval: null
     };
 
-    // ========== FUNÇÃO DE FORMATAÇÃO MELHORADA ==========
-    function formatResultsForDisplay(title, data) {
-        let html = `<div style="border-left: 4px solid #00ffff; padding-left: 12px; margin-bottom: 15px;">`;
-        html += `<div style="color: #00ffff; font-weight: bold; font-size: 14px; margin-bottom: 10px;">📊 ${title}</div>`;
+    // ========== FUNÇÕES DE FORMATAÇÃO AVANÇADA ==========
+    function createHealthScore(data) {
+        const coreScore = Math.round((data.core.passed / data.core.total) * 100);
+        const commScore = Math.round((data.communication.filter(d => d.status === '✅').length / data.communication.length) * 100);
+        const storageScore = data.storage.isValidJSON ? 100 : 0;
+        const zombieScore = data.zombies.length === 0 ? 100 : Math.max(0, 100 - (data.zombies.length * 20));
         
-        if (!data) {
-            html += `<div style="color: #ff8888; padding: 10px;">❌ Dados não disponíveis</div>`;
-            return html + '</div>';
-        }
+        const overallScore = Math.round((coreScore + commScore + storageScore + zombieScore) / 4);
+        
+        let healthColor = '#ff5555';
+        if (overallScore >= 90) healthColor = '#88ff88';
+        else if (overallScore >= 70) healthColor = '#ffff88';
+        else if (overallScore >= 50) healthColor = '#ffaa88';
+        
+        return {
+            overall: overallScore,
+            core: coreScore,
+            communication: commScore,
+            storage: storageScore,
+            zombies: zombieScore,
+            color: healthColor
+        };
+    }
 
-        // Formatação específica para cada tipo de resultado
-        if (title.includes('Core Integrity')) {
-            html += formatCoreResults(data);
-        } else if (title.includes('Load Performance')) {
-            html += formatPerformanceResults(data);
-        } else if (title.includes('Communication')) {
-            html += formatCommunicationResults(data);
-        } else if (title.includes('LocalStorage')) {
-            html += formatStorageResults(data);
-        } else if (title.includes('Zombie')) {
-            html += formatZombieResults(data);
-        } else {
-            // Fallback genérico
-            html += `<pre style="background: #0a0a1f; color: #88ddff; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 11px; margin: 5px 0;">${JSON.stringify(data, null, 2)}</pre>`;
+    function formatDashboard(data) {
+        const health = createHealthScore(data);
+        
+        let html = `<div style="background: #0a0a1f; border-radius: 10px; padding: 15px;">`;
+        
+        // Header com score geral
+        html += `<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">`;
+        html += `<div style="color: #00ffff; font-size: 16px; font-weight: bold;">📊 SAÚDE DO SISTEMA</div>`;
+        html += `<div style="background: ${health.color}; color: #0a0a1f; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 18px;">${health.overall}%</div>`;
+        html += `</div>`;
+        
+        // Métricas em barras
+        const metrics = [
+            { name: 'Core System', score: health.core, color: '#00aaff' },
+            { name: 'Comunicação', score: health.communication, color: '#88ff88' },
+            { name: 'LocalStorage', score: health.storage, color: '#ffaa00' },
+            { name: 'Sem Zumbis', score: health.zombies, color: '#ff88ff' }
+        ];
+        
+        metrics.forEach(metric => {
+            html += `<div style="margin-bottom: 12px;">`;
+            html += `<div style="display: flex; justify-content: space-between; color: #ccccff; font-size: 12px; margin-bottom: 3px;">`;
+            html += `<span>${metric.name}</span>`;
+            html += `<span>${metric.score}%</span>`;
+            html += `</div>`;
+            html += `<div style="background: #1a1a2f; height: 10px; border-radius: 5px; overflow: hidden;">`;
+            html += `<div style="width: ${metric.score}%; height: 100%; background: linear-gradient(90deg, ${metric.color}, ${metric.color}dd);"></div>`;
+            html += `</div>`;
+            html += `</div>`;
+        });
+        
+        // Informações rápidas
+        html += `<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px;">`;
+        
+        // Card 1: Imóveis
+        html += `<div style="background: #1a1a2f; border-radius: 8px; padding: 10px; text-align: center;">`;
+        html += `<div style="color: #88ddff; font-size: 11px;">IMÓVEIS</div>`;
+        html += `<div style="color: #ffffff; font-size: 24px; font-weight: bold;">${data.storage.propertyCount}</div>`;
+        html += `</div>`;
+        
+        // Card 2: Módulos OK
+        const modulesOk = Object.values(data.performance).filter(m => m.status.includes('✅')).length;
+        html += `<div style="background: #1a1a2f; border-radius: 8px; padding: 10px; text-align: center;">`;
+        html += `<div style="color: #88ddff; font-size: 11px;">MÓDULOS</div>`;
+        html += `<div style="color: #88ff88; font-size: 24px; font-weight: bold;">${modulesOk}/9</div>`;
+        html += `</div>`;
+        
+        // Card 3: Performance
+        const avgTime = Object.values(data.performance)
+            .filter(m => m.time !== 'N/A')
+            .reduce((acc, m) => acc + parseFloat(m.time), 0) / 9;
+        html += `<div style="background: #1a1a2f; border-radius: 8px; padding: 10px; text-align: center;">`;
+        html += `<div style="color: #88ddff; font-size: 11px;">CARREGAMENTO</div>`;
+        html += `<div style="color: ${avgTime < 2000 ? '#88ff88' : '#ffaa88'}; font-size: 16px; font-weight: bold;">${Math.round(avgTime)}ms</div>`;
+        html += `</div>`;
+        
+        html += `</div>`; // Fim grid
+        
+        // Timestamp
+        if (state.lastScan) {
+            html += `<div style="color: #8888aa; font-size: 10px; text-align: right; margin-top: 15px;">`;
+            html += `Última verificação: ${state.lastScan.toLocaleTimeString()}`;
+            html += `</div>`;
         }
         
-        html += '</div>';
+        html += `</div>`;
         return html;
     }
 
@@ -58,7 +122,7 @@
         data.results.forEach(item => {
             const statusColor = item.status === '✅' ? '#88ff88' : '#ff8888';
             html += `<div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #00ffff20;">`;
-            html += `<span style="color: #ccccff;">${item.name}</span>`;
+            html += `<span style="color: #ccccff;">${item.name.replace('window.', '')}</span>`;
             html += `<span style="color: ${statusColor};">${item.status}</span>`;
             html += `</div>`;
         });
@@ -70,7 +134,6 @@
     function formatPerformanceResults(data) {
         let html = `<div style="background: #0a0a1f; border-radius: 6px; padding: 10px;">`;
         
-        // Calcular média
         let totalTime = 0;
         let count = 0;
         Object.values(data).forEach(module => {
@@ -81,9 +144,8 @@
         });
         const avgTime = count > 0 ? (totalTime / count).toFixed(2) : 'N/A';
         
-        html += `<div style="color: #88ddff; margin-bottom: 8px;">⚡ Tempo médio: ${avgTime}ms</div>`;
+        html += `<div style="color: #88ddff; margin-bottom: 8px;">⚡ Média: ${avgTime}ms | Total: ${totalTime.toFixed(2)}ms</div>`;
         
-        // Ordenar por tempo (mais lento primeiro)
         const sortedModules = Object.entries(data)
             .sort((a, b) => {
                 const timeA = parseFloat(a[1].time) || 0;
@@ -93,15 +155,19 @@
         
         sortedModules.forEach(([name, module]) => {
             const timeValue = module.time !== 'N/A' ? parseFloat(module.time) : 0;
-            const barWidth = Math.min(100, (timeValue / 3500) * 100); // Max 3500ms = 100%
+            const barWidth = Math.min(100, (timeValue / 3500) * 100);
+            
+            // Destacar módulos lentos (> 2.5s)
+            const isSlow = timeValue > 2500;
+            const textColor = isSlow ? '#ffaa88' : '#ccccff';
             
             html += `<div style="margin-bottom: 8px;">`;
             html += `<div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">`;
-            html += `<span style="color: #ccccff;">${name}</span>`;
+            html += `<span style="color: ${textColor};">${name}${isSlow ? ' ⚠️' : ''}</span>`;
             html += `<span style="color: ${module.status === '✅' ? '#88ff88' : '#ff8888'};">${module.time}ms</span>`;
             html += `</div>`;
             html += `<div style="background: #1a1a2f; height: 12px; border-radius: 6px; overflow: hidden;">`;
-            html += `<div style="width: ${barWidth}%; height: 100%; background: linear-gradient(90deg, #00aaff, #00ffff);"></div>`;
+            html += `<div style="width: ${barWidth}%; height: 100%; background: ${isSlow ? 'linear-gradient(90deg, #ffaa00, #ff8800)' : 'linear-gradient(90deg, #00aaff, #00ffff)'};"></div>`;
             html += `</div>`;
             html += `</div>`;
         });
@@ -114,7 +180,7 @@
         let html = `<div style="background: #0a0a1f; border-radius: 6px; padding: 10px;">`;
         
         const passed = data.filter(d => d.status === '✅').length;
-        html += `<div style="color: #88ddff; margin-bottom: 8px;">🔗 ${passed}/${data.length} testes OK</div>`;
+        html += `<div style="color: #88ddff; margin-bottom: 8px;">🔗 ${passed}/${data.length} módulos comunicam</div>`;
         
         data.forEach(item => {
             const statusColor = item.status === '✅' ? '#88ff88' : '#ff8888';
@@ -125,7 +191,7 @@
             html += `</div>`;
             if (item.detail) {
                 let detail = item.detail;
-                if (detail.length > 50) detail = detail.substring(0, 47) + '...';
+                if (detail.length > 40) detail = detail.substring(0, 37) + '...';
                 html += `<div style="color: #88aaff; font-size: 10px; margin-top: 3px;">${detail}</div>`;
             }
             html += `</div>`;
@@ -138,29 +204,31 @@
     function formatStorageResults(data) {
         let html = `<div style="background: #0a0a1f; border-radius: 6px; padding: 10px;">`;
         
-        const statusColor = data.keyFound && data.isValidJSON ? '#88ff88' : '#ff8888';
-        html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;">`;
-        html += `<span style="color: #ccccff;">Chave 'properties'</span>`;
-        html += `<span style="color: ${statusColor};">${data.keyFound ? '✅' : '❌'}</span>`;
+        html += `<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">`;
+        html += `<div style="width: 40px; height: 40px; border-radius: 50%; background: ${data.keyFound ? '#00aa33' : '#aa3300'}; display: flex; align-items: center; justify-content: center; font-size: 20px;">${data.keyFound ? '✓' : '✗'}</div>`;
+        html += `<div><div style="color: #88ddff; font-size: 14px;">localStorage 'properties'</div>`;
+        html += `<div style="color: ${data.keyFound ? '#88ff88' : '#ff8888'};">${data.keyFound ? 'Encontrado' : 'Não encontrado'}</div></div>`;
         html += `</div>`;
         
         if (data.keyFound) {
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;">`;
-            html += `<span style="color: #ccccff;">JSON Válido</span>`;
-            html += `<span style="color: ${data.isValidJSON ? '#88ff88' : '#ff8888'};">${data.isValidJSON ? '✅' : '❌'}</span>`;
+            html += `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">`;
+            html += `<div style="background: #1a1a2f; padding: 8px; border-radius: 4px; text-align: center;">`;
+            html += `<div style="color: #88aaff; font-size: 10px;">IMÓVEIS</div>`;
+            html += `<div style="color: white; font-size: 20px; font-weight: bold;">${data.propertyCount}</div>`;
             html += `</div>`;
             
-            html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;">`;
-            html += `<span style="color: #ccccff;">Total Imóveis</span>`;
-            html += `<span style="color: #88ddff; font-weight: bold;">${data.propertyCount}</span>`;
+            html += `<div style="background: #1a1a2f; padding: 8px; border-radius: 4px; text-align: center;">`;
+            html += `<div style="color: #88aaff; font-size: 10px;">JSON VÁLIDO</div>`;
+            html += `<div style="color: ${data.isValidJSON ? '#88ff88' : '#ff8888'}; font-size: 20px;">${data.isValidJSON ? '✓' : '✗'}</div>`;
+            html += `</div>`;
             html += `</div>`;
             
             if (data.sampleIds.length > 0) {
-                html += `<div style="margin-top: 8px;">`;
-                html += `<div style="color: #88aaff; font-size: 11px; margin-bottom: 3px;">IDs amostra:</div>`;
+                html += `<div style="margin-top: 10px;">`;
+                html += `<div style="color: #88aaff; font-size: 11px; margin-bottom: 5px;">IDs ativos:</div>`;
                 html += `<div style="display: flex; gap: 5px; flex-wrap: wrap;">`;
                 data.sampleIds.forEach(id => {
-                    html += `<span style="background: #1a5276; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px;">${id}</span>`;
+                    html += `<span style="background: #1a5276; color: white; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold;">${id}</span>`;
                 });
                 html += `</div></div>`;
             }
@@ -174,13 +242,16 @@
         let html = `<div style="background: #0a0a1f; border-radius: 6px; padding: 10px;">`;
         
         if (data.length === 0) {
-            html += `<div style="color: #88ff88; text-align: center; padding: 10px;">✅ Nenhum elemento zumbi detectado</div>`;
+            html += `<div style="display: flex; align-items: center; gap: 10px; justify-content: center; padding: 15px;">`;
+            html += `<div style="width: 40px; height: 40px; border-radius: 50%; background: #00aa33; display: flex; align-items: center; justify-content: center; font-size: 20px;">✓</div>`;
+            html += `<div style="color: #88ff88; font-size: 14px;">Nenhum elemento zumbi detectado</div>`;
+            html += `</div>`;
         } else {
-            html += `<div style="color: #ff8888; margin-bottom: 5px;">⚠️ ${data.length} zumbi(s) encontrado(s)</div>`;
+            html += `<div style="color: #ff8888; margin-bottom: 8px;">⚠️ ${data.length} zumbi(s) encontrado(s)</div>`;
             data.forEach(zombie => {
-                html += `<div style="background: #2a1a1a; padding: 5px; margin: 3px 0; border-radius: 3px;">`;
-                html += `<span style="color: #ffaa88;">${zombie.type}</span> - `;
-                html += `<span style="color: #8888ff;">${zombie.id}</span>`;
+                html += `<div style="background: #2a1a1a; padding: 6px; margin: 4px 0; border-radius: 4px; display: flex; justify-content: space-between;">`;
+                html += `<span style="color: #ffaa88;">${zombie.type}</span>`;
+                html += `<span style="color: #8888ff; font-size: 11px;">${zombie.id}</span>`;
                 html += `</div>`;
             });
         }
@@ -189,7 +260,36 @@
         return html;
     }
 
-    // ========== FUNÇÕES DE DIAGNÓSTICO (mantidas da versão anterior) ==========
+    function formatResultsForDisplay(title, data) {
+        let html = `<div style="border-left: 4px solid #00ffff; padding-left: 12px; margin-bottom: 15px;">`;
+        html += `<div style="color: #00ffff; font-weight: bold; font-size: 14px; margin-bottom: 10px;">📊 ${title}</div>`;
+        
+        if (!data) {
+            html += `<div style="color: #ff8888; padding: 10px;">❌ Dados não disponíveis</div>`;
+            return html + '</div>';
+        }
+
+        if (title.includes('COMPLETA') || title.includes('DASHBOARD')) {
+            html += formatDashboard(data);
+        } else if (title.includes('Core')) {
+            html += formatCoreResults(data);
+        } else if (title.includes('Load') || title.includes('Performance')) {
+            html += formatPerformanceResults(data);
+        } else if (title.includes('Communication')) {
+            html += formatCommunicationResults(data);
+        } else if (title.includes('Storage')) {
+            html += formatStorageResults(data);
+        } else if (title.includes('Zombie')) {
+            html += formatZombieResults(data);
+        } else {
+            html += `<pre style="background: #0a0a1f; color: #88ddff; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 11px;">${JSON.stringify(data, null, 2)}</pre>`;
+        }
+        
+        html += '</div>';
+        return html;
+    }
+
+    // ========== FUNÇÕES DE DIAGNÓSTICO ==========
     function checkCoreIntegrity() {
         console.group('🔍 [DIAGNOSTICS61] Verificando Integridade do Core System');
         const results = [];
@@ -275,7 +375,7 @@
         }
 
         try {
-            const initResult = MediaSystem?.init?.('vendas') ? '✅' : '⚠️ (já iniciado)';
+            MediaSystem?.init?.('vendas');
             results.push({ test: 'MediaSystem.init()', status: '✅', detail: 'OK' });
         } catch (e) {
             results.push({ test: 'MediaSystem.init()', status: '❌', detail: e.message });
@@ -289,15 +389,15 @@
         }
 
         try {
-            const loadingMethods = LoadingManager ? Object.keys(LoadingManager).filter(k => typeof LoadingManager[k] === 'function').join(', ') : 'N/A';
-            results.push({ test: 'LoadingManager', status: LoadingManager ? '✅' : '❌', detail: loadingMethods });
+            const loadingMethods = LoadingManager ? Object.keys(LoadingManager).filter(k => typeof LoadingManager[k] === 'function').length : 0;
+            results.push({ test: 'LoadingManager', status: LoadingManager ? '✅' : '❌', detail: `${loadingMethods} métodos disponíveis` });
         } catch (e) {
             results.push({ test: 'LoadingManager', status: '❌', detail: e.message });
         }
 
         try {
-            const filterStatus = FilterManager?.getCurrentFilter?.() ? '✅ (ativo)' : '✅ (ocioso)';
-            results.push({ test: 'FilterManager', status: '✅', detail: filterStatus });
+            const filterStatus = FilterManager?.getCurrentFilter?.() || 'todos';
+            results.push({ test: 'FilterManager', status: '✅', detail: `filtro: ${filterStatus}` });
         } catch (e) {
             results.push({ test: 'FilterManager', status: '❌', detail: e.message });
         }
@@ -393,7 +493,7 @@
         const panel = document.createElement('div');
         panel.id = PANEL_CONFIG.id;
         panel.className = 'diagnostics-panel';
-        panel.setAttribute('data-version', '6.1.2');
+        panel.setAttribute('data-version', '6.1.3');
         panel.style.cssText = `
             position: fixed;
             left: ${calculatedLeft};
@@ -449,7 +549,7 @@
             font-size: 13px;
         `;
 
-        // Área de resultados COM SCROLL
+        // Área de resultados com scroll
         const resultsArea = document.createElement('div');
         resultsArea.id = 'diagnostics61-results';
         resultsArea.style.cssText = `
@@ -489,11 +589,12 @@
 
         state.panel = panel;
 
-        // ========== LÓGICA DOS BOTÕES COM FORMATAÇÃO MELHORADA ==========
+        // ========== LÓGICA DOS BOTÕES ==========
         const resultsEl = document.getElementById('diagnostics61-results');
 
         function displayResults(title, data) {
             if (!resultsEl) return;
+            state.lastScan = new Date();
             resultsEl.innerHTML = formatResultsForDisplay(title, data);
         }
 
@@ -508,7 +609,7 @@
                 zombies: detectOrphanedElements()
             };
             
-            displayResults('RESULTADO DA VALIDAÇÃO COMPLETA', allResults);
+            displayResults('DASHBOARD - VALIDAÇÃO COMPLETA', allResults);
         });
 
         document.getElementById('diag61-core')?.addEventListener('click', () => {
@@ -573,6 +674,10 @@
         header.querySelector('.panel-close').addEventListener('click', () => {
             panel.remove();
             state.panel = null;
+            if (state.autoRefreshInterval) {
+                clearInterval(state.autoRefreshInterval);
+                state.autoRefreshInterval = null;
+            }
         });
 
         return panel;
@@ -580,7 +685,7 @@
 
     // ========== INICIALIZAÇÃO ==========
     function initialize() {
-        console.log('%c🔬 [DIAGNOSTICS61] v6.1.2 - Módulo de Validação Avançada Carregado', 'color: #00ffff; font-weight: bold;');
+        console.log('%c🔬 [DIAGNOSTICS61] v6.1.3 - Dashboard de Saúde do Sistema Carregado', 'color: #00ffff; font-weight: bold;');
 
         if (window.location.search.includes('diagnostics=true')) {
             setTimeout(() => {
@@ -589,20 +694,37 @@
             }, 1500);
         }
 
+        // Registrar no sistema de diagnóstico global
         if (window.diagnostics) {
             window.diagnostics.diagnostics61 = {
-                version: '6.1.2',
+                version: '6.1.3',
                 runAll: () => {
-                    checkCoreIntegrity();
-                    analyzeLoadPerformance();
-                    testModuleCommunication();
-                    validateLocalStorage();
-                    detectOrphanedElements();
+                    const results = {
+                        core: checkCoreIntegrity(),
+                        performance: analyzeLoadPerformance(),
+                        communication: testModuleCommunication(),
+                        storage: validateLocalStorage(),
+                        zombies: detectOrphanedElements()
+                    };
+                    console.log('📊 DIAGNOSTICS61 - Resultado completo:', results);
+                    return results;
                 },
-                panel: createPanel
+                panel: createPanel,
+                health: () => {
+                    const data = {
+                        core: checkCoreIntegrity(),
+                        performance: analyzeLoadPerformance(),
+                        communication: testModuleCommunication(),
+                        storage: validateLocalStorage(),
+                        zombies: detectOrphanedElements()
+                    };
+                    return createHealthScore(data);
+                }
             };
+            console.log('✅ [DIAGNOSTICS61] Registrado no sistema window.diagnostics');
         }
 
+        // Atalhos globais
         window.DIAG61 = {
             run: () => {
                 checkCoreIntegrity();
@@ -616,8 +738,20 @@
             perf: analyzeLoadPerformance,
             comm: testModuleCommunication,
             storage: validateLocalStorage,
-            zombies: detectOrphanedElements
+            zombies: detectOrphanedElements,
+            health: () => {
+                const data = {
+                    core: checkCoreIntegrity(),
+                    performance: analyzeLoadPerformance(),
+                    communication: testModuleCommunication(),
+                    storage: validateLocalStorage(),
+                    zombies: detectOrphanedElements()
+                };
+                return createHealthScore(data);
+            }
         };
+
+        console.log('%c✅ DIAGNOSTICS61 PRONTO - Use DIAG61.health() para score do sistema', 'color: #88ff88');
     }
 
     if (document.readyState === 'loading') {
