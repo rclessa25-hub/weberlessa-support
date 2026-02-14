@@ -2,11 +2,11 @@
 // debug/diagnostics/diagnostics54.js - ESTRUTURA MODULAR E ORGANIZADA
 // ============================================================
 // Sistema organizado em painéis temáticos com limites de testes
-// Versão: 5.4.6 - Painel de Análise Profunda de Referências
+// Versão: 5.4.7 - Painel de Resultados do Sistema
 // ============================================================
 
 /* ================== CONFIGURAÇÕES GLOBAIS ================== */
-console.log('🚀 diagnostics54.js v5.4.6 - Sistema modular organizado (Análise Profunda)');
+console.log('🚀 diagnostics54.js v5.4.7 - Sistema modular organizado (Resultados do Sistema)');
 
 // ================== CONSTANTES E FLAGS ==================
 const DIAG_CONFIG = {
@@ -14,7 +14,7 @@ const DIAG_CONFIG = {
     MAX_PANELS_PER_FILE: 4,
     CURRENT_PANEL_COUNT: 0,
     PANEL_CAPACITY_WARNING: 80, // % de ocupação para alerta
-    VERSION: '5.4.6',
+    VERSION: '5.4.7',
     BASE_URL: 'https://rclessa25-hub.github.io/imoveis-maceio/',
     DEBUG_PARAMS: ['debug', 'diagnostics', 'mobiletest', 'refcheck', 'pdfdebug']
 };
@@ -795,6 +795,264 @@ ${JSON.stringify(results.iframes.details, null, 2)}
 // Inicializar o painel
 DeepReferencesAnalysisPanel.initialize();
 
+/* ================== NOVO PAINEL: RESULTADOS DO SISTEMA ================== */
+const SystemResultsPanel = {
+    name: 'Resultados do Sistema',
+    description: 'Resultados detalhados dos testes de sistema e performance',
+    
+    initialize: function() {
+        console.log('📊 Inicializando Painel de Resultados do Sistema');
+        return this;
+    },
+    
+    runFullSystemAnalysis: function() {
+        console.group('📊 ANÁLISE COMPLETA DO SISTEMA');
+        
+        const results = {
+            performance: this.analyzePerformance(),
+            modules: this.analyzeModules(),
+            memory: this.analyzeMemory(),
+            dom: this.analyzeDOM(),
+            events: this.analyzeEvents(),
+            timestamp: new Date().toISOString()
+        };
+        
+        console.log('✅ Análise concluída:', results);
+        console.groupEnd();
+        
+        return results;
+    },
+    
+    analyzePerformance: function() {
+        const performance = window.performance || {};
+        const navigation = performance.navigation || {};
+        const timing = performance.timing || {};
+        
+        return {
+            loadTime: timing.loadEventEnd - timing.navigationStart,
+            domReady: timing.domContentLoadedEventEnd - timing.navigationStart,
+            redirectCount: navigation.redirectCount,
+            type: ['Navegação', 'Recarregar', 'Histórico', 'Outro'][navigation.type] || 'Desconhecido',
+            resources: performance.getEntriesByType 
+                ? performance.getEntriesByType('resource').length 
+                : 'não disponível'
+        };
+    },
+    
+    analyzeModules: function() {
+        const modules = {
+            sharedCore: !!window.SharedCore,
+            mediaSystem: !!window.MediaSystem,
+            pdfSystem: !!window.PdfSystem,
+            loadingManager: !!window.LoadingManager,
+            filterManager: !!window.FilterManager,
+            supabaseClient: !!window.supabaseClient,
+            properties: Array.isArray(window.properties),
+            adminPanel: !!document.getElementById('adminPanel')
+        };
+        
+        const totalModules = Object.values(modules).filter(Boolean).length;
+        const expectedModules = 8;
+        
+        return {
+            available: modules,
+            total: totalModules,
+            expected: expectedModules,
+            percentage: Math.round((totalModules / expectedModules) * 100),
+            missing: Object.entries(modules)
+                .filter(([_, value]) => !value)
+                .map(([key]) => key)
+        };
+    },
+    
+    analyzeMemory: function() {
+        if (window.performance && window.performance.memory) {
+            const memory = window.performance.memory;
+            return {
+                totalJSHeap: this.formatBytes(memory.totalJSHeapSize),
+                usedJSHeap: this.formatBytes(memory.usedJSHeapSize),
+                jsHeapLimit: this.formatBytes(memory.jsHeapSizeLimit),
+                usagePercentage: Math.round((memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100)
+            };
+        }
+        
+        // Fallback para navegadores sem API de memória
+        return {
+            totalJSHeap: 'não disponível',
+            usedJSHeap: 'não disponível',
+            jsHeapLimit: 'não disponível',
+            usagePercentage: 'n/a'
+        };
+    },
+    
+    analyzeDOM: function() {
+        return {
+            totalElements: document.getElementsByTagName('*').length,
+            scripts: document.scripts.length,
+            stylesheets: document.styleSheets.length,
+            images: document.images.length,
+            links: document.links.length,
+            forms: document.forms.length,
+            iframes: document.getElementsByTagName('iframe').length,
+            depth: this.calculateDOMDepth(document.body)
+        };
+    },
+    
+    analyzeEvents: function() {
+        // Não é possível listar todos os eventos, mas podemos verificar os principais
+        const events = {
+            hasLoadListener: typeof window.onload === 'function',
+            hasResizeListener: typeof window.onresize === 'function',
+            hasScrollListener: typeof window.onscroll === 'function',
+            hasClickListeners: document.body && typeof document.body.onclick !== 'undefined'
+        };
+        
+        return events;
+    },
+    
+    calculateDOMDepth: function(element, depth = 0) {
+        if (!element || !element.children || element.children.length === 0) {
+            return depth;
+        }
+        
+        let maxDepth = depth;
+        Array.from(element.children).forEach(child => {
+            const childDepth = this.calculateDOMDepth(child, depth + 1);
+            maxDepth = Math.max(maxDepth, childDepth);
+        });
+        
+        return maxDepth;
+    },
+    
+    formatBytes: function(bytes) {
+        if (bytes === undefined || bytes === null) return '0 B';
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+    },
+    
+    generateReportHTML: function() {
+        const results = this.runFullSystemAnalysis();
+        
+        // Determinar cor baseada na saúde do sistema
+        const healthColor = results.modules.percentage > 80 ? '#00ff9c' : 
+                           results.modules.percentage > 50 ? '#ffaa00' : '#ff5500';
+        
+        return `
+            <div style="padding: 15px; font-family: monospace;">
+                <h3 style="color: ${healthColor}; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-chart-line"></i> RELATÓRIO DO SISTEMA
+                    <span style="font-size: 12px; background: #333; padding: 2px 8px; border-radius: 10px; color: #888;">
+                        ${results.timestamp}
+                    </span>
+                </h3>
+                
+                <!-- Cards de Resumo -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+                    <div style="background: #111; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="color: #888; font-size: 11px;">MÓDULOS</div>
+                        <div style="font-size: 28px; color: ${healthColor};">${results.modules.percentage}%</div>
+                        <div style="font-size: 10px;">${results.modules.total}/${results.modules.expected}</div>
+                    </div>
+                    
+                    <div style="background: #111; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="color: #888; font-size: 11px;">CARREGAMENTO</div>
+                        <div style="font-size: 24px; color: #00aaff;">${Math.round(results.performance.loadTime / 1000)}s</div>
+                        <div style="font-size: 10px;">DOM: ${Math.round(results.performance.domReady / 1000)}s</div>
+                    </div>
+                    
+                    <div style="background: #111; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="color: #888; font-size: 11px;">ELEMENTOS</div>
+                        <div style="font-size: 28px; color: #ffaa00;">${results.dom.totalElements}</div>
+                        <div style="font-size: 10px;">profundidade: ${results.dom.depth}</div>
+                    </div>
+                </div>
+                
+                <!-- Memória (se disponível) -->
+                ${results.memory.usedJSHeap !== 'não disponível' ? `
+                <div style="background: #111; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <h4 style="color: #ffaa00; margin-bottom: 10px;">💾 MEMÓRIA</h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                        <div>
+                            <div style="color: #888; font-size: 10px;">USADO</div>
+                            <div style="color: ${results.memory.usagePercentage > 80 ? '#ff5500' : '#00ff9c'}">
+                                ${results.memory.usedJSHeap}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="color: #888; font-size: 10px;">TOTAL</div>
+                            <div style="color: #00aaff;">${results.memory.totalJSHeap}</div>
+                        </div>
+                        <div>
+                            <div style="color: #888; font-size: 10px;">LIMITE</div>
+                            <div style="color: #888;">${results.memory.jsHeapLimit}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px; height: 4px; background: #222; border-radius: 2px;">
+                        <div style="height: 100%; width: ${results.memory.usagePercentage}%; background: ${results.memory.usagePercentage > 80 ? '#ff5500' : '#00ff9c'}; border-radius: 2px;"></div>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Módulos -->
+                <details style="margin-bottom: 10px;" open>
+                    <summary style="cursor: pointer; color: #00aaff; margin-bottom: 5px;">📦 MÓDULOS DO SISTEMA</summary>
+                    <div style="background: #111; padding: 10px; border-radius: 4px; margin-top: 5px;">
+                        ${Object.entries(results.modules.available).map(([module, available]) => `
+                            <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #222;">
+                                <span style="color: #888;">${module}</span>
+                                <span style="color: ${available ? '#00ff9c' : '#ff5500'};">
+                                    ${available ? '✅' : '❌'}
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </details>
+                
+                <!-- DOM -->
+                <details style="margin-bottom: 10px;">
+                    <summary style="cursor: pointer; color: #ffaa00; margin-bottom: 5px;">🌳 DOM</summary>
+                    <div style="background: #111; padding: 10px; border-radius: 4px; margin-top: 5px;">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
+                            <div><span style="color: #888;">Scripts:</span> ${results.dom.scripts}</div>
+                            <div><span style="color: #888;">Estilos:</span> ${results.dom.stylesheets}</div>
+                            <div><span style="color: #888;">Imagens:</span> ${results.dom.images}</div>
+                            <div><span style="color: #888;">Links:</span> ${results.dom.links}</div>
+                            <div><span style="color: #888;">Forms:</span> ${results.dom.forms}</div>
+                            <div><span style="color: #888;">Iframes:</span> ${results.dom.iframes}</div>
+                        </div>
+                    </div>
+                </details>
+                
+                <!-- Performance -->
+                <details style="margin-bottom: 15px;">
+                    <summary style="cursor: pointer; color: #00ff9c; margin-bottom: 5px;">⏱️ PERFORMANCE</summary>
+                    <div style="background: #111; padding: 10px; border-radius: 4px; margin-top: 5px;">
+                        <div><span style="color: #888;">Tipo:</span> ${results.performance.type}</div>
+                        <div><span style="color: #888;">Redirecionamentos:</span> ${results.performance.redirectCount}</div>
+                        <div><span style="color: #888;">Recursos:</span> ${results.performance.resources}</div>
+                    </div>
+                </details>
+                
+                <!-- Botões -->
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button onclick="SystemResultsPanel.runFullSystemAnalysis(); this.closest('.diagnostics-window').querySelector('div[style*=\"overflow-y: auto\"] > div').innerHTML = SystemResultsPanel.generateReportHTML()" 
+                            style="background: #00ff9c; color: black; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+                        🔄 Atualizar
+                    </button>
+                    <button onclick="WindowManager.closeWindow(this.closest('.diagnostics-window').id)" 
+                            style="background: #555; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+                        ❌ Fechar
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+};
+
+// Inicializar o painel
+SystemResultsPanel.initialize();
+
 // ================== SISTEMA DE JANELAS MÚLTIPLAS COM CAMADAS ==================
 const WindowManager = {
     windows: [],
@@ -857,9 +1115,9 @@ const WindowManager = {
         const versionNumber = parseInt(DIAG_CONFIG.VERSION.replace(/\./g, ''));
         
         // Cálculo do z-index baseado na camada (layer)
-        // Layer 1: 1,000,000 + versão (ex: 1,000,546)
-        // Layer 2: 2,000,000 + versão (ex: 2,000,546)
-        // Layer 3: 3,000,000 + versão (ex: 3,000,546)
+        // Layer 1: 1,000,000 + versão (ex: 1,000,547)
+        // Layer 2: 2,000,000 + versão (ex: 2,000,547)
+        // Layer 3: 3,000,000 + versão (ex: 3,000,547)
         const baseZIndex = windowConfig.layer * 1000000;
         const windowZIndex = baseZIndex + versionNumber + this.windows.length;
         
@@ -983,6 +1241,9 @@ const WindowManager = {
             case 'Análise Profunda de Referências':
                 contentHTML = DeepReferencesAnalysisPanel.generateReportHTML();
                 break;
+            case 'Resultados do Sistema':
+                contentHTML = SystemResultsPanel.generateReportHTML();
+                break;
             default:
                 contentHTML = `<div style="padding: 20px; text-align: center;">
                     <h3 style="color: #ffaa00;">🔍 Painel: ${panelGroup}</h3>
@@ -1087,16 +1348,34 @@ const WindowManager = {
     },
     
     generateSystemPanelContent: function(windowId, hasParent) {
+        const resultsButton = !hasParent ? `
+            <div style="margin-bottom: 15px; padding: 10px; background: rgba(0, 255, 156, 0.2); border-radius: 6px; border: 1px solid #00ff9c;">
+                <button onclick="WindowManager.createNewWindow('Resultados do Sistema', '${windowId}')" 
+                        style="background: #00ff9c; color: black; padding: 12px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">
+                    📊 ABRIR RESULTADOS DETALHADOS DO SISTEMA
+                </button>
+                <div style="color: #00ff9c; font-size: 11px; margin-top: 5px; text-align: center;">
+                    ⚡ Abre uma nova janela com análise completa do sistema
+                </div>
+            </div>
+        ` : '';
+        
         return `
             <h3 style="color: #00ff9c; margin-bottom: 15px;">⚙️ SISTEMA & PERFORMANCE</h3>
+            
+            ${resultsButton}
+            
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
-                <button onclick="SystemPerformancePanel.runAllTests()" style="background: #00ff9c; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="SystemPerformancePanel.runAllTests()" 
+                        style="background: #00ff9c; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     🧪 Executar Todos os Testes
                 </button>
-                <button onclick="if(window.diagnosePdfModalMobile) window.diagnosePdfModalMobile(); else console.warn('diagnosePdfModalMobile não disponível')" style="background: #00cc7a; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="if(window.diagnosePdfModalMobile) window.diagnosePdfModalMobile(); else console.warn('diagnosePdfModalMobile não disponível')" 
+                        style="background: #00cc7a; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     📱 Diagnóstico Mobile PDF
                 </button>
             </div>
+            
             <div style="background: rgba(0, 255, 156, 0.1); padding: 15px; border-radius: 6px;">
                 <h4 style="color: #00ff9c;">📊 Estatísticas do Painel</h4>
                 <div>Testes registrados: ${SystemPerformancePanel.getTestCount()}/${SystemPerformancePanel.maxTests}</div>
@@ -1137,7 +1416,7 @@ function createMainControlPanel() {
     
     controlPanel.innerHTML = `
         <div style="font-weight: bold; color: #00aaff; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
-            <span>🎛️ DIAGNÓSTICOS v${DIAG_CONFIG.VERSION} (Análise Profunda)</span>
+            <span>🎛️ DIAGNÓSTICOS v${DIAG_CONFIG.VERSION} (Resultados do Sistema)</span>
             <button onclick="this.parentElement.parentElement.style.display='none'" 
                     style="background: #555; color: white; border: none; padding: 2px 8px; cursor: pointer;">×</button>
         </div>
@@ -1297,7 +1576,8 @@ function initializeDiagnosticsSystem() {
             migration: MigrationCompatibilityPanel,
             references: ReferencesAnalysisPanel,
             system: SystemPerformancePanel,
-            deepReferences: DeepReferencesAnalysisPanel
+            deepReferences: DeepReferencesAnalysisPanel,
+            systemResults: SystemResultsPanel
         },
         manager: PanelManager,
         windows: WindowManager,
@@ -1341,6 +1621,7 @@ function initializeDiagnosticsSystem() {
     console.log(`✅ Sistema de diagnósticos v${DIAG_CONFIG.VERSION} inicializado com sucesso!`);
     console.log('🎮 Use window.diag.v54 para acessar as funcionalidades desta versão.');
     console.log('🔍 Painel de Análise Profunda disponível em window.diag.v54.panels.deepReferences');
+    console.log('📊 Painel de Resultados do Sistema disponível em window.diag.v54.panels.systemResults');
 }
 
 // ================== EXECUÇÃO AUTOMÁTICA ==================
@@ -1364,9 +1645,10 @@ window.DiagnosticsSystemV54 = {
         migration: MigrationCompatibilityPanel,
         references: ReferencesAnalysisPanel,
         system: SystemPerformancePanel,
-        deepReferences: DeepReferencesAnalysisPanel
+        deepReferences: DeepReferencesAnalysisPanel,
+        systemResults: SystemResultsPanel
     },
     manager: PanelManager,
     windows: WindowManager
 };
-console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Análise Profunda)`);
+console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Resultados do Sistema)`);
