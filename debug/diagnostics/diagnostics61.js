@@ -1,1153 +1,610 @@
-// debug/diagnostics/diagnostics61.js
-// =====================================================================
-// DIAGNÓSTICO AVANÇADO DO SISTEMA - VERSÃO 6.1
-// =====================================================================
+// ================== MÓDULO DE DIAGNÓSTICO PRINCIPAL v6.1 (CADEIA PROGRESSIVA) ==================
+// Diagnostics61.js - Versão final da cadeia progressiva (acumula funcionalidades de 53 a 60)
 // Data: 13/02/2026
-// Status: ATIVO (Elo 6 da cadeia progressiva de diagnóstico)
-//
-// INTEGRAÇÃO NA CADEIA:
-// diagnostics53.js (Base) ← diagnostics54.js ← diagnostics55.js ←
-// diagnostics56.js ← diagnostics57.js ← diagnostics58.js ←
-// diagnostics59.js ← diagnostics60.js ← diagnostics61.js (ATUAL)
-//
-// FUNÇÕES ADICIONADAS NESTA VERSÃO:
-// 1. Análise de integridade de módulos do Core System (properties, admin, gallery)
-// 2. Verificação de consistência de dados (localStorage vs memória)
-// 3. Testes de performance de renderização da galeria
-// 4. Sistema de logs consolidado não conflitante
-// 5. Posicionamento inteligente do painel para evitar sobreposição
-// =====================================================================
+// Escopo: Análise completa do sistema, verificações de integridade, detecção de "zumbis",
+//         e painel visual dedicado e exclusivo.
 
-console.log(`🔍 [DIAGNOSTICS61] Carregado - Versão 6.1 (Elo ${window.__diagnostics_chain_length || 6} da cadeia)`);
-
-// Incrementar contador da cadeia de diagnóstico
-window.__diagnostics_chain_length = (window.__diagnostics_chain_length || 5) + 1;
-
-// Namespace único para esta versão
-window.DiagnosticsV61 = (function() {
-    'use strict';
-    
-    // ==================== CONFIGURAÇÃO ====================
+const Diagnostics61 = (function() {
+    // ========== CONFIGURAÇÃO ==========
     const CONFIG = {
         version: '6.1',
-        panelId: 'diagnostics-panel-v61',
-        logContainerId: 'diagnostics-log-v61',
-        panelZIndex: 10000,
-        panelOffset: 20, // pixels de espaçamento entre painéis
-        defaultPosition: {
-            top: '120px',
-            left: '820px'  // Posicionado à direita para não conflitar com outros painéis (ex: v57 em 20px, 20px)
-        },
-        colors: {
-            primary: '#ffaa00',
-            secondary: '#00ccff',
-            success: '#00ff9c',
-            warning: '#ffaa00',
-            error: '#ff5555',
-            info: '#66ccff',
-            background: 'rgba(26, 10, 42, 0.98)',
-            border: '#ffaa00'
-        }
+        panelId: 'diagnostics61-panel', // ID único para o painel
+        panelZIndex: 2147483646, // Z-index muito alto, logo abaixo do painel de emergência (caso exista)
+        checkInterval: 30000, // 30 segundos
+        criticalModules: [
+            'SharedCore', 'properties', 'LoadingManager', 'MediaSystem', 
+            'PdfSystem', 'FilterManager', 'admin'
+        ]
     };
 
-    // ==================== ESTADO ====================
-    const state = {
-        initialized: false,
-        panelVisible: false,
-        logs: [],
-        tests: {},
-        activeTests: [],
-        panelElement: null,
-        logElement: null,
-        lastRunTimestamp: null,
-        positionAdjusted: false // Flag para ajuste de posição
+    // ========== ESTADO ==========
+    let state = {
+        panel: null,
+        isPanelVisible: false,
+        lastCheck: null,
+        checkIntervalId: null,
+        healthScore: 100,
+        issues: []
     };
 
-    // ==================== TESTES DEFINIDOS NESTA VERSÃO ====================
-    const tests = {
-        // Teste 1: Integridade dos Módulos do Core
-        coreModulesIntegrity: {
-            id: 'core-modules-integrity-v61',
-            name: '🧩 Integridade dos Módulos do Core',
-            description: 'Verifica se os módulos principais (properties, admin, gallery) estão íntegros',
-            category: 'core',
-            critical: true,
-            execute: async function() {
-                console.group('🧩 [V61] Verificando integridade dos módulos do Core...');
-                
-                const modulesToCheck = [
-                    { name: 'properties', obj: window.properties, type: 'array', required: true },
-                    { name: 'admin', obj: window.admin, type: 'object', required: false },
-                    { name: 'gallery', obj: window.gallery, type: 'object', required: false },
-                    { name: 'PdfSystem', obj: window.PdfSystem, type: 'object', required: false },
-                    { name: 'MediaSystem', obj: window.MediaSystem, type: 'object', required: false },
-                    { name: 'LoadingManager', obj: window.LoadingManager, type: 'object', required: false },
-                    { name: 'SharedCore', obj: window.SharedCore, type: 'object', required: true }
-                ];
-                
-                const results = [];
-                let passed = 0;
-                
-                modulesToCheck.forEach(module => {
-                    const exists = module.obj !== undefined && module.obj !== null;
-                    const typeOk = module.type === 'array' ? Array.isArray(module.obj) : typeof module.obj === module.type;
-                    const isOk = exists && typeOk;
-                    
-                    if (isOk) passed++;
-                    
-                    results.push({
-                        name: module.name,
-                        exists: exists,
-                        typeOk: typeOk,
-                        required: module.required,
-                        status: isOk ? 'ok' : (module.required ? 'critical' : 'warning')
-                    });
-                    
-                    console.log(`${isOk ? '✅' : (module.required ? '❌' : '⚠️')} ${module.name}: ${exists ? (typeOk ? 'OK' : 'Tipo inválido') : 'Não encontrado'}`);
-                });
-                
-                const score = Math.round((passed / modulesToCheck.length) * 100);
-                
-                console.log(`📊 Score: ${score}% (${passed}/${modulesToCheck.length})`);
-                console.groupEnd();
-                
-                return {
-                    status: score >= 80 ? 'success' : score >= 60 ? 'warning' : 'error',
-                    message: `🧩 Módulos Core: ${score}% íntegros`,
-                    details: {
-                        total: modulesToCheck.length,
-                        passed: passed,
-                        score: score,
-                        results: results
-                    }
-                };
-            }
-        },
-        
-        // Teste 2: Consistência de Dados (localStorage vs Memória)
-        dataConsistency: {
-            id: 'data-consistency-v61',
-            name: '💾 Consistência de Dados',
-            description: 'Verifica se os dados em memória (window.properties) estão sincronizados com localStorage',
-            category: 'data',
-            critical: true,
-            execute: async function() {
-                console.group('💾 [V61] Verificando consistência de dados...');
-                
-                const results = [];
-                let issues = [];
-                
-                // 1. Verificar localStorage
-                const storageKeys = ['properties', 'weberlessa_properties', 'properties_backup'];
-                const storageData = {};
-                
-                storageKeys.forEach(key => {
-                    try {
-                        const value = localStorage.getItem(key);
-                        if (value) {
-                            const parsed = JSON.parse(value);
-                            storageData[key] = {
-                                exists: true,
-                                length: Array.isArray(parsed) ? parsed.length : 'n/a',
-                                valid: Array.isArray(parsed)
-                            };
-                        } else {
-                            storageData[key] = { exists: false };
-                        }
-                    } catch (e) {
-                        storageData[key] = { exists: true, error: e.message, valid: false };
-                        issues.push(`Chave ${key} corrompida`);
-                    }
-                });
-                
-                console.log('📦 Dados no localStorage:', storageData);
-                
-                // 2. Verificar window.properties
-                const memProperties = window.properties;
-                const memValid = Array.isArray(memProperties);
-                const memLength = memValid ? memProperties.length : 0;
-                
-                console.log(`🧠 Dados em memória: ${memValid ? `${memLength} imóveis` : 'Inválido'}`);
-                
-                // 3. Comparar com chave principal
-                let syncStatus = 'unknown';
-                if (memValid && storageData.properties.exists && storageData.properties.valid) {
-                    const storageProps = JSON.parse(localStorage.getItem('properties'));
-                    if (storageProps.length === memLength) {
-                        syncStatus = 'synced';
-                    } else if (storageProps.length > memLength) {
-                        syncStatus = 'storage_ahead';
-                        issues.push(`localStorage tem ${storageProps.length - memLength} imóveis a mais que memória`);
-                    } else {
-                        syncStatus = 'memory_ahead';
-                        issues.push(`Memória tem ${memLength - storageProps.length} imóveis a mais que localStorage`);
-                    }
-                }
-                
-                // 4. Verificar chaves antigas
-                const oldKeys = ['weberlessa_properties', 'properties_backup'];
-                const hasOldKeys = oldKeys.some(key => storageData[key]?.exists && storageData[key]?.valid);
-                
-                if (hasOldKeys) {
-                    issues.push('Chaves antigas de localStorage ainda presentes');
-                }
-                
-                console.log(`🔄 Status de sincronia: ${syncStatus}`);
-                
-                const score = issues.length === 0 ? 100 : Math.max(0, 100 - (issues.length * 25));
-                const hasCritical = issues.some(i => i.includes('corrompida'));
-                
-                console.groupEnd();
-                
-                return {
-                    status: hasCritical ? 'error' : issues.length > 0 ? 'warning' : 'success',
-                    message: `💾 Dados: ${score}% consistente${issues.length > 0 ? ` (${issues.length} pendência(s))` : ''}`,
-                    details: {
-                        memory: { valid: memValid, count: memLength },
-                        storage: storageData,
-                        syncStatus: syncStatus,
-                        issues: issues,
-                        score: score
-                    }
-                };
-            }
-        },
-        
-        // Teste 3: Performance de Renderização da Galeria
-        galleryPerformance: {
-            id: 'gallery-performance-v61',
-            name: '⚡ Performance da Galeria',
-            description: 'Mede o tempo de renderização dos cards de imóveis',
-            category: 'performance',
-            critical: false,
-            execute: async function() {
-                console.group('⚡ [V61] Testando performance da galeria...');
-                
-                const results = [];
-                
-                // Medir tempo de renderização
-                const startTime = performance.now();
-                let renderTime = 0;
-                let cardsRendered = 0;
-                
-                try {
-                    if (typeof window.renderProperties === 'function') {
-                        // Renderizar com filtro 'todos'
-                        const container = document.getElementById('properties-container');
-                        if (container) {
-                            const beforeCount = container.children.length;
-                            
-                            window.renderProperties('todos');
-                            
-                            // Pequeno delay para o DOM atualizar
-                            await new Promise(resolve => setTimeout(resolve, 50));
-                            
-                            const afterCount = container.children.length;
-                            cardsRendered = afterCount;
-                            
-                            results.push({
-                                test: 'Renderização completa',
-                                cardsBefore: beforeCount,
-                                cardsAfter: afterCount,
-                                rendered: afterCount
-                            });
-                        } else {
-                            results.push({ test: 'Container não encontrado', error: true });
-                        }
-                    }
-                    
-                    renderTime = performance.now() - startTime;
-                    
-                    // Verificar qualidade das imagens
-                    const images = document.querySelectorAll('.property-image img, .property-gallery-image');
-                    const brokenImages = [];
-                    
-                    images.forEach((img, index) => {
-                        if (!img.complete || img.naturalWidth === 0) {
-                            const src = img.src || img.getAttribute('src') || 'unknown';
-                            brokenImages.push({ index, src: src.substring(0, 50) });
-                        }
-                    });
-                    
-                    console.log(`⏱️ Tempo de renderização: ${renderTime.toFixed(2)}ms`);
-                    console.log(`🖼️ Imagens carregadas: ${images.length - brokenImages.length}/${images.length}`);
-                    
-                    results.push({
-                        test: 'Qualidade das imagens',
-                        totalImages: images.length,
-                        brokenImages: brokenImages.length,
-                        brokenList: brokenImages
-                    });
-                    
-                } catch (error) {
-                    console.error('❌ Erro no teste de performance:', error);
-                    results.push({ test: 'Erro na execução', error: error.message });
-                }
-                
-                const brokenImagesCount = results.find(r => r.test === 'Qualidade das imagens')?.brokenImages || 0;
-                const score = renderTime < 500 ? 100 : 
-                             renderTime < 1000 ? 80 : 
-                             renderTime < 2000 ? 60 : 40;
-                
-                const finalScore = Math.max(0, score - (brokenImagesCount * 10));
-                
-                console.groupEnd();
-                
-                return {
-                    status: finalScore >= 80 ? 'success' : finalScore >= 50 ? 'warning' : 'error',
-                    message: `⚡ Galeria: ${renderTime.toFixed(0)}ms | ${cardsRendered} cards | Score: ${finalScore}%`,
-                    details: {
-                        renderTime: renderTime,
-                        cardsRendered: cardsRendered,
-                        brokenImages: brokenImagesCount,
-                        score: finalScore,
-                        results: results
-                    }
-                };
-            }
-        },
-        
-        // Teste 4: Análise de Dependências (versão específica V61)
-        dependencyAnalysis: {
-            id: 'dependency-analysis-v61',
-            name: '🔗 Análise de Dependências',
-            description: 'Verifica dependências críticas entre módulos do Core',
-            category: 'architecture',
-            critical: true,
-            execute: async function() {
-                console.group('🔗 [V61] Analisando dependências...');
-                
-                const dependencies = [
-                    { from: 'properties', to: 'SharedCore', required: true },
-                    { from: 'admin', to: 'properties', required: true },
-                    { from: 'admin', to: 'MediaSystem', required: false },
-                    { from: 'admin', to: 'PdfSystem', required: false },
-                    { from: 'gallery', to: 'properties', required: true },
-                    { from: 'properties', to: 'LoadingManager', required: false },
-                    { from: 'PdfSystem', to: 'properties', required: true }
-                ];
-                
-                const results = [];
-                let passed = 0;
-                let criticalFails = 0;
-                
-                dependencies.forEach(dep => {
-                    const fromExists = window[dep.from] !== undefined;
-                    const toExists = window[dep.to] !== undefined;
-                    const chainOk = fromExists && toExists;
-                    
-                    if (chainOk) passed++;
-                    else if (dep.required) criticalFails++;
-                    
-                    results.push({
-                        from: dep.from,
-                        to: dep.to,
-                        fromExists: fromExists,
-                        toExists: toExists,
-                        required: dep.required,
-                        status: chainOk ? 'ok' : (dep.required ? 'critical' : 'warning')
-                    });
-                    
-                    console.log(`${chainOk ? '✅' : (dep.required ? '❌' : '⚠️')} ${dep.from} → ${dep.to}: ${fromExists ? (toExists ? 'OK' : `${dep.to} não encontrado`) : `${dep.from} não encontrado`}`);
-                });
-                
-                const score = Math.round((passed / dependencies.length) * 100);
-                
-                console.log(`📊 Score de dependências: ${score}%`);
-                console.log(`🚨 Falhas críticas: ${criticalFails}`);
-                
-                console.groupEnd();
-                
-                return {
-                    status: criticalFails === 0 ? (score >= 80 ? 'success' : 'warning') : 'error',
-                    message: `🔗 Dependências: ${score}% ok | ${criticalFails} crítica(s)`,
-                    details: {
-                        total: dependencies.length,
-                        passed: passed,
-                        criticalFails: criticalFails,
-                        score: score,
-                        results: results
-                    }
-                };
-            }
-        },
-        
-        // Teste 5: Integridade do CSS (específico V61)
-        cssIntegrity: {
-            id: 'css-integrity-v61',
-            name: '🎨 Integridade do CSS',
-            description: 'Verifica se os principais arquivos CSS foram carregados',
-            category: 'ui',
-            critical: false,
-            execute: async function() {
-                console.group('🎨 [V61] Verificando CSS...');
-                
-                const cssFiles = [
-                    'header.css',
-                    'main.css',
-                    'admin.css',
-                    'gallery.css'
-                ];
-                
-                const links = document.querySelectorAll('link[rel="stylesheet"]');
-                const loadedCss = Array.from(links).map(link => {
-                    const href = link.href.split('/').pop() || '';
-                    return href;
-                });
-                
-                const results = cssFiles.map(file => {
-                    const loaded = loadedCss.some(css => css.includes(file));
-                    console.log(`${loaded ? '✅' : '❌'} ${file}`);
-                    return { file: file, loaded: loaded };
-                });
-                
-                const loadedCount = results.filter(r => r.loaded).length;
-                const score = Math.round((loadedCount / cssFiles.length) * 100);
-                
-                console.log(`📊 CSS carregado: ${loadedCount}/${cssFiles.length} (${score}%)`);
-                console.groupEnd();
-                
-                return {
-                    status: score >= 75 ? 'success' : score >= 50 ? 'warning' : 'error',
-                    message: `🎨 CSS: ${loadedCount}/${cssFiles.length} carregados`,
-                    details: {
-                        total: cssFiles.length,
-                        loaded: loadedCount,
-                        score: score,
-                        results: results,
-                        allLoadedCss: loadedCss
-                    }
-                };
-            }
-        }
-    };
+    // ========== FUNÇÕES DE DIAGNÓSTICO ==========
 
-    // ==================== FUNÇÕES DO PAINEL ====================
-    
     /**
-     * Ajusta a posição do painel para evitar sobreposição com outros painéis de diagnóstico
+     * Verificação Base (Diagnostics53)
+     * Funções fundamentais de verificação do sistema.
      */
-    function adjustPanelPosition() {
-        if (state.positionAdjusted) return;
-        
-        // Encontrar todos os painéis de diagnóstico existentes
-        const existingPanels = document.querySelectorAll('[id^="diagnostics-panel-"]');
-        let maxTop = 20;
-        let maxLeft = 20;
-        
-        existingPanels.forEach(panel => {
-            if (panel.id === CONFIG.panelId) return; // Ignorar a si mesmo
-            
-            const rect = panel.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0) {
-                // Posicionar este painel abaixo ou à direita dos existentes
-                maxTop = Math.max(maxTop, rect.bottom + CONFIG.panelOffset);
-                maxLeft = Math.max(maxLeft, rect.right + CONFIG.panelOffset);
-            }
+    function runBaseChecks() {
+        console.group('🔍 [DIAGNOSTICS61 - BASE] Verificações Fundamentais');
+        const results = {};
+
+        // 1. Verificação de Módulos Críticos
+        results.modules = {};
+        CONFIG.criticalModules.forEach(moduleName => {
+            const available = typeof window[moduleName] !== 'undefined';
+            results.modules[moduleName] = available;
+            console.log(`${available ? '✅' : '❌'} Módulo: ${moduleName}`);
         });
-        
-        // Limitar para não sair da tela
-        const viewportHeight = window.innerHeight;
-        const viewportWidth = window.innerWidth;
-        
-        if (maxTop + 600 > viewportHeight) {
-            // Se não couber embaixo, posicionar à direita
-            maxTop = 20;
-            maxLeft = maxLeft + 320; // Largura aproximada do painel
+
+        // 2. Verificação de Elementos DOM Essenciais
+        const essentialElements = [
+            'properties-container', 'adminPanel', 'pdfModal', 
+            'uploadArea', 'pdfUploadArea'
+        ];
+        results.dom = {};
+        essentialElements.forEach(elId => {
+            const exists = !!document.getElementById(elId);
+            results.dom[elId] = exists;
+            console.log(`${exists ? '✅' : '❌'} Elemento DOM: #${elId}`);
+        });
+
+        // 3. Verificação de localStorage (Chave Unificada)
+        try {
+            const storedProps = localStorage.getItem('properties');
+            if (storedProps) {
+                const parsed = JSON.parse(storedProps);
+                results.localStorage = {
+                    exists: true,
+                    isValid: Array.isArray(parsed),
+                    count: Array.isArray(parsed) ? parsed.length : 0
+                };
+                console.log(`✅ localStorage: Chave 'properties' encontrada com ${results.localStorage.count} imóveis.`);
+            } else {
+                results.localStorage = { exists: false };
+                console.log('❌ localStorage: Chave unificada "properties" não encontrada.');
+            }
+        } catch (e) {
+            results.localStorage = { exists: false, error: e.message };
+            console.error('❌ localStorage: Erro ao acessar/parsear.', e.message);
         }
-        
-        if (maxLeft + 500 > viewportWidth) {
-            // Último recurso: posicionar no canto superior esquerdo com offset
-            maxLeft = 20;
-            maxTop = 20;
-        }
-        
-        if (state.panelElement) {
-            state.panelElement.style.top = maxTop + 'px';
-            state.panelElement.style.left = maxLeft + 'px';
-            console.log(`📐 [V61] Painel posicionado em (${maxLeft}px, ${maxTop}px)`);
-        }
-        
-        state.positionAdjusted = true;
+
+        console.groupEnd();
+        return results;
     }
 
     /**
-     * Cria o painel de diagnóstico V61
+     * Análise de Integridade (Diagnostics54-57)
+     * Verifica a saúde e consistência dos dados.
      */
-    function createPanel() {
-        if (state.panelElement && document.body.contains(state.panelElement)) {
-            state.panelElement.style.display = 'flex';
-            return state.panelElement;
+    function runIntegrityChecks(baseResults) {
+        console.group('🧪 [DIAGNOSTICS61 - INTEGRIDADE] Verificando Consistência');
+        const results = {};
+
+        // 1. Consistência window.properties vs localStorage
+        const memoryProps = window.properties || [];
+        const storageProps = baseResults.localStorage?.exists 
+            ? (JSON.parse(localStorage.getItem('properties') || '[]')) 
+            : [];
+
+        results.memoryVsStorage = {
+            memoryCount: memoryProps.length,
+            storageCount: storageProps.length,
+            isConsistent: memoryProps.length === storageProps.length
+        };
+        console.log(`${results.memoryVsStorage.isConsistent ? '✅' : '⚠️'} Memória (${memoryProps.length}) vs Storage (${storageProps.length})`);
+
+        // 2. Verificação de IDs Duplicados
+        if (memoryProps.length > 0) {
+            const ids = memoryProps.map(p => p.id);
+            const uniqueIds = new Set(ids);
+            results.duplicateIds = ids.length !== uniqueIds.size;
+            console.log(`${results.duplicateIds ? '❌' : '✅'} IDs duplicados: ${results.duplicateIds ? 'SIM' : 'NÃO'}`);
+        } else {
+            results.duplicateIds = false;
         }
+
+        // 3. Verificação de Campos Obrigatórios em Propriedades
+        if (memoryProps.length > 0) {
+            let missingFields = 0;
+            memoryProps.forEach(prop => {
+                if (!prop.title || !prop.price || !prop.location) missingFields++;
+            });
+            results.missingRequiredFields = missingFields;
+            console.log(`${missingFields === 0 ? '✅' : '⚠️'} Campos obrigatórios faltando: ${missingFields}`);
+        } else {
+            results.missingRequiredFields = 0;
+        }
+
+        // 4. Verificação de URLs de Imagem (básica)
+        if (memoryProps.length > 0) {
+            let invalidImageUrls = 0;
+            memoryProps.forEach(prop => {
+                if (prop.images && prop.images !== 'EMPTY') {
+                    const urls = prop.images.split(',').filter(u => u.trim());
+                    urls.forEach(url => {
+                        if (!url.startsWith('http') && !url.startsWith('blob:')) {
+                            invalidImageUrls++;
+                        }
+                    });
+                }
+            });
+            results.invalidImageUrls = invalidImageUrls;
+            console.log(`${invalidImageUrls === 0 ? '✅' : '⚠️'} URLs de imagem potencialmente inválidas: ${invalidImageUrls}`);
+        } else {
+            results.invalidImageUrls = 0;
+        }
+
+        console.groupEnd();
+        return results;
+    }
+
+    /**
+     * Detecção de "Zumbis" (Diagnostics58)
+     * Identifica variáveis globais, listeners e intervalos órfãos.
+     */
+    function runZombieDetection() {
+        console.group('🧟 [DIAGNOSTICS61 - ZUMBIS] Detectando Elementos Órfãos');
+        const zombies = {};
+
+        // 1. Variáveis Globais Suspeitas (que não deveriam estar no escopo global)
+        const suspiciousGlobals = [];
+        const knownGlobals = new Set([
+            'window', 'document', 'console', 'localStorage', 'sessionStorage',
+            'fetch', 'XMLHttpRequest', 'Image', 'setTimeout', 'setInterval',
+            'requestAnimationFrame', 'Promise', 'supabase', ...CONFIG.criticalModules
+        ]);
         
-        // Remover painel antigo se existir
-        const oldPanel = document.getElementById(CONFIG.panelId);
-        if (oldPanel) oldPanel.remove();
-        
-        const panel = document.createElement('div');
+        for (let key in window) {
+            // Filtrar itens comuns do navegador e do nosso sistema
+            if (!knownGlobals.has(key) && 
+                !key.startsWith('on') && 
+                typeof window[key] !== 'undefined' &&
+                !key.includes('webkit') &&
+                !key.includes('moz') &&
+                !key.includes('ms') &&
+                window.hasOwnProperty(key) // Verifica se é propriedade própria
+            ) {
+                suspiciousGlobals.push(key);
+            }
+        }
+        zombies.suspiciousGlobals = suspiciousGlobals.slice(0, 20); // Limitar a 20
+        console.log(`👻 Variáveis globais suspeitas: ${zombies.suspiciousGlobals.length > 0 ? zombies.suspiciousGlobals.join(', ') : 'Nenhuma'}`);
+
+        // 2. Intervalos Ativos (setInterval)
+        // Esta é uma heurística. Contar intervalos é complexo.
+        // Vamos verificar se existe algum intervalo definido por nós que possa ter vazado.
+        // Como não temos referência direta, vamos apenas sinalizar que esta verificação existe.
+        console.log('⏱️ Verificação de intervalos: Necessário inspeção manual no código para 'setInterval' não limpos.');
+        zombies.intervals = 'Inspeção manual recomendada';
+
+        // 3. Listeners de Evento no document e window (potencialmente excessivos)
+        // Também é complexo contar de forma confiável.
+        console.log('👂 Verificação de listeners: Necessário inspeção manual.');
+        zombies.eventListeners = 'Inspeção manual recomendada';
+
+        console.groupEnd();
+        return zombies;
+    }
+
+    /**
+     * Testes de Performance (Diagnostics59-60)
+     * Avalia o tempo de resposta de funções críticas.
+     */
+    async function runPerformanceTests() {
+        console.group('⚡ [DIAGNOSTICS61 - PERFORMANCE] Medindo Tempos de Resposta');
+        const results = {};
+
+        // 1. Tempo de renderização da galeria
+        if (typeof window.renderProperties === 'function') {
+            const start = performance.now();
+            try {
+                // Renderizar sem alterar o filtro atual, apenas para medir
+                window.renderProperties(window.currentFilter || 'todos');
+                const duration = performance.now() - start;
+                results.renderGallery = { success: true, duration: Math.round(duration) };
+                console.log(`🖼️ Renderização da galeria: ${results.renderGallery.duration}ms`);
+            } catch (e) {
+                results.renderGallery = { success: false, error: e.message };
+                console.error('❌ Erro ao medir renderização:', e.message);
+            }
+        } else {
+            results.renderGallery = { success: false, error: 'Função não disponível' };
+        }
+
+        // 2. Tempo de acesso ao localStorage
+        try {
+            const start = performance.now();
+            localStorage.getItem('properties');
+            const duration = performance.now() - start;
+            results.localStorageAccess = { success: true, duration: Math.round(duration) };
+            console.log(`💾 Acesso ao localStorage: ${results.localStorageAccess.duration}ms`);
+        } catch (e) {
+            results.localStorageAccess = { success: false, error: e.message };
+        }
+
+        // 3. Tempo de parse de JSON (simulado com dados atuais)
+        if (window.properties) {
+            const start = performance.now();
+            try {
+                JSON.stringify(window.properties);
+                const duration = performance.now() - start;
+                results.jsonStringify = { success: true, duration: Math.round(duration) };
+                console.log(`🔧 JSON.stringify (${window.properties.length} props): ${results.jsonStringify.duration}ms`);
+            } catch (e) {
+                results.jsonStringify = { success: false, error: e.message };
+            }
+        } else {
+            results.jsonStringify = { success: false, error: 'window.properties vazio' };
+        }
+
+        console.groupEnd();
+        return results;
+    }
+
+    /**
+     * Cálculo da Pontuação de Saúde (Health Score)
+     */
+    function calculateHealthScore(base, integrity, zombies, performance) {
+        let score = 100;
+        const issues = [];
+
+        // Penalidades por módulos faltando
+        const missingModules = Object.entries(base.modules || {}).filter(([_, avail]) => !avail).map(([name]) => name);
+        if (missingModules.length > 0) {
+            score -= missingModules.length * 10;
+            issues.push(`❌ Módulos críticos ausentes: ${missingModules.join(', ')}`);
+        }
+
+        // Penalidades por elementos DOM faltando
+        const missingDom = Object.entries(base.dom || {}).filter(([_, exists]) => !exists).map(([id]) => `#${id}`);
+        if (missingDom.length > 0) {
+            score -= missingDom.length * 2;
+            issues.push(`⚠️ Elementos DOM essenciais ausentes: ${missingDom.join(', ')}`);
+        }
+
+        // Penalidades por inconsistência de dados
+        if (!integrity.memoryVsStorage?.isConsistent) {
+            score -= 10;
+            issues.push(`⚠️ Inconsistência: Memória (${integrity.memoryVsStorage?.memoryCount}) vs Storage (${integrity.memoryVsStorage?.storageCount})`);
+        }
+        if (integrity.duplicateIds) {
+            score -= 15;
+            issues.push('❌ IDs duplicados detectados!');
+        }
+        if (integrity.missingRequiredFields > 0) {
+            score -= 5 * integrity.missingRequiredFields;
+            issues.push(`⚠️ ${integrity.missingRequiredFields} imóvel(is) com campos obrigatórios faltando.`);
+        }
+        if (integrity.invalidImageUrls > 0) {
+            score -= 2 * integrity.invalidImageUrls;
+            issues.push(`⚠️ ${integrity.invalidImageUrls} URL(s) de imagem potencialmente inválida(s).`);
+        }
+
+        // Penalidades por zumbis
+        if (zombies.suspiciousGlobals && zombies.suspiciousGlobals.length > 0) {
+            score -= Math.min(zombies.suspiciousGlobals.length * 0.5, 5); // Máx 5 pontos
+            issues.push(`👻 ${zombies.suspiciousGlobals.length} variável(is) global(is) suspeita(s).`);
+        }
+
+        // Penalidades por performance ruim
+        if (performance.renderGallery?.duration > 500) {
+            score -= 5;
+            issues.push(`🐢 Renderização da galeria lenta (${performance.renderGallery.duration}ms > 500ms)`);
+        }
+        if (performance.jsonStringify?.duration > 200) {
+            score -= 5;
+            issues.push(`🐢 JSON.stringify lento (${performance.jsonStringify.duration}ms > 200ms)`);
+        }
+
+        return { score: Math.max(0, score), issues };
+    }
+
+    // ========== PAINEL VISUAL DEDICADO ==========
+    function createVisualPanel() {
+        // Se já existe, apenas mostrar e atualizar
+        let panel = document.getElementById(CONFIG.panelId);
+        if (panel) {
+            panel.style.display = 'flex';
+            updatePanelContent(panel);
+            return panel;
+        }
+
+        // Criar o painel
+        panel = document.createElement('div');
         panel.id = CONFIG.panelId;
-        panel.setAttribute('data-version', CONFIG.version);
-        
-        // Estilo base do painel
         panel.style.cssText = `
             position: fixed;
-            top: ${CONFIG.defaultPosition.top};
-            left: ${CONFIG.defaultPosition.left};
-            width: 500px;
-            height: 650px;
-            background: ${CONFIG.colors.background};
-            border: 2px solid ${CONFIG.colors.border};
-            border-radius: 12px;
+            top: 80px;
+            right: 20px;
+            width: 480px;
+            max-height: 80vh;
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            border: 2px solid #0f3460;
+            border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0, 255, 255, 0.2);
             z-index: ${CONFIG.panelZIndex};
-            box-shadow: 0 0 30px rgba(255, 170, 0, 0.3);
-            font-family: 'Segoe UI', monospace;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', 'Courier New', monospace;
+            font-size: 13px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             backdrop-filter: blur(5px);
-            resize: both;
+            border-left: 5px solid #00adb5;
             transition: all 0.3s ease;
+            resize: both;
+            overflow: auto;
         `;
-        
+
         // Cabeçalho
         const header = document.createElement('div');
         header.style.cssText = `
-            background: linear-gradient(90deg, rgba(255, 170, 0, 0.2), rgba(0, 204, 255, 0.1));
-            padding: 12px 15px;
-            border-bottom: 1px solid ${CONFIG.colors.border};
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 1px solid #0f3460;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: move;
             user-select: none;
         `;
-        
         header.innerHTML = `
             <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="color: ${CONFIG.colors.primary}; font-weight: bold; font-size: 14px;">🔍 DIAGNÓSTICO V${CONFIG.version}</span>
-                <span style="background: ${CONFIG.colors.secondary}; color: #1a0a2a; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold;">
-                    ELÔ 6
-                </span>
+                <span style="font-size: 1.4rem;">🩺</span>
+                <span style="font-weight: bold; color: #00adb5; letter-spacing: 1px;">DIAGNOSTICS61 v${CONFIG.version}</span>
             </div>
-            <div style="display: flex; gap: 5px;">
-                <button class="v61-minimize" style="background: #555; color: white; border: none; width: 25px; height: 25px; border-radius: 5px; cursor: pointer;">−</button>
-                <button class="v61-close" style="background: #ff5555; color: white; border: none; width: 25px; height: 25px; border-radius: 5px; cursor: pointer;">×</button>
+            <div style="display: flex; gap: 8px;">
+                <button id="${CONFIG.panelId}-minimize" style="background: #0f3460; border: none; color: white; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-weight: bold;">−</button>
+                <button id="${CONFIG.panelId}-close" style="background: #913e3e; border: none; color: white; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-weight: bold;">×</button>
             </div>
         `;
-        
-        // Conteúdo (rolável)
-        const content = document.createElement('div');
-        content.style.cssText = `
+
+        // Corpo
+        const body = document.createElement('div');
+        body.id = `${CONFIG.panelId}-body`;
+        body.style.cssText = `
+            padding: 20px;
+            overflow-y: auto;
             flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        `;
-        
-        // Status geral
-        const statusDiv = document.createElement('div');
-        statusDiv.id = 'v61-status';
-        statusDiv.style.cssText = `
-            background: rgba(255, 170, 0, 0.1);
-            border-radius: 8px;
-            padding: 12px;
-            border-left: 4px solid ${CONFIG.colors.primary};
-        `;
-        statusDiv.innerHTML = `
-            <div style="color: ${CONFIG.colors.primary}; font-weight: bold; margin-bottom: 8px;">📊 STATUS DO SISTEMA</div>
-            <div style="color: #ffcc88; font-size: 12px;">
-                <div>Versão do Diagnóstico: <span style="color: white;">${CONFIG.version}</span></div>
-                <div>Elo na Cadeia: <span style="color: white;">6</span></div>
-                <div>Módulos Ativos: <span id="v61-active-modules">Verificando...</span></div>
-                <div>Última Execução: <span id="v61-last-run">Nunca</span></div>
-            </div>
-        `;
-        content.appendChild(statusDiv);
-        
-        // Controles
-        const controlsDiv = document.createElement('div');
-        controlsDiv.style.cssText = `
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 12px;
-            border: 1px solid ${CONFIG.colors.border}40;
-        `;
-        controlsDiv.innerHTML = `
-            <div style="color: ${CONFIG.colors.primary}; font-weight: bold; margin-bottom: 10px;">🎮 CONTROLES</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                <button id="v61-run-all" class="v61-btn-primary">▶️ Executar Todos</button>
-                <button id="v61-run-core" class="v61-btn-secondary">🧩 Testes Core</button>
-                <button id="v61-run-data" class="v61-btn-secondary">💾 Dados</button>
-                <button id="v61-run-perf" class="v61-btn-secondary">⚡ Performance</button>
-                <button id="v61-clear-logs" class="v61-btn-warning">🗑️ Limpar Logs</button>
-                <button id="v61-export" class="v61-btn-info">📤 Exportar</button>
-            </div>
-        `;
-        content.appendChild(controlsDiv);
-        
-        // Container de resultados
-        const resultsDiv = document.createElement('div');
-        resultsDiv.id = 'v61-results';
-        resultsDiv.style.cssText = `
             background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            padding: 12px;
-            min-height: 150px;
         `;
-        resultsDiv.innerHTML = `
-            <div style="color: ${CONFIG.colors.primary}; font-weight: bold; margin-bottom: 10px;">📋 RESULTADOS</div>
-            <div id="v61-results-content" style="color: #ffcc88; font-size: 12px;">
-                Aguardando execução dos testes...
-            </div>
-        `;
-        content.appendChild(resultsDiv);
-        
-        // Container de logs
-        const logsDiv = document.createElement('div');
-        logsDiv.id = 'v61-logs';
-        logsDiv.style.cssText = `
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 12px;
-            max-height: 150px;
-            overflow-y: auto;
-        `;
-        logsDiv.innerHTML = `
-            <div style="color: ${CONFIG.colors.primary}; font-weight: bold; margin-bottom: 8px;">📝 LOGS</div>
-            <div id="v61-logs-content" style="color: #88ffaa; font-size: 11px;"></div>
-        `;
-        content.appendChild(logsDiv);
-        
-        // Rodapé
-        const footer = document.createElement('div');
-        footer.style.cssText = `
-            background: rgba(0, 0, 0, 0.4);
-            padding: 8px 15px;
-            border-top: 1px solid ${CONFIG.colors.border}40;
-            font-size: 10px;
-            color: ${CONFIG.colors.primary}80;
-            display: flex;
-            justify-content: space-between;
-        `;
-        footer.innerHTML = `
-            <span>diagnostics61.js | v${CONFIG.version}</span>
-            <span>${new Date().toLocaleDateString()}</span>
-        `;
-        
+        body.innerHTML = '<div style="text-align: center; padding: 30px;">🔍 Executando diagnóstico...</div>';
+
+        // Montar painel
         panel.appendChild(header);
-        panel.appendChild(content);
-        panel.appendChild(footer);
-        
+        panel.appendChild(body);
         document.body.appendChild(panel);
-        
-        // Adicionar estilos para os botões
-        const style = document.createElement('style');
-        style.textContent = `
-            .v61-btn-primary {
-                background: linear-gradient(135deg, ${CONFIG.colors.primary}, #ff8800);
-                color: white;
-                border: none;
-                padding: 8px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 12px;
-                font-weight: bold;
-                transition: all 0.3s ease;
-            }
-            .v61-btn-primary:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px ${CONFIG.colors.primary}80;
-            }
-            .v61-btn-secondary {
-                background: rgba(102, 204, 255, 0.2);
-                color: ${CONFIG.colors.secondary};
-                border: 1px solid ${CONFIG.colors.secondary};
-                padding: 8px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 11px;
-                transition: all 0.3s ease;
-            }
-            .v61-btn-secondary:hover {
-                background: rgba(102, 204, 255, 0.4);
-            }
-            .v61-btn-warning {
-                background: rgba(255, 170, 0, 0.2);
-                color: ${CONFIG.colors.warning};
-                border: 1px solid ${CONFIG.colors.warning};
-                padding: 8px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 11px;
-            }
-            .v61-btn-info {
-                background: rgba(0, 255, 156, 0.2);
-                color: ${CONFIG.colors.success};
-                border: 1px solid ${CONFIG.colors.success};
-                padding: 8px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 11px;
-            }
-        `;
-        document.head.appendChild(style);
-        
-        state.panelElement = panel;
-        state.panelVisible = true;
-        
-        // Ajustar posição para evitar conflitos
-        adjustPanelPosition();
-        
-        // Configurar eventos
-        setupPanelEvents(panel, header);
-        
-        // Inicializar logs
-        addLog('Painel de diagnóstico V61 criado', 'info');
-        addLog(`Posicionado em (${panel.style.left}, ${panel.style.top})`, 'info');
-        
+
+        // Tornar arrastável
+        makeDraggable(panel, header);
+
+        // Event listeners dos botões
+        document.getElementById(`${CONFIG.panelId}-close`).addEventListener('click', () => {
+            panel.style.display = 'none';
+            state.isPanelVisible = false;
+        });
+        document.getElementById(`${CONFIG.panelId}-minimize`).addEventListener('click', () => {
+            body.style.display = body.style.display === 'none' ? 'block' : 'none';
+        });
+
+        // Preencher conteúdo
+        updatePanelContent(panel);
+
+        state.panel = panel;
+        state.isPanelVisible = true;
         return panel;
     }
-    
-    /**
-     * Configura eventos do painel
-     */
-    function setupPanelEvents(panel, header) {
-        // Arrastar
+
+    function makeDraggable(element, handle) {
         let isDragging = false;
         let offsetX, offsetY;
-        
-        header.addEventListener('mousedown', (e) => {
+
+        handle.addEventListener('mousedown', (e) => {
             if (e.target.tagName === 'BUTTON') return;
-            
             isDragging = true;
-            offsetX = e.clientX - panel.getBoundingClientRect().left;
-            offsetY = e.clientY - panel.getBoundingClientRect().top;
-            
-            panel.style.cursor = 'grabbing';
-            
-            document.addEventListener('mousemove', drag);
-            document.addEventListener('mouseup', stopDrag);
+            offsetX = e.clientX - element.getBoundingClientRect().left;
+            offsetY = e.clientY - element.getBoundingClientRect().top;
+            element.style.cursor = 'grabbing';
             e.preventDefault();
         });
-        
-        function drag(e) {
+
+        document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            
-            let newLeft = e.clientX - offsetX;
-            let newTop = e.clientY - offsetY;
-            
-            // Limitar à viewport
-            newLeft = Math.max(0, Math.min(window.innerWidth - panel.offsetWidth, newLeft));
-            newTop = Math.max(0, Math.min(window.innerHeight - panel.offsetHeight, newTop));
-            
-            panel.style.left = newLeft + 'px';
-            panel.style.top = newTop + 'px';
-        }
-        
-        function stopDrag() {
+            element.style.left = (e.clientX - offsetX) + 'px';
+            element.style.top = (e.clientY - offsetY) + 'px';
+            element.style.right = 'auto';
+            element.style.bottom = 'auto';
+        });
+
+        document.addEventListener('mouseup', () => {
             isDragging = false;
-            panel.style.cursor = '';
-            document.removeEventListener('mousemove', drag);
-            document.removeEventListener('mouseup', stopDrag);
-        }
-        
-        // Botões
-        panel.querySelector('.v61-close').addEventListener('click', () => {
-            panel.style.display = 'none';
-            state.panelVisible = false;
-        });
-        
-        panel.querySelector('.v61-minimize').addEventListener('click', (btn) => {
-            const content = panel.children[1];
-            const isHidden = content.style.display === 'none';
-            content.style.display = isHidden ? 'flex' : 'none';
-            btn.target.textContent = isHidden ? '−' : '+';
-        });
-        
-        // Botões de ação
-        panel.querySelector('#v61-run-all').addEventListener('click', async () => {
-            addLog('Iniciando execução de todos os testes...', 'info');
-            await runAllTests();
-        });
-        
-        panel.querySelector('#v61-run-core').addEventListener('click', async () => {
-            addLog('Executando testes de Core...', 'info');
-            await runTestsByCategory('core');
-        });
-        
-        panel.querySelector('#v61-run-data').addEventListener('click', async () => {
-            addLog('Executando testes de Dados...', 'info');
-            await runTestsByCategory('data');
-        });
-        
-        panel.querySelector('#v61-run-perf').addEventListener('click', async () => {
-            addLog('Executando testes de Performance...', 'info');
-            await runTestsByCategory('performance');
-        });
-        
-        panel.querySelector('#v61-clear-logs').addEventListener('click', () => {
-            clearLogs();
-        });
-        
-        panel.querySelector('#v61-export').addEventListener('click', () => {
-            exportResults();
+            element.style.cursor = 'default';
         });
     }
-    
-    /**
-     * Adiciona um log ao painel
-     */
-    function addLog(message, type = 'info') {
-        const timestamp = new Date().toLocaleTimeString();
-        state.logs.push({ timestamp, message, type });
-        
-        const logsContent = document.getElementById('v61-logs-content');
-        if (logsContent) {
-            const logEntry = document.createElement('div');
-            logEntry.style.cssText = `
-                padding: 2px 0;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            `;
-            
-            let color = '#88ffaa';
-            if (type === 'error') color = '#ff5555';
-            if (type === 'warning') color = '#ffaa00';
-            if (type === 'success') color = '#00ff9c';
-            
-            logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> <span style="color: ${color};">${message}</span>`;
-            logsContent.appendChild(logEntry);
-            logsContent.scrollTop = logsContent.scrollHeight;
-        }
-        
-        // Também logar no console com prefixo V61
-        console.log(`[V61] ${message}`);
-    }
-    
-    /**
-     * Limpa os logs
-     */
-    function clearLogs() {
-        state.logs = [];
-        const logsContent = document.getElementById('v61-logs-content');
-        if (logsContent) {
-            logsContent.innerHTML = '';
-        }
-        addLog('Logs limpos', 'info');
-    }
-    
-    /**
-     * Executa um teste e atualiza a UI
-     */
-    async function runTest(testId) {
-        const test = tests[testId];
-        if (!test) {
-            addLog(`Teste não encontrado: ${testId}`, 'error');
-            return null;
-        }
-        
-        addLog(`Executando: ${test.name}...`, 'info');
-        
-        try {
-            const startTime = performance.now();
-            const result = await test.execute();
-            const endTime = performance.now();
-            
-            addLog(`${test.name}: ${result.status} (${(endTime - startTime).toFixed(0)}ms)`, result.status);
-            
-            return {
-                ...result,
-                testId: testId,
-                testName: test.name,
-                executionTime: endTime - startTime,
-                timestamp: new Date().toISOString()
-            };
-        } catch (error) {
-            addLog(`Erro em ${test.name}: ${error.message}`, 'error');
-            console.error(`[V61] Erro no teste ${testId}:`, error);
-            
-            return {
-                testId: testId,
-                testName: test.name,
-                status: 'error',
-                message: `Erro: ${error.message}`,
-                details: { error: error.toString() },
-                executionTime: 0,
-                timestamp: new Date().toISOString()
-            };
-        }
-    }
-    
-    /**
-     * Executa todos os testes
-     */
-    async function runAllTests() {
-        const resultsDiv = document.getElementById('v61-results-content');
-        if (resultsDiv) {
-            resultsDiv.innerHTML = '<div style="text-align: center;">Executando testes...</div>';
-        }
-        
-        const results = [];
-        let passed = 0;
-        let warnings = 0;
-        let errors = 0;
-        
-        for (const [testId, test] of Object.entries(tests)) {
-            const result = await runTest(testId);
-            if (result) {
-                results.push(result);
-                if (result.status === 'success') passed++;
-                if (result.status === 'warning') warnings++;
-                if (result.status === 'error') errors++;
-            }
-            
-            // Pequena pausa para não sobrecarregar
-            await new Promise(resolve => setTimeout(resolve, 200));
-        }
-        
-        state.lastRunTimestamp = new Date().toISOString();
-        
-        // Atualizar status
-        const lastRunSpan = document.getElementById('v61-last-run');
-        if (lastRunSpan) {
-            lastRunSpan.textContent = new Date().toLocaleTimeString();
-        }
-        
-        // Exibir resultados
-        displayResults(results, passed, warnings, errors);
-        
-        return results;
-    }
-    
-    /**
-     * Executa testes por categoria
-     */
-    async function runTestsByCategory(category) {
-        const resultsDiv = document.getElementById('v61-results-content');
-        if (resultsDiv) {
-            resultsDiv.innerHTML = `<div style="text-align: center;">Executando testes de ${category}...</div>`;
-        }
-        
-        const results = [];
-        let passed = 0;
-        let warnings = 0;
-        let errors = 0;
-        
-        for (const [testId, test] of Object.entries(tests)) {
-            if (test.category === category) {
-                const result = await runTest(testId);
-                if (result) {
-                    results.push(result);
-                    if (result.status === 'success') passed++;
-                    if (result.status === 'warning') warnings++;
-                    if (result.status === 'error') errors++;
-                }
-                
-                await new Promise(resolve => setTimeout(resolve, 200));
-            }
-        }
-        
-        displayResults(results, passed, warnings, errors);
-        
-        return results;
-    }
-    
-    /**
-     * Exibe resultados na UI
-     */
-    function displayResults(results, passed, warnings, errors) {
-        const resultsDiv = document.getElementById('v61-results-content');
-        if (!resultsDiv) return;
-        
-        const total = results.length;
-        const score = total > 0 ? Math.round((passed / total) * 100) : 0;
-        
+
+    async function updatePanelContent(panel) {
+        const body = panel.querySelector(`#${CONFIG.panelId}-body`);
+        if (!body) return;
+
+        body.innerHTML = '<div style="text-align: center; padding: 20px;">⏳ Executando diagnóstico completo...</div>';
+
+        // Executar todas as verificações
+        const base = runBaseChecks();
+        const integrity = runIntegrityChecks(base);
+        const zombies = runZombieDetection();
+        const performance = await runPerformanceTests();
+        const health = calculateHealthScore(base, integrity, zombies, performance);
+
+        // Gerar HTML do relatório
         let html = `
-            <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <span style="color: #00ff9c; font-size: 16px; font-weight: bold;">${score}%</span>
-                        <span style="color: #ffcc88; font-size: 11px; margin-left: 5px;">Score</span>
-                    </div>
-                    <div>
-                        <span style="color: #00ff9c;">✅ ${passed}</span>
-                        <span style="color: #ffaa00; margin-left: 5px;">⚠️ ${warnings}</span>
-                        <span style="color: #ff5555; margin-left: 5px;">❌ ${errors}</span>
-                    </div>
+            <div style="margin-bottom: 15px; background: rgba(0, 173, 181, 0.15); padding: 12px; border-radius: 10px; border-left: 4px solid #00adb5;">
+                <div style="font-size: 1.1rem; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                    <span>🩺</span> SAÚDE DO SISTEMA
                 </div>
+                <div style="font-size: 2rem; font-weight: bold; color: ${health.score > 80 ? '#00ff9c' : (health.score > 50 ? '#ffaa00' : '#ff5555')};">${health.score}%</div>
+                ${health.issues.length > 0 ? `<div style="color: #ffaa00; font-size: 0.85rem; margin-top: 5px;">⚠️ ${health.issues.length} issue(s)</div>` : '<div style="color: #00ff9c; margin-top: 5px;">✅ Nenhum problema crítico</div>'}
+            </div>
+
+            <div style="margin-bottom: 10px; font-weight: bold; color: #aaa;">📋 RESUMO DAS VERIFICAÇÕES</div>
+        `;
+
+        // Módulos
+        const moduleList = Object.entries(base.modules || {}).map(([name, ok]) => 
+            `<span style="background: ${ok ? '#1e4a4a' : '#4a1e1e'}; padding: 2px 6px; border-radius: 12px; margin: 0 2px 4px 0; display: inline-block; font-size: 11px;">${ok ? '✅' : '❌'} ${name}</span>`
+        ).join('');
+        html += `<div style="margin-bottom: 15px;"><div style="color: #00adb5;">Módulos Críticos:</div><div style="margin-top: 5px;">${moduleList}</div></div>`;
+
+        // Dados
+        html += `<div style="margin-bottom: 15px;"><div style="color: #00adb5;">Dados:</div>`;
+        html += `<div>🏠 Memória: <strong>${integrity.memoryVsStorage?.memoryCount}</strong> | Storage: <strong>${integrity.memoryVsStorage?.storageCount}</strong> ${integrity.memoryVsStorage?.isConsistent ? '✅' : '⚠️'}</div>`;
+        html += `<div>🆔 IDs duplicados: ${integrity.duplicateIds ? '❌ SIM' : '✅ NÃO'}</div>`;
+        html += `<div>📸 URLs inválidas: ${integrity.invalidImageUrls > 0 ? integrity.invalidImageUrls : '✅ Nenhuma'}</div>`;
+        html += `</div>`;
+
+        // Zumbis
+        html += `<div style="margin-bottom: 15px;"><div style="color: #00adb5;">Zumbis:</div>`;
+        if (zombies.suspiciousGlobals?.length > 0) {
+            html += `<div>👻 Globais suspeitas: ${zombies.suspiciousGlobals.slice(0, 5).join(', ')}${zombies.suspiciousGlobals.length > 5 ? '...' : ''}</div>`;
+        } else {
+            html += `<div>✅ Nenhuma global suspeita detectada.</div>`;
+        }
+        html += `</div>`;
+
+        // Performance
+        html += `<div style="margin-bottom: 15px;"><div style="color: #00adb5;">Performance:</div>`;
+        html += `<div>🖼️ Render Galeria: ${performance.renderGallery?.duration || 'N/A'}ms ${performance.renderGallery?.duration > 500 ? '🐢' : '⚡'}</div>`;
+        html += `<div>💾 Acesso Storage: ${performance.localStorageAccess?.duration || 'N/A'}ms</div>`;
+        html += `<div>🔧 JSON.stringify: ${performance.jsonStringify?.duration || 'N/A'}ms</div>`;
+        html += `</div>`;
+
+        // Botão de ação
+        html += `
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="${CONFIG.panelId}-refresh" style="background: #00adb5; border: none; color: #1a1a2e; padding: 10px 20px; border-radius: 25px; font-weight: bold; cursor: pointer; width: 100%;">
+                    🔄 ATUALIZAR DIAGNÓSTICO
+                </button>
             </div>
         `;
-        
-        results.forEach(result => {
-            let color = '#00ff9c';
-            let icon = '✅';
-            if (result.status === 'warning') { color = '#ffaa00'; icon = '⚠️'; }
-            if (result.status === 'error') { color = '#ff5555'; icon = '❌'; }
-            
-            html += `
-                <div style="padding: 8px; margin: 5px 0; background: rgba(0,0,0,0.2); border-radius: 5px; border-left: 3px solid ${color};">
-                    <div style="display: flex; justify-content: space-between;">
-                        <span style="color: white; font-size: 12px;">${icon} ${result.testName}</span>
-                        <span style="color: #888; font-size: 10px;">${result.executionTime.toFixed(0)}ms</span>
-                    </div>
-                    <div style="color: ${color}; font-size: 11px; margin-top: 3px;">${result.message}</div>
-                </div>
-            `;
+
+        body.innerHTML = html;
+
+        // Adicionar listener ao botão de refresh
+        document.getElementById(`${CONFIG.panelId}-refresh`)?.addEventListener('click', () => {
+            updatePanelContent(panel);
         });
-        
-        resultsDiv.innerHTML = html;
     }
-    
-    /**
-     * Exporta resultados em formato JSON
-     */
-    function exportResults() {
-        const exportData = {
-            version: CONFIG.version,
-            timestamp: new Date().toISOString(),
-            tests: Object.keys(tests).map(key => ({
-                id: tests[key].id,
-                name: tests[key].name,
-                category: tests[key].category
-            })),
-            logs: state.logs,
-            environment: {
-                userAgent: navigator.userAgent,
-                url: window.location.href,
-                propertiesCount: window.properties?.length || 0,
-                debug: window.location.search.includes('debug=true'),
-                diagnostics: window.location.search.includes('diagnostics=true')
-            }
-        };
-        
-        const dataStr = JSON.stringify(exportData, null, 2);
-        const blob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `diagnostics-v61-${new Date().toISOString().slice(0,10)}.json`;
-        a.click();
-        
-        URL.revokeObjectURL(url);
-        addLog('Resultados exportados com sucesso', 'success');
-    }
-    
-    /**
-     * Atualiza o status de módulos ativos
-     */
-    function updateActiveModules() {
-        const modulesSpan = document.getElementById('v61-active-modules');
-        if (!modulesSpan) return;
-        
-        const modules = [];
-        if (window.properties) modules.push('properties');
-        if (window.admin) modules.push('admin');
-        if (window.gallery) modules.push('gallery');
-        if (window.PdfSystem) modules.push('PdfSystem');
-        if (window.MediaSystem) modules.push('MediaSystem');
-        if (window.LoadingManager) modules.push('LoadingManager');
-        if (window.SharedCore) modules.push('SharedCore');
-        
-        modulesSpan.textContent = modules.length > 0 ? modules.join(', ') : 'Nenhum';
-        modulesSpan.style.color = modules.length > 3 ? '#00ff9c' : '#ffaa00';
-    }
-    
-    // ==================== API PÚBLICA ====================
+
+    // ========== API PÚBLICA ==========
     return {
         version: CONFIG.version,
         
-        /**
-         * Inicializa o módulo de diagnóstico
-         */
-        init: function() {
-            if (state.initialized) return this;
-            
-            console.log(`🔧 [V61] Inicializando módulo de diagnóstico...`);
-            
-            // Atualizar módulos ativos periodicamente
-            updateActiveModules();
-            setInterval(updateActiveModules, 2000);
-            
-            // Verificar parâmetros da URL
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('diagnostics') === 'true' || urlParams.get('debug') === 'true') {
-                setTimeout(() => {
-                    this.createPanel();
-                }, 1500); // Delay para garantir que outros módulos carregaram
+        // Executar diagnóstico completo
+        runFullDiagnostic: async function() {
+            console.log(`🔬 [DIAGNOSTICS61] Executando diagnóstico completo v${CONFIG.version}...`);
+            const base = runBaseChecks();
+            const integrity = runIntegrityChecks(base);
+            const zombies = runZombieDetection();
+            const performance = await runPerformanceTests();
+            const health = calculateHealthScore(base, integrity, zombies, performance);
+
+            console.log(`🏥 Health Score: ${health.score}%`);
+            if (health.issues.length > 0) {
+                console.warn('⚠️ Issues encontradas:', health.issues);
+            } else {
+                console.log('✅ Nenhuma issue crítica encontrada.');
             }
-            
-            state.initialized = true;
-            addLog('Módulo de diagnóstico V61 inicializado', 'success');
-            
-            return this;
+
+            return {
+                timestamp: new Date().toISOString(),
+                version: CONFIG.version,
+                healthScore: health.score,
+                issues: health.issues,
+                details: { base, integrity, zombies, performance }
+            };
         },
-        
-        /**
-         * Cria o painel de diagnóstico
-         */
-        createPanel: function() {
-            return createPanel();
+
+        // Mostrar painel visual
+        showPanel: function() {
+            createVisualPanel();
         },
-        
-        /**
-         * Executa todos os testes
-         */
-        runAllTests: async function() {
-            return await runAllTests();
+
+        // Esconder painel visual
+        hidePanel: function() {
+            const panel = document.getElementById(CONFIG.panelId);
+            if (panel) {
+                panel.style.display = 'none';
+                state.isPanelVisible = false;
+            }
         },
-        
-        /**
-         * Executa um teste específico
-         */
-        runTest: async function(testId) {
-            return await runTest(testId);
+
+        // Iniciar monitoramento periódico
+        startMonitoring: function(interval = CONFIG.checkInterval) {
+            if (state.checkIntervalId) {
+                clearInterval(state.checkIntervalId);
+            }
+            state.checkIntervalId = setInterval(() => {
+                this.runFullDiagnostic().then(result => {
+                    state.lastCheck = result;
+                    // Se o painel estiver visível, atualiza seu conteúdo
+                    const panel = document.getElementById(CONFIG.panelId);
+                    if (panel && panel.style.display !== 'none') {
+                        updatePanelContent(panel);
+                    }
+                });
+            }, interval);
+            console.log(`🕒 Monitoramento iniciado (intervalo: ${interval}ms)`);
         },
-        
-        /**
-         * Obtém a lista de testes disponíveis
-         */
-        getTests: function() {
-            return tests;
+
+        // Parar monitoramento
+        stopMonitoring: function() {
+            if (state.checkIntervalId) {
+                clearInterval(state.checkIntervalId);
+                state.checkIntervalId = null;
+                console.log('🛑 Monitoramento parado.');
+            }
         },
-        
-        /**
-         * Adiciona um log manualmente
-         */
-        log: function(message, type = 'info') {
-            addLog(message, type);
-        },
-        
-        /**
-         * Obtém o estado atual
-         */
-        getState: function() {
-            return { ...state };
-        },
-        
-        /**
-         * Força ajuste de posição do painel
-         */
-        adjustPosition: function() {
-            adjustPanelPosition();
+
+        // Obter estado
+        getState: () => ({ ...state }),
+
+        // Inicialização automática
+        init: function() {
+            console.log(`🔧 Diagnostics61 v${CONFIG.version} inicializado.`);
+            // Executa um diagnóstico rápido na inicialização
+            setTimeout(() => {
+                this.runFullDiagnostic();
+            }, 2000);
+
+            // Se a URL contiver ?panel=true, mostrar o painel automaticamente
+            if (window.location.search.includes('panel=true')) {
+                setTimeout(() => this.showPanel(), 1000);
+            }
         }
     };
 })();
 
-// ==================== INICIALIZAÇÃO ====================
-setTimeout(() => {
-    if (window.DiagnosticsV61) {
-        window.DiagnosticsV61.init();
-        
-        // Expor globalmente
-        window.diagnosticsV61 = window.DiagnosticsV61;
-        
-        console.log('%c🔍 DIAGNÓSTICO V61 PRONTO', 'color: #ffaa00; font-weight: bold; font-size: 12px;');
-        console.log('📋 Comandos: window.DiagnosticsV61.createPanel()');
-        console.log('📋 Para ver painel: adicione ?debug=true&diagnostics=true à URL');
-    }
-}, 1000);
+// ========== EXPORTAÇÃO GLOBAL ==========
+window.Diagnostics61 = Diagnostics61;
 
-// ==================== FIM DO ARQUIVO diagnostics61.js ====================
+// ========== INICIALIZAÇÃO AUTOMÁTICA SE CARREGADO COM ?debug=true&diagnostics=true ==========
+if (window.location.search.includes('debug=true') && window.location.search.includes('diagnostics=true')) {
+    // Pequeno delay para garantir que o DOM e outros módulos carregaram
+    setTimeout(() => {
+        Diagnostics61.init();
+        // Mostrar o painel automaticamente em modo diagnóstico completo
+        Diagnostics61.showPanel();
+        console.log('%c🩺 DIAGNOSTICS61 v6.1 ATIVADO - Painel visual exibido', 'color: #00adb5; font-weight: bold; font-size: 14px;');
+    }, 1500);
+}
+
+// Atalho no console
+console.log('%c🩺 Diagnostics61 v6.1 carregado. Use window.Diagnostics61.showPanel() para o painel visual.', 'color: #00adb5;');
