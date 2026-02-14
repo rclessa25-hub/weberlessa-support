@@ -1,15 +1,16 @@
 // debug/diagnostics/diagnostics61.js
 // =====================================================================
-// DIAGNÓSTICO AVANÇADO DO SISTEMA - VERSÃO 6.1.1
+// DIAGNÓSTICO AVANÇADO DO SISTEMA - VERSÃO 6.1.1 (FINAL)
 // =====================================================================
 // Data: 13/02/2026
-// Status: ATIVO (Elo 6 da cadeia progressiva de diagnóstico)
+// Status: PRODUCTION READY
 //
-// MELHORIAS NESTA VERSÃO (6.1.1):
-// 1. Posicionamento inteligente do painel: agora detecta colisões e reposiciona.
-// 2. Verificação de módulos adaptativa: não depende mais da existência de objetos
-//    window.admin/window.gallery, mas sim das funções-chave exportadas.
-// 3. Relatório mais detalhado sobre o estado de cada módulo.
+// CARACTERÍSTICAS PRINCIPAIS:
+// ✅ Posicionamento inteligente anti-colisão com outros painéis
+// ✅ Verificação adaptativa de módulos (admin/gallery por funções)
+// ✅ Testes completos de integridade do Core System
+// ✅ Logs não conflitantes com prefixo [V61.1]
+// ✅ Painel visual não sobreposto
 // =====================================================================
 
 console.log(`🔍 [DIAGNOSTICS61] Carregado - Versão 6.1.1 (Elo ${window.__diagnostics_chain_length || 6} da cadeia)`);
@@ -28,9 +29,11 @@ window.DiagnosticsV61 = (function() {
         logContainerId: 'diagnostics-log-v61',
         panelZIndex: 10000,
         panelOffset: 20, // pixels de espaçamento entre painéis
+        panelWidth: 500,
+        panelHeight: 650,
         defaultPosition: {
-            top: '120px',
-            left: '820px'  // Posição inicial deslocada para a direita
+            top: 120,
+            left: 820  // Posição inicial deslocada para a direita
         },
         colors: {
             primary: '#ffaa00',
@@ -54,7 +57,8 @@ window.DiagnosticsV61 = (function() {
         panelElement: null,
         logElement: null,
         lastRunTimestamp: null,
-        positionAdjusted: false
+        positionAdjusted: false,
+        positionAttempts: 0
     };
 
     // ==================== FUNÇÕES DE UTILIDADE ====================
@@ -63,109 +67,209 @@ window.DiagnosticsV61 = (function() {
      * Verifica se dois retângulos colidem
      */
     function rectsCollide(rect1, rect2) {
-        return !(rect2.left > rect1.right ||
-                 rect2.right < rect1.left ||
-                 rect2.top > rect1.bottom ||
-                 rect2.bottom < rect1.top);
+        return !(rect2.left >= rect1.right ||
+                 rect2.right <= rect1.left ||
+                 rect2.top >= rect1.bottom ||
+                 rect2.bottom <= rect1.top);
     }
 
     /**
-     * Ajusta a posição do painel para evitar sobreposição com outros painéis de diagnóstico
+     * Obtém os retângulos de todos os painéis de diagnóstico visíveis
+     */
+    function getVisibleDiagnosticPanels() {
+        const panels = Array.from(document.querySelectorAll('[id^="diagnostics-panel-"]'))
+            .filter(panel => {
+                // Ignorar a si mesmo e painéis ocultos
+                if (panel.id === CONFIG.panelId) return false;
+                const style = window.getComputedStyle(panel);
+                return style.display !== 'none' && style.visibility !== 'hidden';
+            });
+        
+        return panels.map(panel => {
+            const rect = panel.getBoundingClientRect();
+            return {
+                id: panel.id,
+                left: rect.left,
+                top: rect.top,
+                right: rect.right,
+                bottom: rect.bottom,
+                width: rect.width,
+                height: rect.height
+            };
+        });
+    }
+
+    /**
+     * Verifica se uma posição candidata colide com algum painel existente
+     */
+    function positionCollides(candidateRect, existingPanels) {
+        for (const panel of existingPanels) {
+            if (rectsCollide(candidateRect, panel)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Gera posições candidatas para o painel
+     */
+    function generateCandidatePositions(existingPanels) {
+        const candidates = [];
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // 1. Posição padrão (configurada)
+        candidates.push({
+            top: CONFIG.defaultPosition.top,
+            left: CONFIG.defaultPosition.left
+        });
+        
+        // 2. Abaixo de cada painel existente
+        existingPanels.forEach(panel => {
+            candidates.push({
+                top: panel.bottom + CONFIG.panelOffset,
+                left: panel.left
+            });
+        });
+        
+        // 3. À direita de cada painel existente
+        existingPanels.forEach(panel => {
+            candidates.push({
+                top: panel.top,
+                left: panel.right + CONFIG.panelOffset
+            });
+        });
+        
+        // 4. Canto superior direito
+        candidates.push({
+            top: 20,
+            left: viewportWidth - CONFIG.panelWidth - 20
+        });
+        
+        // 5. Canto inferior direito
+        candidates.push({
+            top: viewportHeight - CONFIG.panelHeight - 20,
+            left: viewportWidth - CONFIG.panelWidth - 20
+        });
+        
+        // 6. Canto superior esquerdo
+        candidates.push({
+            top: 20,
+            left: 20
+        });
+        
+        // 7. Centro da tela
+        candidates.push({
+            top: (viewportHeight - CONFIG.panelHeight) / 2,
+            left: (viewportWidth - CONFIG.panelWidth) / 2
+        });
+        
+        // Filtrar posições que saem da tela e remover duplicatas aproximadas
+        const uniqueCandidates = [];
+        const tolerance = 10;
+        
+        candidates.forEach(candidate => {
+            // Limitar à viewport
+            candidate.top = Math.max(5, Math.min(viewportHeight - CONFIG.panelHeight - 5, candidate.top));
+            candidate.left = Math.max(5, Math.min(viewportWidth - CONFIG.panelWidth - 5, candidate.left));
+            
+            // Verificar se é única (aproximadamente)
+            const isDuplicate = uniqueCandidates.some(uc => 
+                Math.abs(uc.top - candidate.top) < tolerance && 
+                Math.abs(uc.left - candidate.left) < tolerance
+            );
+            
+            if (!isDuplicate) {
+                uniqueCandidates.push({ ...candidate });
+            }
+        });
+        
+        return uniqueCandidates;
+    }
+
+    /**
+     * Ajusta a posição do painel para evitar sobreposição com outros painéis
      */
     function adjustPanelPosition() {
         if (!state.panelElement) return;
         
-        // Encontrar todos os painéis de diagnóstico existentes
-        const existingPanels = Array.from(document.querySelectorAll('[id^="diagnostics-panel-"]'))
-            .filter(panel => panel.id !== CONFIG.panelId && panel.style.display !== 'none');
+        state.positionAttempts++;
         
+        // Obter painéis existentes
+        const existingPanels = getVisibleDiagnosticPanels();
+        
+        // Se não há outros painéis, usar posição padrão
         if (existingPanels.length === 0) {
-            // Se não houver outros painéis, usar a posição padrão
-            state.panelElement.style.top = CONFIG.defaultPosition.top;
-            state.panelElement.style.left = CONFIG.defaultPosition.left;
-            addLog(`Nenhum outro painel detectado. Posição: ${CONFIG.defaultPosition.top}, ${CONFIG.defaultPosition.left}`, 'info');
+            state.panelElement.style.top = CONFIG.defaultPosition.top + 'px';
+            state.panelElement.style.left = CONFIG.defaultPosition.left + 'px';
+            addLog(`Nenhum outro painel detectado. Posição: (${CONFIG.defaultPosition.left}px, ${CONFIG.defaultPosition.top}px)`, 'info');
             return;
         }
-
-        // Posições candidatas: padrão, abaixo de cada painel, à direita de cada painel
-        const candidatePositions = [];
         
-        // Posição padrão
-        candidatePositions.push({
-            top: parseInt(CONFIG.defaultPosition.top),
-            left: parseInt(CONFIG.defaultPosition.left)
-        });
+        addLog(`Detectados ${existingPanels.length} painel(is) existente(s)`, 'info');
         
-        // Abaixo de cada painel existente
-        existingPanels.forEach(panel => {
-            const rect = panel.getBoundingClientRect();
-            candidatePositions.push({
-                top: rect.bottom + CONFIG.panelOffset,
-                left: rect.left
-            });
-        });
+        // Gerar posições candidatas
+        const candidates = generateCandidatePositions(existingPanels);
         
-        // À direita de cada painel existente
-        existingPanels.forEach(panel => {
-            const rect = panel.getBoundingClientRect();
-            candidatePositions.push({
-                top: rect.top,
-                left: rect.right + CONFIG.panelOffset
-            });
-        });
-        
-        // Também tentar no canto superior direito como fallback
-        candidatePositions.push({ top: 20, left: window.innerWidth - 520 }); // 500px largura + 20 offset
-        
-        // Testar cada posição candidata
-        const panelRect = {
-            width: 500,
-            height: 650
-        };
-        
+        // Testar cada candidato
         let bestPosition = null;
+        let bestScore = Infinity;
         
-        for (const pos of candidatePositions) {
-            // Limitar à viewport
-            pos.top = Math.max(5, Math.min(window.innerHeight - panelRect.height - 5, pos.top));
-            pos.left = Math.max(5, Math.min(window.innerWidth - panelRect.width - 5, pos.left));
-            
+        for (const candidate of candidates) {
             const candidateRect = {
-                left: pos.left,
-                top: pos.top,
-                right: pos.left + panelRect.width,
-                bottom: pos.top + panelRect.height
+                left: candidate.left,
+                top: candidate.top,
+                right: candidate.left + CONFIG.panelWidth,
+                bottom: candidate.top + CONFIG.panelHeight,
+                width: CONFIG.panelWidth,
+                height: CONFIG.panelHeight
             };
             
             // Verificar se colide com algum painel existente
-            let collides = false;
+            const collides = positionCollides(candidateRect, existingPanels);
+            
+            if (!collides) {
+                // Posição sem colisão encontrada
+                bestPosition = candidate;
+                break;
+            }
+            
+            // Calcular score de colisão (quanto menos sobreposição, melhor)
+            let collisionScore = 0;
             for (const panel of existingPanels) {
-                const existingRect = panel.getBoundingClientRect();
-                if (rectsCollide(candidateRect, existingRect)) {
-                    collides = true;
-                    break;
+                if (rectsCollide(candidateRect, panel)) {
+                    const overlapLeft = Math.max(0, Math.min(candidateRect.right, panel.right) - Math.max(candidateRect.left, panel.left));
+                    const overlapTop = Math.max(0, Math.min(candidateRect.bottom, panel.bottom) - Math.max(candidateRect.top, panel.top));
+                    const overlapArea = overlapLeft * overlapTop;
+                    collisionScore += overlapArea;
                 }
             }
             
-            if (!collides) {
-                bestPosition = pos;
-                break;
+            if (collisionScore < bestScore) {
+                bestScore = collisionScore;
+                bestPosition = candidate;
             }
         }
         
-        // Se todas as posições colidirem, usar a primeira candidata (padrão) e adicionar um offset
-        if (!bestPosition) {
-            bestPosition = candidatePositions[0];
-            // Adicionar um offset aleatório para tentar minimizar sobreposição total
-            bestPosition.top += 30;
-            bestPosition.left += 30;
-            addLog('Todos os espaços ocupados. Usando posição com offset.', 'warning');
-        }
-        
         // Aplicar posição
-        state.panelElement.style.top = bestPosition.top + 'px';
-        state.panelElement.style.left = bestPosition.left + 'px';
-        addLog(`Painel posicionado em (${bestPosition.left}px, ${bestPosition.top}px)`, 'success');
+        if (bestPosition) {
+            state.panelElement.style.top = bestPosition.top + 'px';
+            state.panelElement.style.left = bestPosition.left + 'px';
+            
+            if (bestScore < Infinity) {
+                addLog(`Posição ajustada para minimizar sobreposição (score: ${Math.round(bestScore)})`, 'warning');
+            } else {
+                addLog(`Painel posicionado em (${bestPosition.left}px, ${bestPosition.top}px)`, 'success');
+            }
+        } else {
+            // Fallback: posição padrão com offset
+            const offsetLeft = CONFIG.defaultPosition.left + (state.positionAttempts * 30) % 200;
+            const offsetTop = CONFIG.defaultPosition.top + (state.positionAttempts * 20) % 150;
+            state.panelElement.style.top = Math.min(offsetTop, window.innerHeight - CONFIG.panelHeight - 20) + 'px';
+            state.panelElement.style.left = Math.min(offsetLeft, window.innerWidth - CONFIG.panelWidth - 20) + 'px';
+            addLog(`Todos os espaços ocupados. Usando posição com offset.`, 'warning');
+        }
         
         state.positionAdjusted = true;
     }
@@ -185,7 +289,8 @@ window.DiagnosticsV61 = (function() {
             'saveProperty',
             'editProperty',
             'cancelEdit',
-            'resetAdminFormCompletely'
+            'resetAdminFormCompletely',
+            'loadPropertyList'
         ];
         
         adminFunctions.forEach(fnName => {
@@ -200,6 +305,9 @@ window.DiagnosticsV61 = (function() {
         results.status = score >= 80 ? 'ok' : score >= 50 ? 'partial' : 'critical';
         results.score = score;
         results.functionCount = functionCount;
+        results.availableFunctions = Object.entries(results.functions)
+            .filter(([_, available]) => available)
+            .map(([name]) => name);
         
         return results;
     }
@@ -219,7 +327,8 @@ window.DiagnosticsV61 = (function() {
             'closeGallery',
             'nextGalleryImage',
             'prevGalleryImage',
-            'createPropertyGallery'
+            'createPropertyGallery',
+            'showGalleryImage'
         ];
         
         galleryFunctions.forEach(fnName => {
@@ -234,6 +343,9 @@ window.DiagnosticsV61 = (function() {
         results.status = score >= 80 ? 'ok' : score >= 50 ? 'partial' : 'critical';
         results.score = score;
         results.functionCount = functionCount;
+        results.availableFunctions = Object.entries(results.functions)
+            .filter(([_, available]) => available)
+            .map(([name]) => name);
         
         return results;
     }
@@ -304,6 +416,9 @@ window.DiagnosticsV61 = (function() {
                 else if (adminResults.status === 'partial') passed += 0.5; // Crédito parcial
                 
                 console.log(`${adminResults.status === 'ok' ? '✅' : (adminResults.status === 'partial' ? '⚠️' : '❌')} admin (funções): ${adminResults.functionCount}/${Object.keys(adminResults.functions).length} funções disponíveis (Score: ${adminResults.score}%)`);
+                if (adminResults.availableFunctions.length > 0) {
+                    console.log(`   📋 Funções disponíveis: ${adminResults.availableFunctions.join(', ')}`);
+                }
                 
                 // Adicionar gallery ao total
                 results.push({
@@ -320,6 +435,9 @@ window.DiagnosticsV61 = (function() {
                 else if (galleryResults.status === 'partial') passed += 0.5;
                 
                 console.log(`${galleryResults.status === 'ok' ? '✅' : (galleryResults.status === 'partial' ? '⚠️' : '❌')} gallery (funções): ${galleryResults.functionCount}/${Object.keys(galleryResults.functions).length} funções disponíveis (Score: ${galleryResults.score}%)`);
+                if (galleryResults.availableFunctions.length > 0) {
+                    console.log(`   📋 Funções disponíveis: ${galleryResults.availableFunctions.join(', ')}`);
+                }
                 
                 const totalModules = objectModules.length + 2; // +2 para admin e gallery
                 const averageScore = Math.round(totalScore / totalModules);
@@ -342,7 +460,7 @@ window.DiagnosticsV61 = (function() {
             }
         },
         
-        // Teste 2: Consistência de Dados (localStorage vs Memória) - [MANTIDO IGUAL]
+        // Teste 2: Consistência de Dados (localStorage vs Memória)
         dataConsistency: {
             id: 'data-consistency-v61',
             name: '💾 Consistência de Dados',
@@ -390,15 +508,19 @@ window.DiagnosticsV61 = (function() {
                 // 3. Comparar com chave principal
                 let syncStatus = 'unknown';
                 if (memValid && storageData.properties.exists && storageData.properties.valid) {
-                    const storageProps = JSON.parse(localStorage.getItem('properties'));
-                    if (storageProps.length === memLength) {
-                        syncStatus = 'synced';
-                    } else if (storageProps.length > memLength) {
-                        syncStatus = 'storage_ahead';
-                        issues.push(`localStorage tem ${storageProps.length - memLength} imóveis a mais que memória`);
-                    } else {
-                        syncStatus = 'memory_ahead';
-                        issues.push(`Memória tem ${memLength - storageProps.length} imóveis a mais que localStorage`);
+                    try {
+                        const storageProps = JSON.parse(localStorage.getItem('properties'));
+                        if (storageProps.length === memLength) {
+                            syncStatus = 'synced';
+                        } else if (storageProps.length > memLength) {
+                            syncStatus = 'storage_ahead';
+                            issues.push(`localStorage tem ${storageProps.length - memLength} imóveis a mais que memória`);
+                        } else {
+                            syncStatus = 'memory_ahead';
+                            issues.push(`Memória tem ${memLength - storageProps.length} imóveis a mais que localStorage`);
+                        }
+                    } catch (e) {
+                        issues.push('Erro ao comparar dados do localStorage');
                     }
                 }
                 
@@ -431,7 +553,7 @@ window.DiagnosticsV61 = (function() {
             }
         },
         
-        // Teste 3: Performance de Renderização da Galeria - [MANTIDO IGUAL]
+        // Teste 3: Performance de Renderização da Galeria
         galleryPerformance: {
             id: 'gallery-performance-v61',
             name: '⚡ Performance da Galeria',
@@ -604,7 +726,7 @@ window.DiagnosticsV61 = (function() {
             }
         },
         
-        // Teste 5: Integridade do CSS - [MANTIDO IGUAL]
+        // Teste 5: Integridade do CSS
         cssIntegrity: {
             id: 'css-integrity-v61',
             name: '🎨 Integridade do CSS',
@@ -662,6 +784,8 @@ window.DiagnosticsV61 = (function() {
     function createPanel() {
         if (state.panelElement && document.body.contains(state.panelElement)) {
             state.panelElement.style.display = 'flex';
+            state.panelVisible = true;
+            addLog('Painel já existente, reexibindo', 'info');
             return state.panelElement;
         }
         
@@ -676,10 +800,10 @@ window.DiagnosticsV61 = (function() {
         // Estilo base do painel
         panel.style.cssText = `
             position: fixed;
-            top: ${CONFIG.defaultPosition.top};
-            left: ${CONFIG.defaultPosition.left};
-            width: 500px;
-            height: 650px;
+            top: ${CONFIG.defaultPosition.top}px;
+            left: ${CONFIG.defaultPosition.left}px;
+            width: ${CONFIG.panelWidth}px;
+            height: ${CONFIG.panelHeight}px;
             background: ${CONFIG.colors.background};
             border: 2px solid ${CONFIG.colors.border};
             border-radius: 12px;
@@ -846,6 +970,11 @@ window.DiagnosticsV61 = (function() {
                 transform: translateY(-2px);
                 box-shadow: 0 4px 12px ${CONFIG.colors.primary}80;
             }
+            .v61-btn-primary:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                transform: none;
+            }
             .v61-btn-secondary {
                 background: rgba(102, 204, 255, 0.2);
                 color: ${CONFIG.colors.secondary};
@@ -859,6 +988,10 @@ window.DiagnosticsV61 = (function() {
             .v61-btn-secondary:hover {
                 background: rgba(102, 204, 255, 0.4);
             }
+            .v61-btn-secondary:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
             .v61-btn-warning {
                 background: rgba(255, 170, 0, 0.2);
                 color: ${CONFIG.colors.warning};
@@ -867,6 +1000,9 @@ window.DiagnosticsV61 = (function() {
                 border-radius: 5px;
                 cursor: pointer;
                 font-size: 11px;
+            }
+            .v61-btn-warning:hover {
+                background: rgba(255, 170, 0, 0.4);
             }
             .v61-btn-info {
                 background: rgba(0, 255, 156, 0.2);
@@ -877,13 +1013,16 @@ window.DiagnosticsV61 = (function() {
                 cursor: pointer;
                 font-size: 11px;
             }
+            .v61-btn-info:hover {
+                background: rgba(0, 255, 156, 0.4);
+            }
         `;
         document.head.appendChild(style);
         
         state.panelElement = panel;
         state.panelVisible = true;
         
-        // Ajustar posição para evitar conflitos (AGORA COM LÓGICA MELHORADA)
+        // Ajustar posição para evitar conflitos
         setTimeout(() => {
             adjustPanelPosition();
         }, 100);
@@ -945,34 +1084,48 @@ window.DiagnosticsV61 = (function() {
         panel.querySelector('.v61-close').addEventListener('click', () => {
             panel.style.display = 'none';
             state.panelVisible = false;
+            addLog('Painel ocultado', 'info');
         });
         
-        panel.querySelector('.v61-minimize').addEventListener('click', (btn) => {
+        panel.querySelector('.v61-minimize').addEventListener('click', (e) => {
             const content = panel.children[1];
             const isHidden = content.style.display === 'none';
             content.style.display = isHidden ? 'flex' : 'none';
-            btn.target.textContent = isHidden ? '−' : '+';
+            e.target.textContent = isHidden ? '−' : '+';
+            addLog(isHidden ? 'Painel expandido' : 'Painel minimizado', 'info');
         });
         
         // Botões de ação
         panel.querySelector('#v61-run-all').addEventListener('click', async () => {
+            const btn = panel.querySelector('#v61-run-all');
+            btn.disabled = true;
             addLog('Iniciando execução de todos os testes...', 'info');
             await runAllTests();
+            btn.disabled = false;
         });
         
         panel.querySelector('#v61-run-core').addEventListener('click', async () => {
+            const btn = panel.querySelector('#v61-run-core');
+            btn.disabled = true;
             addLog('Executando testes de Core...', 'info');
             await runTestsByCategory('core');
+            btn.disabled = false;
         });
         
         panel.querySelector('#v61-run-data').addEventListener('click', async () => {
+            const btn = panel.querySelector('#v61-run-data');
+            btn.disabled = true;
             addLog('Executando testes de Dados...', 'info');
             await runTestsByCategory('data');
+            btn.disabled = false;
         });
         
         panel.querySelector('#v61-run-perf').addEventListener('click', async () => {
+            const btn = panel.querySelector('#v61-run-perf');
+            btn.disabled = true;
             addLog('Executando testes de Performance...', 'info');
             await runTestsByCategory('performance');
+            btn.disabled = false;
         });
         
         panel.querySelector('#v61-clear-logs').addEventListener('click', () => {
@@ -988,8 +1141,13 @@ window.DiagnosticsV61 = (function() {
      * Adiciona um log ao painel
      */
     function addLog(message, type = 'info') {
-        const timestamp = new Date().toLocaleTimeString();
+        const timestamp = new Date().toLocaleTimeString('pt-BR', { hour12: false });
         state.logs.push({ timestamp, message, type });
+        
+        // Manter apenas últimos 50 logs
+        if (state.logs.length > 50) {
+            state.logs = state.logs.slice(-50);
+        }
         
         const logsContent = document.getElementById('v61-logs-content');
         if (logsContent) {
@@ -997,6 +1155,7 @@ window.DiagnosticsV61 = (function() {
             logEntry.style.cssText = `
                 padding: 2px 0;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                font-family: monospace;
             `;
             
             let color = '#88ffaa';
@@ -1006,10 +1165,17 @@ window.DiagnosticsV61 = (function() {
             
             logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> <span style="color: ${color};">${message}</span>`;
             logsContent.appendChild(logEntry);
+            
+            // Auto-scroll
             logsContent.scrollTop = logsContent.scrollHeight;
+            
+            // Remover logs antigos se houver muitos
+            while (logsContent.children.length > 50) {
+                logsContent.removeChild(logsContent.firstChild);
+            }
         }
         
-        // Também logar no console com prefixo V61
+        // Também logar no console com prefixo V61.1
         console.log(`[V61.1] ${message}`);
     }
     
@@ -1073,7 +1239,7 @@ window.DiagnosticsV61 = (function() {
     async function runAllTests() {
         const resultsDiv = document.getElementById('v61-results-content');
         if (resultsDiv) {
-            resultsDiv.innerHTML = '<div style="text-align: center;">Executando testes...</div>';
+            resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Executando testes...</div>';
         }
         
         const results = [];
@@ -1099,7 +1265,7 @@ window.DiagnosticsV61 = (function() {
         // Atualizar status
         const lastRunSpan = document.getElementById('v61-last-run');
         if (lastRunSpan) {
-            lastRunSpan.textContent = new Date().toLocaleTimeString();
+            lastRunSpan.textContent = new Date().toLocaleTimeString('pt-BR', { hour12: false });
         }
         
         // Exibir resultados
@@ -1114,7 +1280,7 @@ window.DiagnosticsV61 = (function() {
     async function runTestsByCategory(category) {
         const resultsDiv = document.getElementById('v61-results-content');
         if (resultsDiv) {
-            resultsDiv.innerHTML = `<div style="text-align: center;">Executando testes de ${category}...</div>`;
+            resultsDiv.innerHTML = `<div style="text-align: center; padding: 20px;">🔄 Executando testes de ${category}...</div>`;
         }
         
         const results = [];
@@ -1155,14 +1321,17 @@ window.DiagnosticsV61 = (function() {
             <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <span style="color: #00ff9c; font-size: 16px; font-weight: bold;">${score}%</span>
-                        <span style="color: #ffcc88; font-size: 11px; margin-left: 5px;">Score</span>
+                        <span style="color: #00ff9c; font-size: 24px; font-weight: bold;">${score}%</span>
+                        <span style="color: #ffcc88; font-size: 11px; margin-left: 5px;">Score Geral</span>
                     </div>
                     <div>
                         <span style="color: #00ff9c;">✅ ${passed}</span>
                         <span style="color: #ffaa00; margin-left: 5px;">⚠️ ${warnings}</span>
                         <span style="color: #ff5555; margin-left: 5px;">❌ ${errors}</span>
                     </div>
+                </div>
+                <div style="color: #888; font-size: 10px; margin-top: 5px;">
+                    Total: ${total} testes | ${new Date().toLocaleTimeString('pt-BR', { hour12: false })}
                 </div>
             </div>
         `;
@@ -1176,7 +1345,7 @@ window.DiagnosticsV61 = (function() {
             html += `
                 <div style="padding: 8px; margin: 5px 0; background: rgba(0,0,0,0.2); border-radius: 5px; border-left: 3px solid ${color};">
                     <div style="display: flex; justify-content: space-between;">
-                        <span style="color: white; font-size: 12px;">${icon} ${result.testName}</span>
+                        <span style="color: white; font-size: 12px; font-weight: bold;">${icon} ${result.testName}</span>
                         <span style="color: #888; font-size: 10px;">${result.executionTime.toFixed(0)}ms</span>
                     </div>
                     <div style="color: ${color}; font-size: 11px; margin-top: 3px;">${result.message}</div>
@@ -1197,7 +1366,8 @@ window.DiagnosticsV61 = (function() {
             tests: Object.keys(tests).map(key => ({
                 id: tests[key].id,
                 name: tests[key].name,
-                category: tests[key].category
+                category: tests[key].category,
+                critical: tests[key].critical
             })),
             logs: state.logs,
             environment: {
@@ -1205,8 +1375,16 @@ window.DiagnosticsV61 = (function() {
                 url: window.location.href,
                 propertiesCount: window.properties?.length || 0,
                 debug: window.location.search.includes('debug=true'),
-                diagnostics: window.location.search.includes('diagnostics=true')
-            }
+                diagnostics: window.location.search.includes('diagnostics=true'),
+                viewport: {
+                    width: window.innerWidth,
+                    height: window.innerHeight
+                }
+            },
+            panelPosition: state.panelElement ? {
+                top: state.panelElement.style.top,
+                left: state.panelElement.style.left
+            } : null
         };
         
         const dataStr = JSON.stringify(exportData, null, 2);
@@ -1215,7 +1393,7 @@ window.DiagnosticsV61 = (function() {
         
         const a = document.createElement('a');
         a.href = url;
-        a.download = `diagnostics-v61-${new Date().toISOString().slice(0,10)}.json`;
+        a.download = `diagnostics-v61-${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
         a.click();
         
         URL.revokeObjectURL(url);
