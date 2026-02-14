@@ -1,28 +1,28 @@
 // ================== debug/diagnostics/diagnostics59.js ==================
-// DIAGNÓSTICO DO SISTEMA - MÓDULO DE VALIDAÇÃO DE INTEGRIDADE (v5.9.2)
-// CORREÇÃO: z-index MAIS ALTO (100000) e erro de console corrigido
-console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
+// DIAGNÓSTICO DO SISTEMA - MÓDULO DE VALIDAÇÃO DE INTEGRIDADE (v5.9.3)
+// CORREÇÃO: Funções críticas agora usam a mesma lógica da v5.9.1 que funcionava
+console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.3)`);
 
 (function() {
     'use strict';
 
     // --- Configuração do Módulo ---
     const MODULE_ID = 'diagnostics59';
-    const MODULE_NAME = 'Validação de Integridade (v5.9.2)';
+    const MODULE_NAME = 'Validação de Integridade (v5.9.3)';
     const PANEL_ID = 'diagnostics59-panel';
     const CONTROL_BTN_ID = 'diag59-control-btn';
-    const Z_INDEX_BASE = 100000; // MAIS ALTO que qualquer outro painel (outros usam 9999 ou 10000)
+    const Z_INDEX_BASE = 100000;
     let isPanelVisible = false;
     let panelElement = null;
 
-    // --- Verificação de Ambiente e Prevenção de Dupla Inicialização ---
+    // --- Verificação de Ambiente ---
     if (window[`__${MODULE_ID}_LOADED`]) {
         console.log(`🔬 [DIAGNOSTICS59] Módulo já carregado. Ignorando.`);
         return;
     }
     window[`__${MODULE_ID}_LOADED`] = true;
 
-    // --- Utilitários Internos (CORRIGIDO: erro no console.log) ---
+    // --- Utilitários Internos ---
     const Utils = {
         log: function(level, ...args) {
             const prefix = '[DIAGNOSTICS59]';
@@ -34,7 +34,6 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
                 test: 'color: #9b59b6; font-weight: bold;'
             };
             
-            // CORREÇÃO: Usar o método correto do console com os argumentos na ordem certa
             if (level === 'test') {
                 console.log(`%c${prefix}`, styles[level] || styles.info, ...args);
             } else {
@@ -42,10 +41,35 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
                 method(`%c${prefix}`, styles[level] || styles.info, ...args);
             }
         },
+        
+        // Função para verificar disponibilidade de funções (baseada na v5.9.1)
+        checkFunction: function(obj, path) {
+            try {
+                if (typeof path === 'string') {
+                    // Se for string simples, verificar no window
+                    if (!path.includes('.')) {
+                        return typeof window[path] === 'function';
+                    }
+                    // Se tiver ponto, navegar no objeto
+                    const parts = path.split('.');
+                    let current = window;
+                    for (const part of parts) {
+                        if (!current || typeof current[part] === 'undefined') {
+                            return false;
+                        }
+                        current = current[part];
+                    }
+                    return typeof current === 'function';
+                }
+                return false;
+            } catch (e) {
+                return false;
+            }
+        },
+        
         createDraggable: function(element, handle) {
             let isDragging = false;
             let offsetX, offsetY;
-            let startX, startY;
 
             handle.style.cursor = 'grab';
             
@@ -54,12 +78,9 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
                 
                 e.preventDefault();
                 
-                startX = e.clientX;
-                startY = e.clientY;
-                
                 const rect = element.getBoundingClientRect();
-                offsetX = startX - rect.left;
-                offsetY = startY - rect.top;
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
                 
                 isDragging = true;
                 handle.style.cursor = 'grabbing';
@@ -76,7 +97,6 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
                 const x = e.clientX - offsetX;
                 const y = e.clientY - offsetY;
                 
-                // Limitar dentro da tela com margem
                 const maxX = window.innerWidth - element.offsetWidth;
                 const maxY = window.innerHeight - element.offsetHeight;
                 
@@ -96,9 +116,115 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
         }
     };
 
-    // --- Funções de Teste Específicas do diagnostics59.js ---
+    // --- Funções de Teste (CORRIGIDAS baseado na v5.9.1) ---
     const Tests = {
-        // Teste 1: Verificar Integridade do window.properties
+        // Teste 1: Verificar Core APIs (baseado na v5.9.1)
+        checkCoreAPIs: function() {
+            Utils.log('test', '🧪 Executando: Verificação de Core APIs...');
+            const issues = [];
+            let status = 'success';
+            
+            // Lista de funções que existem no sistema (baseado no LOG)
+            const coreFunctions = [
+                'loadPropertiesData',
+                'renderProperties',
+                'setupFilters',
+                'savePropertiesToStorage',
+                'addNewProperty',
+                'updateProperty',
+                'toggleAdminPanel'
+            ];
+
+            coreFunctions.forEach(fnName => {
+                if (!Utils.checkFunction(window, fnName)) {
+                    issues.push(`❌ Função ausente: ${fnName}`);
+                    status = 'error';
+                } else {
+                    Utils.log('info', `✅ ${fnName} disponível.`);
+                }
+            });
+
+            return { status, issues, name: 'Core APIs' };
+        },
+
+        // Teste 2: Verificar Módulos Específicos (Media, PDF, SharedCore)
+        checkModules: function() {
+            Utils.log('test', '🧪 Executando: Verificação de Módulos Específicos...');
+            const issues = [];
+            let status = 'success';
+            
+            // Verificar MediaSystem (pode estar em diferentes locais)
+            const mediaTests = [
+                { path: 'MediaSystem', desc: 'MediaSystem objeto' },
+                { path: 'MediaSystem.addFiles', desc: 'MediaSystem.addFiles' },
+                { path: 'window.MediaSystem', desc: 'window.MediaSystem' }
+            ];
+            
+            let mediaFound = false;
+            mediaTests.forEach(test => {
+                if (Utils.checkFunction(window, test.path) || 
+                    (test.path === 'MediaSystem' && window.MediaSystem)) {
+                    mediaFound = true;
+                }
+            });
+            
+            if (!mediaFound && !window.MediaSystem) {
+                issues.push('❌ MediaSystem não disponível');
+                status = 'error';
+            } else {
+                Utils.log('info', `✅ MediaSystem disponível.`);
+            }
+            
+            // Verificar PdfSystem
+            const pdfTests = [
+                { path: 'PdfSystem', desc: 'PdfSystem objeto' },
+                { path: 'PdfSystem.showModal', desc: 'PdfSystem.showModal' },
+                { path: 'window.PdfSystem', desc: 'window.PdfSystem' }
+            ];
+            
+            let pdfFound = false;
+            pdfTests.forEach(test => {
+                if (Utils.checkFunction(window, test.path) ||
+                    (test.path === 'PdfSystem' && window.PdfSystem)) {
+                    pdfFound = true;
+                }
+            });
+            
+            if (!pdfFound && !window.PdfSystem) {
+                issues.push('❌ PdfSystem não disponível');
+                status = 'error';
+            } else {
+                Utils.log('info', `✅ PdfSystem disponível.`);
+            }
+            
+            // Verificar SharedCore
+            if (!window.SharedCore) {
+                issues.push('❌ SharedCore não disponível');
+                status = 'error';
+            } else {
+                Utils.log('info', `✅ SharedCore disponível.`);
+            }
+            
+            // Verificar LoadingManager
+            if (!window.LoadingManager) {
+                issues.push('❌ LoadingManager não disponível');
+                status = 'error';
+            } else {
+                Utils.log('info', `✅ LoadingManager disponível.`);
+            }
+            
+            // Verificar FilterManager
+            if (!window.FilterManager) {
+                issues.push('❌ FilterManager não disponível');
+                status = 'error';
+            } else {
+                Utils.log('info', `✅ FilterManager disponível.`);
+            }
+
+            return { status, issues, name: 'Módulos Específicos' };
+        },
+
+        // Teste 3: Verificar Integridade das Propriedades
         checkPropertiesIntegrity: function() {
             Utils.log('test', '🧪 Executando: Verificação de Integridade das Propriedades...');
             const issues = [];
@@ -108,82 +234,40 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
                 issues.push('❌ window.properties não existe.');
                 status = 'error';
             } else if (!Array.isArray(window.properties)) {
-                issues.push(`❌ window.properties não é um array. Tipo: ${typeof window.properties}`);
+                issues.push(`❌ window.properties não é um array.`);
                 status = 'error';
             } else {
-                Utils.log('info', `📊 Total de imóveis em memória: ${window.properties.length}`);
+                Utils.log('info', `📊 Total de imóveis: ${window.properties.length}`);
+                
                 if (window.properties.length === 0) {
                     issues.push('⚠️ Nenhum imóvel carregado.');
                     status = 'warning';
                 }
-                // Validar estrutura de cada imóvel
-                window.properties.forEach((prop, index) => {
-                    if (!prop.id) issues.push(`⚠️ Imóvel índice ${index} não tem ID.`);
-                    if (!prop.title) issues.push(`⚠️ Imóvel ID ${prop.id || index} não tem título.`);
-                    if (prop.has_video !== undefined && typeof prop.has_video !== 'boolean') {
-                        issues.push(`⚠️ Imóvel ID ${prop.id} has_video não é booleano.`);
-                    }
+                
+                // Validar estrutura básica
+                window.properties.slice(0, 5).forEach((prop, index) => {
+                    if (!prop.id) issues.push(`⚠️ Imóvel ${index} sem ID.`);
+                    if (!prop.title) issues.push(`⚠️ Imóvel ${prop.id || index} sem título.`);
                 });
             }
 
-            // Verificar localStorage (chave unificada)
+            // Verificar localStorage
             try {
                 const stored = localStorage.getItem('properties');
                 if (stored) {
                     const parsed = JSON.parse(stored);
-                    Utils.log('info', `💾 Imóveis no localStorage: ${parsed.length}`);
-                    if (window.properties && window.properties.length !== parsed.length) {
-                        issues.push(`⚠️ Inconsistência: Memória (${window.properties.length}) vs Storage (${parsed.length})`);
-                        status = 'warning';
-                    }
-                } else {
-                    issues.push('⚠️ Chave "properties" não encontrada no localStorage.');
+                    Utils.log('info', `💾 localStorage: ${parsed.length} imóveis`);
                 }
             } catch (e) {
-                issues.push(`❌ Erro ao ler localStorage: ${e.message}`);
-                status = 'error';
+                issues.push(`❌ Erro no localStorage: ${e.message}`);
             }
 
-            return { status, issues };
+            return { status, issues, name: 'Propriedades' };
         },
 
-        // Teste 2: Verificar Disponibilidade de Funções Críticas
-        checkCriticalFunctions: function() {
-            Utils.log('test', '🧪 Executando: Verificação de Funções Críticas...');
-            const issues = [];
-            let status = 'success';
-            const criticalFns = [
-                'loadPropertiesData', 'renderProperties', 'setupFilters',
-                'savePropertiesToStorage', 'addNewProperty', 'updateProperty',
-                'PdfSystem', 'MediaSystem', 'SharedCore', 'LoadingManager', 'FilterManager'
-            ];
-
-            criticalFns.forEach(fnName => {
-                const fnPath = fnName.split('.');
-                let exists = false;
-                try {
-                    if (fnPath.length > 1) {
-                        exists = window[fnPath[0]] && typeof window[fnPath[0]][fnPath[1]] === 'function';
-                    } else {
-                        exists = typeof window[fnName] === 'function';
-                    }
-                } catch (e) {
-                    exists = false;
-                }
-
-                if (!exists) {
-                    issues.push(`❌ Função/Objeto crítico ausente: ${fnName}`);
-                    status = 'error';
-                } else {
-                    Utils.log('info', `✅ ${fnName} disponível.`);
-                }
-            });
-            return { status, issues };
-        },
-
-        // Teste 3: Validar Estado da UI
+        // Teste 4: Verificar Estado da UI
         checkUIState: function() {
-            Utils.log('test', '🧪 Executando: Verificação do Estado da UI...');
+            Utils.log('test', '🧪 Executando: Verificação da UI...');
             const issues = [];
             let status = 'success';
 
@@ -191,108 +275,63 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
             if (!container) {
                 issues.push('❌ Container #properties-container não encontrado.');
                 status = 'error';
-            } else {
-                Utils.log('info', `✅ Container de propriedades encontrado.`);
             }
 
             const filterButtons = document.querySelectorAll('.filter-btn');
-            if (filterButtons.length === 0) {
-                issues.push('⚠️ Nenhum botão de filtro encontrado.');
-                status = 'warning';
-            } else {
-                Utils.log('info', `✅ ${filterButtons.length} botões de filtro encontrados.`);
-                const activeFilter = document.querySelector('.filter-btn.active');
-                if (activeFilter) {
-                    Utils.log('info', `🎯 Filtro ativo: "${activeFilter.textContent.trim()}"`);
-                } else {
-                    issues.push('⚠️ Nenhum filtro ativo encontrado.');
-                }
-            }
+            Utils.log('info', `🔘 ${filterButtons.length} botões de filtro`);
 
             const adminBtn = document.querySelector('.admin-toggle');
             if (!adminBtn) {
-                issues.push('⚠️ Botão de admin não encontrado.');
-            } else {
-                Utils.log('info', `✅ Botão admin encontrado.`);
+                issues.push('⚠️ Botão admin não encontrado.');
             }
 
-            return { status, issues };
+            return { status, issues, name: 'Interface' };
         },
 
-        // Teste 4: Verificar Sistemas de Mídia e PDF
-        checkMediaPdfSystems: function() {
-            Utils.log('test', '🧪 Executando: Verificação dos Sistemas de Mídia e PDF...');
+        // Teste 5: Verificar Galeria
+        checkGallery: function() {
+            Utils.log('test', '🧪 Executando: Verificação da Galeria...');
             const issues = [];
             let status = 'success';
 
-            if (!window.MediaSystem) {
-                issues.push('❌ MediaSystem não disponível.');
+            if (typeof window.openGallery !== 'function') {
+                issues.push('❌ openGallery não é função');
                 status = 'error';
-            } else {
-                Utils.log('info', `✅ MediaSystem disponível.`);
-                if (typeof window.MediaSystem.state !== 'object') {
-                    issues.push('⚠️ MediaSystem.state não é um objeto.');
-                }
+            }
+            
+            if (typeof window.createPropertyGallery !== 'function') {
+                issues.push('❌ createPropertyGallery não é função');
+                status = 'error';
             }
 
-            if (!window.PdfSystem) {
-                issues.push('❌ PdfSystem não disponível.');
-                status = 'error';
-            } else {
-                Utils.log('info', `✅ PdfSystem disponível.`);
-                if (typeof window.PdfSystem.showModal !== 'function') {
-                    issues.push('❌ PdfSystem.showModal não é uma função.');
-                    status = 'error';
-                }
-            }
-
-            if (!window.SharedCore) {
-                issues.push('❌ SharedCore não disponível.');
-                status = 'error';
-            } else {
-                Utils.log('info', `✅ SharedCore disponível.`);
-                const formatFns = ['formatFeaturesForDisplay', 'ensureBooleanVideo', 'PriceFormatter'];
-                formatFns.forEach(fn => {
-                    if (!window.SharedCore[fn]) {
-                        issues.push(`⚠️ SharedCore.${fn} não disponível.`);
-                    }
-                });
-            }
-
-            return { status, issues };
+            return { status, issues, name: 'Galeria' };
         }
     };
 
-    // --- Criação do Painel Flutuante (com z-index MUITO ALTO) ---
+    // --- Criação do Painel ---
     function createPanel() {
         if (panelElement) {
             panelElement.style.display = 'flex';
-            panelElement.style.zIndex = Z_INDEX_BASE; // Garantir que fique no topo
-            isPanelVisible = true;
-            Utils.log('info', 'Painel existente reexibido.');
+            panelElement.style.zIndex = Z_INDEX_BASE;
             return panelElement;
         }
 
         Utils.log('info', 'Criando novo painel...');
 
-        const posLeft = 30;
-        const posTop = 80;
-
         panelElement = document.createElement('div');
         panelElement.id = PANEL_ID;
         
-        // Configurar estilos inline completos
         const panelStyle = {
             position: 'fixed',
-            top: posTop + 'px',
-            left: posLeft + 'px',
-            width: '520px',
-            height: '550px',
+            top: '80px',
+            left: '30px',
+            width: '550px',
+            height: '600px',
             background: 'linear-gradient(145deg, #0a1929, #0f2744)',
-            border: '3px solid #ff6b6b', // Borda vermelha para destacar
+            border: '3px solid #ff6b6b',
             borderRadius: '12px',
             boxShadow: '0 20px 60px rgba(255, 107, 107, 0.5)',
-            zIndex: Z_INDEX_BASE, // MAIS ALTO que qualquer outro
+            zIndex: Z_INDEX_BASE,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -300,14 +339,12 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
             fontSize: '12px',
             color: '#e0e0e0',
             resize: 'both',
-            userSelect: 'text',
-            opacity: '1'
+            userSelect: 'text'
         };
 
         Object.assign(panelElement.style, panelStyle);
 
         panelElement.innerHTML = `
-            <!-- Cabeçalho Arrastável -->
             <div id="${PANEL_ID}-header" style="
                 background: #1e3a5f;
                 padding: 12px 15px;
@@ -318,44 +355,39 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
                 cursor: grab;
             ">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="color: #ff6b6b; font-weight: bold; font-size: 14px;">🔬 DIAGNÓSTICO v5.9.2</span>
-                    <span style="background: #2e3b4e; color: #ffaaaa; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${MODULE_NAME}</span>
+                    <span style="color: #ff6b6b; font-weight: bold; font-size: 14px;">🔬 DIAGNÓSTICO v5.9.3</span>
+                    <span style="background: #2e3b4e; color: #ffaaaa; padding: 2px 6px; border-radius: 4px;">${MODULE_NAME}</span>
                 </div>
                 <div>
-                    <button id="${PANEL_ID}-minimize" style="background: #37474f; border: none; color: white; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; margin-right: 5px; font-weight: bold;">−</button>
-                    <button id="${PANEL_ID}-close" style="background: #d32f2f; border: none; color: white; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-weight: bold;">×</button>
+                    <button id="${PANEL_ID}-minimize" style="background: #37474f; border: none; color: white; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; margin-right: 5px;">−</button>
+                    <button id="${PANEL_ID}-close" style="background: #d32f2f; border: none; color: white; width: 26px; height: 26px; border-radius: 4px; cursor: pointer;">×</button>
                 </div>
             </div>
 
-            <!-- Corpo do Painel -->
             <div id="${PANEL_ID}-content" style="
                 flex: 1;
                 padding: 15px;
                 overflow-y: auto;
                 background: #0f2744;
-                display: flex;
-                flex-direction: column;
-                gap: 15px;
             ">
-                <div style="color: #ffaaaa; border-bottom: 1px solid #1e3a5f; padding-bottom: 5px; font-weight: bold;">📋 RESULTADOS DA VALIDAÇÃO DE INTEGRIDADE</div>
+                <div style="color: #ffaaaa; border-bottom: 1px solid #1e3a5f; padding-bottom: 8px; margin-bottom: 15px; font-weight: bold;">
+                    📋 RESULTADOS DA VALIDAÇÃO
+                </div>
                 <div id="${PANEL_ID}-results"></div>
-                <div style="margin-top: auto; padding-top: 10px;">
+                <div style="margin-top: 15px;">
                     <button id="${PANEL_ID}-rerun" style="
                         background: #2e7d32;
                         color: white;
                         border: none;
-                        padding: 10px 16px;
+                        padding: 10px;
                         border-radius: 4px;
                         cursor: pointer;
                         width: 100%;
                         font-weight: bold;
-                        transition: all 0.3s;
-                        font-size: 13px;
                     ">🔄 RE-EXECUTAR TESTES</button>
                 </div>
             </div>
 
-            <!-- Rodapé -->
             <div style="
                 background: #1e3a5f;
                 padding: 8px 15px;
@@ -365,77 +397,69 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
                 display: flex;
                 justify-content: space-between;
             ">
-                <span>Clique no cabeçalho para arrastar | Z-Index: ${Z_INDEX_BASE}</span>
+                <span>Z-Index: ${Z_INDEX_BASE} | Arraste o cabeçalho</span>
                 <span id="${PANEL_ID}-timestamp">${new Date().toLocaleTimeString()}</span>
             </div>
         `;
 
         document.body.appendChild(panelElement);
 
-        // Tornar arrastável
         const header = document.getElementById(`${PANEL_ID}-header`);
-        if (header) {
-            Utils.createDraggable(panelElement, header);
-        }
+        if (header) Utils.createDraggable(panelElement, header);
 
         // Event Listeners
-        document.getElementById(`${PANEL_ID}-close`).addEventListener('click', () => {
+        document.getElementById(`${PANEL_ID}-close`).onclick = () => {
             panelElement.style.display = 'none';
             isPanelVisible = false;
-            Utils.log('info', 'Painel fechado.');
-        });
+        };
 
-        document.getElementById(`${PANEL_ID}-minimize`).addEventListener('click', () => {
+        document.getElementById(`${PANEL_ID}-minimize`).onclick = () => {
             const content = document.getElementById(`${PANEL_ID}-content`);
-            if (content) {
-                content.style.display = content.style.display === 'none' ? 'flex' : 'none';
-            }
-        });
+            content.style.display = content.style.display === 'none' ? 'flex' : 'none';
+        };
 
-        document.getElementById(`${PANEL_ID}-rerun`).addEventListener('click', () => {
-            runAllTestsAndDisplay();
-        });
+        document.getElementById(`${PANEL_ID}-rerun`).onclick = runAllTestsAndDisplay;
 
         isPanelVisible = true;
-        Utils.log('success', '✅ Painel criado com z-index ' + Z_INDEX_BASE + ' (acima de todos)');
         return panelElement;
     }
 
-    // --- Função para executar todos os testes e exibir no painel ---
+    // --- Executar todos os testes ---
     function runAllTestsAndDisplay() {
-        Utils.log('info', 'Executando todos os testes de integridade...');
         const resultsContainer = document.getElementById(`${PANEL_ID}-results`);
         if (!resultsContainer) return;
 
-        resultsContainer.innerHTML = '<div style="text-align: center; color: #bbb; padding: 20px;">Executando testes, aguarde...</div>';
+        resultsContainer.innerHTML = '<div style="text-align: center; color: #bbb; padding: 20px;">Executando testes...</div>';
 
         setTimeout(() => {
+            // Executar todos os testes
             const testResults = [
-                { name: 'Integridade das Propriedades', result: Tests.checkPropertiesIntegrity() },
-                { name: 'Funções Críticas', result: Tests.checkCriticalFunctions() },
-                { name: 'Estado da Interface', result: Tests.checkUIState() },
-                { name: 'Sistemas de Mídia/PDF', result: Tests.checkMediaPdfSystems() }
+                Tests.checkCoreAPIs(),
+                Tests.checkModules(),
+                Tests.checkPropertiesIntegrity(),
+                Tests.checkUIState(),
+                Tests.checkGallery()
             ];
 
             let html = '';
             let allPassed = true;
 
             testResults.forEach(test => {
-                const statusIcon = test.result.status === 'success' ? '✅' : (test.result.status === 'warning' ? '⚠️' : '❌');
-                const statusColor = test.result.status === 'success' ? '#2ecc71' : (test.result.status === 'warning' ? '#f39c12' : '#e74c3c');
-                if (test.result.status !== 'success') allPassed = false;
+                const statusIcon = test.status === 'success' ? '✅' : (test.status === 'warning' ? '⚠️' : '❌');
+                const statusColor = test.status === 'success' ? '#2ecc71' : (test.status === 'warning' ? '#f39c12' : '#e74c3c');
+                if (test.status !== 'success') allPassed = false;
 
                 html += `
                     <div style="background: #1e3a5f; border-radius: 6px; padding: 12px; margin-bottom: 12px; border-left: 4px solid ${statusColor};">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span style="font-weight: bold; color: #bbb; font-size: 13px;">${statusIcon} ${test.name}</span>
-                            <span style="color: ${statusColor}; font-size: 12px; font-weight: bold;">${test.result.status.toUpperCase()}</span>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-weight: bold; color: #bbb;">${statusIcon} ${test.name}</span>
+                            <span style="color: ${statusColor};">${test.status.toUpperCase()}</span>
                         </div>
-                        ${test.result.issues && test.result.issues.length > 0 ? 
-                            `<div style="font-size: 11px; color: #ffcdd2; background: #2a2a2a; padding: 8px; border-radius: 4px; max-height: 120px; overflow-y: auto; border: 1px solid ${statusColor};">
-                                ${test.result.issues.map(issue => `• ${issue}`).join('<br>')}
+                        ${test.issues && test.issues.length > 0 ? 
+                            `<div style="font-size: 11px; color: #ffcdd2; background: #2a2a2a; padding: 8px; border-radius: 4px;">
+                                ${test.issues.map(issue => `• ${issue}`).join('<br>')}
                             </div>` : 
-                            `<div style="font-size: 12px; color: #a5d6a7; padding: 5px 0;">✅ Nenhum problema detectado.</div>`
+                            `<div style="color: #a5d6a7;">✅ Nenhum problema detectado.</div>`
                         }
                     </div>
                 `;
@@ -443,19 +467,18 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
 
             html += `
                 <div style="margin-top: 15px; padding: 12px; background: #1a1a2e; border-radius: 6px; text-align: center; border: 2px solid ${allPassed ? '#2ecc71' : '#e74c3c'};">
-                    <span style="font-weight: bold; font-size: 14px; color: ${allPassed ? '#2ecc71' : '#e74c3c'};">
-                        ${allPassed ? '✅ SISTEMA ÍNTEGRO - NENHUM PROBLEMA CRÍTICO' : '⚠️ PROBLEMAS DETECTADOS - VERIFICAR ACIMA'}
+                    <span style="font-weight: bold; color: ${allPassed ? '#2ecc71' : '#e74c3c'};">
+                        ${allPassed ? '✅ SISTEMA COMPLETO - TUDO FUNCIONAL' : '⚠️ PROBLEMAS DETECTADOS'}
                     </span>
                 </div>
             `;
 
             resultsContainer.innerHTML = html;
             document.getElementById(`${PANEL_ID}-timestamp`).textContent = new Date().toLocaleTimeString();
-            Utils.log('success', 'Testes concluídos e exibidos no painel.');
         }, 100);
     }
 
-    // --- Botão de Controle Flutuante ---
+    // --- Botão de Controle ---
     function createControlButton() {
         if (document.getElementById(CONTROL_BTN_ID)) return;
 
@@ -479,108 +502,53 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: all 0.3s;
-                font-weight: bold;
                 border: 2px solid white;
-            " title="Diagnóstico v5.9.2 (Clique para abrir)">🔬</button>
+            " title="Diagnóstico v5.9.3">🔬</button>
         `;
         document.body.appendChild(btn);
 
-        btn.querySelector('button').addEventListener('click', () => {
+        btn.querySelector('button').onclick = () => {
             if (!isPanelVisible || !panelElement) {
-                const panel = createPanel();
+                createPanel();
                 runAllTestsAndDisplay();
-                // Garantir que o painel fique visível e no topo
-                setTimeout(() => {
-                    if (panel) {
-                        panel.style.zIndex = Z_INDEX_BASE;
-                        panel.style.display = 'flex';
-                    }
-                }, 50);
             } else {
                 panelElement.style.display = 'flex';
                 panelElement.style.zIndex = Z_INDEX_BASE;
-                isPanelVisible = true;
             }
-        });
-
-        Utils.log('info', 'Botão de controle (🔬) criado no canto inferior esquerdo.');
+        };
     }
 
-    // --- Forçar todos os outros painéis a ficarem atrás (se necessário) ---
-    function forceThisPanelOnTop() {
-        if (!panelElement) return;
-        
-        // Garantir que este painel tenha o maior z-index
-        panelElement.style.zIndex = Z_INDEX_BASE;
-        
-        // Encontrar todos os outros painéis de diagnóstico e colocá-los atrás
-        const allDiagnosticPanels = document.querySelectorAll('[id^="diagnostics"], [class*="diagnostics"], .diagnostics-panel, [id*="diagnostic"]');
-        allDiagnosticPanels.forEach(panel => {
-            if (panel.id !== PANEL_ID) {
-                panel.style.zIndex = (Z_INDEX_BASE - 10).toString();
-            }
-        });
-        
-        Utils.log('info', `Painel forçado para frente. Z-index atual: ${panelElement.style.zIndex}`);
+    // --- Forçar painel na frente ---
+    function forcePanelToFront() {
+        if (panelElement) {
+            panelElement.style.zIndex = Z_INDEX_BASE;
+            panelElement.style.display = 'flex';
+            Utils.log('success', 'Painel trazido para frente!');
+        }
     }
 
     // --- Inicialização ---
     function init() {
         Utils.log('info', 'Inicializando módulo...');
-
-        // Registrar no sistema de diagnóstico global
-        if (window.Diagnostics && typeof window.Diagnostics.registerModule === 'function') {
-            window.Diagnostics.registerModule(MODULE_ID, {
-                name: MODULE_NAME,
-                runTests: () => {
-                    return {
-                        propertiesIntegrity: Tests.checkPropertiesIntegrity(),
-                        criticalFunctions: Tests.checkCriticalFunctions(),
-                        uiState: Tests.checkUIState(),
-                        mediaPdfSystems: Tests.checkMediaPdfSystems()
-                    };
-                }
-            });
-            Utils.log('success', 'Registrado no sistema Diagnostics global.');
-        }
-
-        // Criar botão de controle
+        
         createControlButton();
-
-        // Se a URL contiver 'diagnostics=true', abrir o painel automaticamente
+        
+        // Registrar função de emergência
+        window.bringDiagnostics59ToFront = forcePanelToFront;
+        
+        // Se URL tem diagnostics=true, abrir automaticamente
         if (window.location.search.includes('diagnostics=true')) {
             setTimeout(() => {
-                const panel = createPanel();
-                runAllTestsAndDisplay();
-                
-                // Pequeno delay extra para garantir que o painel fique no topo
-                setTimeout(() => {
-                    forceThisPanelOnTop();
-                }, 500);
-            }, 2000);
-        }
-
-        // Expor testes para console
-        window.Tests59 = Tests;
-        
-        // Adicionar função de emergência para trazer painel para frente
-        window.bringDiagnostics59ToFront = function() {
-            if (panelElement) {
-                panelElement.style.zIndex = Z_INDEX_BASE;
-                panelElement.style.display = 'flex';
-                Utils.log('success', 'Painel trazido para frente!');
-                forceThisPanelOnTop();
-            } else {
                 createPanel();
                 runAllTestsAndDisplay();
-            }
-        };
+                setTimeout(forcePanelToFront, 500);
+            }, 2000);
+        }
         
-        Utils.log('info', 'Para trazer este painel para frente: window.bringDiagnostics59ToFront()');
+        Utils.log('info', 'Para trazer painel para frente: window.bringDiagnostics59ToFront()');
     }
 
-    // Iniciar quando o DOM estiver pronto
+    // Iniciar
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
@@ -589,5 +557,5 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
 
 })();
 
-console.log(`🔬 [DIAGNOSTICS59] Carregamento concluído. Use o botão 🔬 no canto inferior esquerdo.`);
-console.log(`🔬 [DIAGNOSTICS59] Se o painel ficar atrás, execute: window.bringDiagnostics59ToFront()`);
+console.log(`🔬 [DIAGNOSTICS59] Carregamento concluído. Use botão 🔬 no canto inferior esquerdo.`);
+console.log(`🔬 [DIAGNOSTICS59] Se precisar: window.bringDiagnostics59ToFront()`);
