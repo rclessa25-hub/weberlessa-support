@@ -2,11 +2,11 @@
 // debug/diagnostics/diagnostics54.js - ESTRUTURA MODULAR E ORGANIZADA
 // ============================================================
 // Sistema organizado em painéis temáticos com limites de testes
-// Versão: 5.4.1 - Z-Index Elevado para Sobrepujar Painéis Anteriores
+// Versão: 5.4.2 - Z-Index de Janelas Ajustado para Ficar à Frente
 // ============================================================
 
 /* ================== CONFIGURAÇÕES GLOBAIS ================== */
-console.log('🚀 diagnostics54.js v5.4.1 - Sistema modular organizado (Z-Index Elevado)');
+console.log('🚀 diagnostics54.js v5.4.2 - Sistema modular organizado (Z-Index de Janelas Ajustado)');
 
 // ================== CONSTANTES E FLAGS ==================
 const DIAG_CONFIG = {
@@ -14,7 +14,7 @@ const DIAG_CONFIG = {
     MAX_PANELS_PER_FILE: 4,
     CURRENT_PANEL_COUNT: 0,
     PANEL_CAPACITY_WARNING: 80, // % de ocupação para alerta
-    VERSION: '5.4.1',
+    VERSION: '5.4.2',
     BASE_URL: 'https://rclessa25-hub.github.io/imoveis-maceio/',
     DEBUG_PARAMS: ['debug', 'diagnostics', 'mobiletest', 'refcheck', 'pdfdebug']
 };
@@ -93,9 +93,6 @@ const PdfDiagnosticsPanel = {
         
         // Função 4: Verificação de compatibilidade PDF
         this.addTest('runPdfCompatibilityCheck', window.runPdfCompatibilityCheck, 'Verificação de compatibilidade PDF');
-        
-        // Adicionar mais testes conforme necessário (até 25)
-        // ... outros testes específicos de PDF
         
         console.log(`✅ Painel PDF: ${this.getTestCount()} testes registrados`);
     },
@@ -193,12 +190,9 @@ const MigrationCompatibilityPanel = {
         // Função 4: Validação automática de migração
         this.addTest('autoValidateMigration', window.autoValidateMigration, 'Validação automática de migração');
         
-        // ... outros testes de migração (até 25)
-        
         console.log(`✅ Painel Migração: ${this.getTestCount()} testes registrados`);
     },
     
-    // ... métodos similares ao painel anterior
     addTest: function(name, func, description) {
         if (this.getTestCount() >= this.maxTests) {
             console.error(`❌ Limite de ${this.maxTests} testes atingido para o painel Migração`);
@@ -251,8 +245,6 @@ const ReferencesAnalysisPanel = {
         // Função 2: Análise profunda de referências
         this.addTest('runDeepReferenceAnalysis', window.runDeepReferenceAnalysis || function() { return 'Função não disponível'; }, 'Análise profunda de referências');
         
-        // ... outros testes de referências (até 25)
-        
         console.log(`✅ Painel Referências: ${this.getTestCount()} testes registrados`);
     },
     
@@ -300,8 +292,6 @@ const SystemPerformancePanel = {
         // Função 2: Diagnóstico mobile PDF
         this.addTest('diagnosePdfModalMobile', window.diagnosePdfModalMobile, 'Diagnóstico mobile do modal PDF');
         
-        // ... outros testes de sistema (até 25)
-        
         console.log(`✅ Painel Sistema: ${this.getTestCount()} testes registrados`);
     },
     
@@ -333,7 +323,7 @@ const WindowManager = {
             id: windowId,
             panelGroup,
             minimized: false,
-            position: { x: 100 + (this.windows.length * 30), y: 100 + (this.windows.length * 30) }, // Posição em cascata
+            position: { x: 100 + (this.windows.length * 30), y: 100 + (this.windows.length * 30) },
             size: { width: 800, height: 600 }
         };
         
@@ -344,7 +334,14 @@ const WindowManager = {
     },
     
     renderWindow: function(windowConfig) {
-        // Cria uma nova janela/iframe ou div flutuante
+        // --- CALCULAR Z-INDEX PARA JANELAS ---
+        // Usar o mesmo princípio: base + número da versão + offset para janelas
+        const versionNumber = parseInt(DIAG_CONFIG.VERSION.replace(/\./g, ''));
+        const baseZIndex = 1000000; // Base maior que o painel principal
+        const windowZIndex = baseZIndex + versionNumber + this.windows.length; // + índice para sobreposição entre janelas
+        
+        console.log(`📐 diagnostics54.js: Criando janela com z-index: ${windowZIndex}`);
+        
         const windowElement = document.createElement('div');
         windowElement.id = windowConfig.id;
         windowElement.className = 'diagnostics-window';
@@ -355,17 +352,17 @@ const WindowManager = {
             width: ${windowConfig.size.width}px;
             height: ${windowConfig.size.height}px;
             background: #0a0a0a;
-            border: 2px solid #00ff9c;
+            border: 2px solid #00aaff;
             border-radius: 8px;
-            z-index: 999999;
-            box-shadow: 0 0 30px rgba(0, 255, 156, 0.3);
+            z-index: ${windowZIndex};
+            box-shadow: 0 0 30px rgba(0, 170, 255, 0.3);
             overflow: hidden;
             display: ${windowConfig.minimized ? 'none' : 'block'};
         `;
         
         windowElement.innerHTML = `
             <div style="background: #111; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-weight: bold; color: #00ff9c;">📊 ${windowConfig.panelGroup}</div>
+                <div style="font-weight: bold; color: #00aaff;">📊 ${windowConfig.panelGroup}</div>
                 <div>
                     <button onclick="WindowManager.minimizeWindow('${windowConfig.id}')" style="background: #555; color: white; border: none; padding: 2px 8px; margin: 0 2px; cursor: pointer;">_</button>
                     <button onclick="WindowManager.closeWindow('${windowConfig.id}')" style="background: #f55; color: white; border: none; padding: 2px 8px; margin: 0 2px; cursor: pointer;">×</button>
@@ -407,7 +404,6 @@ const WindowManager = {
     },
     
     loadWindowContent: function(windowId, panelGroup) {
-        // Carrega conteúdo específico baseado no grupo de painéis
         const contentDiv = document.getElementById(`${windowId}-content`);
         if (!contentDiv) return;
         
@@ -521,18 +517,14 @@ const WindowManager = {
 
 // ================== INTERFACE DE CONTROLE PRINCIPAL ==================
 function createMainControlPanel() {
-    // --- LÓGICA DE POSICIONAMENTO INTELIGENTE ---
-    // Verifica se há outros painéis de diagnóstico na tela para evitar sobreposição.
+    // Verifica se há outros painéis de diagnóstico na tela
     const existingPanels = document.querySelectorAll('[id^="diagnostics-control-panel"]').length;
-    // Desloca este painel para a direita baseado no número de painéis existentes.
     const baseLeft = 10 + (existingPanels * 320);
     
-    // --- CALCULAR Z-INDEX BASEADO NA VERSÃO ---
-    // Versões mais recentes (números maiores) ficam com z-index mais alto
-    // Extrair número da versão (5.4.1 -> 541)
+    // Calcular z-index baseado na versão
     const versionNumber = parseInt(DIAG_CONFIG.VERSION.replace(/\./g, ''));
     const baseZIndex = 999990;
-    const calculatedZIndex = baseZIndex + versionNumber; // 999990 + 541 = 1000531
+    const calculatedZIndex = baseZIndex + versionNumber;
     
     console.log(`📐 diagnostics54.js: Posicionando painel em left: ${baseLeft}px, z-index: ${calculatedZIndex}`);
     
@@ -543,10 +535,10 @@ function createMainControlPanel() {
         top: 10px;
         left: ${baseLeft}px;
         background: #0a0a0a;
-        border: 2px solid #00aaff; /* Cor diferente para fácil identificação */
+        border: 2px solid #00aaff;
         border-radius: 8px;
         padding: 15px;
-        z-index: ${calculatedZIndex}; /* Z-INDEX MAIS ALTO QUE VERSÕES ANTERIORES */
+        z-index: ${calculatedZIndex};
         min-width: 300px;
         box-shadow: 0 0 20px rgba(0, 170, 255, 0.3);
     `;
@@ -637,7 +629,6 @@ function exportSystemReport() {
         recommendations: []
     };
     
-    // Adicionar recomendações baseadas na capacidade
     if (report.capacity.percentage >= DIAG_CONFIG.PANEL_CAPACITY_WARNING) {
         report.recommendations.push({
             type: 'capacity',
@@ -646,7 +637,6 @@ function exportSystemReport() {
         });
     }
     
-    // Exportar como JSON
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -694,17 +684,14 @@ function showCapacityReport() {
 function initializeDiagnosticsSystem() {
     console.log(`🚀 INICIALIZANDO SISTEMA DE DIAGNÓSTICOS v${DIAG_CONFIG.VERSION}`);
     
-    // Inicializar todos os painéis
     PdfDiagnosticsPanel.initialize();
     MigrationCompatibilityPanel.initialize();
     ReferencesAnalysisPanel.initialize();
     SystemPerformancePanel.initialize();
     
-    // Criar painel de controle principal com posicionamento inteligente
     createMainControlPanel();
     
-    // Adicionar comandos ao console
-    window.diag = window.diag || {}; // Não sobrescrever comandos de outras versões
+    window.diag = window.diag || {};
     window.diag.v54 = {
         panels: {
             pdf: PdfDiagnosticsPanel,
@@ -719,20 +706,18 @@ function initializeDiagnosticsSystem() {
         createNewWindow: (type) => WindowManager.createNewWindow(type)
     };
     
-    // Verificar e mostrar alerta de capacidade
     const totalCapacity = (DIAG_CONFIG.CURRENT_PANEL_COUNT / DIAG_CONFIG.MAX_PANELS_PER_FILE) * 100;
     if (totalCapacity >= DIAG_CONFIG.PANEL_CAPACITY_WARNING) {
         console.warn(`⚠️ SISTEMA DE DIAGNÓSTICOS v${DIAG_CONFIG.VERSION} ESTÁ ${Math.round(totalCapacity)}% OCUPADO`);
         console.warn('📝 Considere criar novos arquivos para grupos adicionais de testes');
         
-        // Criar botão para novo arquivo (se não existir outro igual)
         if (!document.getElementById('new-file-btn-v54')) {
             const newFileBtn = document.createElement('button');
             newFileBtn.id = 'new-file-btn-v54';
             newFileBtn.innerHTML = '📁 CRIAR DIAGNOSTICS-2.JS';
             newFileBtn.style.cssText = `
                 position: fixed;
-                bottom: 80px; /* Deslocado para não conflitar */
+                bottom: 80px;
                 right: 20px;
                 background: linear-gradient(45deg, #ff5500, #ffaa00);
                 color: #000;
@@ -759,7 +744,6 @@ function initializeDiagnosticsSystem() {
 
 // ================== EXECUÇÃO AUTOMÁTICA ==================
 if (location.search.includes('debug=true') && location.search.includes('diagnostics=true')) {
-    // Aguarda um momento para garantir que o DOM esteja pronto
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(initializeDiagnosticsSystem, 2000);
@@ -783,4 +767,4 @@ window.DiagnosticsSystemV54 = {
     manager: PanelManager,
     windows: WindowManager
 };
-console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Painel Posicionado)`);
+console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Janelas com Z-Index Ajustado)`);
