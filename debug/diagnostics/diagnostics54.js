@@ -2,11 +2,11 @@
 // debug/diagnostics/diagnostics54.js - ESTRUTURA MODULAR E ORGANIZADA
 // ============================================================
 // Sistema organizado em painéis temáticos com limites de testes
-// Versão: 5.4.3 - Correção do Escopo dos Botões de Teste
+// Versão: 5.4.4 - Correção do Painel de Referências com Funções Embutidas
 // ============================================================
 
 /* ================== CONFIGURAÇÕES GLOBAIS ================== */
-console.log('🚀 diagnostics54.js v5.4.3 - Sistema modular organizado (Botões de Teste Corrigidos)');
+console.log('🚀 diagnostics54.js v5.4.4 - Sistema modular organizado (Painel de Referências Corrigido)');
 
 // ================== CONSTANTES E FLAGS ==================
 const DIAG_CONFIG = {
@@ -14,7 +14,7 @@ const DIAG_CONFIG = {
     MAX_PANELS_PER_FILE: 4,
     CURRENT_PANEL_COUNT: 0,
     PANEL_CAPACITY_WARNING: 80, // % de ocupação para alerta
-    VERSION: '5.4.3',
+    VERSION: '5.4.4',
     BASE_URL: 'https://rclessa25-hub.github.io/imoveis-maceio/',
     DEBUG_PARAMS: ['debug', 'diagnostics', 'mobiletest', 'refcheck', 'pdfdebug']
 };
@@ -275,7 +275,7 @@ const MigrationCompatibilityPanel = {
     }
 };
 
-/* ================== PAINEL C: REFERÊNCIAS E 404s ================== */
+/* ================== PAINEL C: REFERÊNCIAS E 404s (CORRIGIDO) ================== */
 const ReferencesAnalysisPanel = {
     name: 'References & 404 Analysis',
     description: 'Análise de referências e prevenção de 404s',
@@ -284,30 +284,111 @@ const ReferencesAnalysisPanel = {
     initialize: function() {
         console.log('🔗 Inicializando Painel de Análise de Referências');
         
-        const panel = PanelManager.registerPanel(this.name, {
-            description: this.description,
-            testCount: 0,
-            functions: []
-        });
+        // Registrar painel ANTES de adicionar funções
+        if (!PanelManager.panels[this.name]) {
+            PanelManager.registerPanel(this.name, {
+                description: this.description,
+                testCount: 0,
+                functions: []
+            });
+        }
         
         this.registerFunctions();
-        return panel;
+        return PanelManager.panels[this.name];
     },
     
     registerFunctions: function() {
+        console.log('🔧 Registrando funções do painel de Referências...');
+        
+        // Garantir que o array de funções existe
+        if (!PanelManager.panels[this.name]) {
+            PanelManager.panels[this.name] = { functions: [], testCount: 0 };
+        }
+        
+        // Limpar funções existentes para evitar duplicação
+        PanelManager.panels[this.name].functions = [];
+        PanelManager.panels[this.name].testCount = 0;
+        
         // Função 1: Análise de referências quebradas
-        this.addTest('analyzeBrokenReferences', window.analyzeBrokenReferences || function() {
-            console.log('⚠️ analyzeBrokenReferences não disponível');
-            return 'Função não implementada';
-        }, 'Análise de referências quebradas');
+        const func1 = function() {
+            console.log('🔍 Executando análise de referências quebradas...');
+            
+            if (window.analyzeBrokenReferences && typeof window.analyzeBrokenReferences === 'function') {
+                return window.analyzeBrokenReferences();
+            }
+            
+            // Fallback se a função não existir globalmente
+            console.warn('⚠️ analyzeBrokenReferences não disponível globalmente');
+            console.log('📊 Executando análise básica de referências...');
+            
+            const results = {
+                totalScripts: document.scripts.length,
+                totalLinks: document.links.length,
+                brokenLinks: [],
+                timestamp: new Date().toISOString()
+            };
+            
+            // Verificação básica de links
+            Array.from(document.links).forEach(link => {
+                const href = link.href;
+                if (href && href.startsWith('http')) {
+                    // Marcar para verificação futura
+                    console.log(`🔗 Link encontrado: ${href.substring(0, 50)}...`);
+                }
+            });
+            
+            return results;
+        };
+        
+        this.addTest(
+            'analyzeBrokenReferences', 
+            func1,
+            'Análise de referências quebradas'
+        );
         
         // Função 2: Análise profunda de referências
-        this.addTest('runDeepReferenceAnalysis', window.runDeepReferenceAnalysis || function() {
-            console.log('⚠️ runDeepReferenceAnalysis não disponível');
-            return 'Função não implementada';
-        }, 'Análise profunda de referências');
+        const func2 = function() {
+            console.log('🔍 Executando análise profunda de referências...');
+            
+            if (window.runDeepReferenceAnalysis && typeof window.runDeepReferenceAnalysis === 'function') {
+                return window.runDeepReferenceAnalysis();
+            }
+            
+            // Fallback
+            console.warn('⚠️ runDeepReferenceAnalysis não disponível globalmente');
+            
+            const deepResults = {
+                scripts: Array.from(document.scripts).map(s => ({
+                    src: s.src.split('/').pop() || 'inline',
+                    type: s.type || 'text/javascript'
+                })),
+                styles: Array.from(document.styleSheets).map(ss => {
+                    try {
+                        return { href: ss.href?.split('/').pop() || 'inline', rules: ss.cssRules?.length || 0 };
+                    } catch (e) {
+                        return { href: 'cross-origin', error: 'Acesso negado' };
+                    }
+                }),
+                images: Array.from(document.images).map(img => ({
+                    src: img.src.split('/').pop() || 'sem src',
+                    complete: img.complete,
+                    naturalDimensions: img.naturalWidth > 0
+                })),
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('📊 Análise profunda concluída:', deepResults);
+            return deepResults;
+        };
+        
+        this.addTest(
+            'runDeepReferenceAnalysis', 
+            func2,
+            'Análise profunda de referências'
+        );
         
         console.log(`✅ Painel Referências: ${this.getTestCount()} testes registrados`);
+        console.log('📋 Funções registradas:', PanelManager.panels[this.name].functions.map(f => f.name));
     },
     
     addTest: function(name, func, description) {
@@ -315,11 +396,28 @@ const ReferencesAnalysisPanel = {
             console.error(`❌ Limite de ${this.maxTests} testes atingido para o painel Referências`);
             return false;
         }
+        
         if (!PanelManager.panels[this.name]) {
             PanelManager.panels[this.name] = { functions: [], testCount: 0 };
         }
-        PanelManager.panels[this.name].functions.push({ name, func, description, lastRun: null, successRate: 0 });
+        
+        // Garantir que a função seja armazenada corretamente
+        const testFunction = typeof func === 'function' ? func : function() { 
+            console.warn(`⚠️ Função ${name} não é uma função válida`);
+            return null;
+        };
+        
+        PanelManager.panels[this.name].functions.push({
+            name: name,
+            func: testFunction,
+            description: description,
+            lastRun: null,
+            successRate: 0
+        });
+        
         PanelManager.panels[this.name].testCount++;
+        console.log(`  ✅ Teste ${this.getTestCount()}: ${name} - ${description}`);
+        
         return true;
     },
     
@@ -328,8 +426,24 @@ const ReferencesAnalysisPanel = {
     },
     
     runAllTests: function() {
-        const tests = PanelManager.panels[this.name]?.functions || [];
-        console.group(`🔗 EXECUTANDO TODOS OS TESTES DE REFERÊNCIAS (${tests.length} testes)`);
+        console.log(`🔗 Acessando painel: ${this.name}`);
+        
+        // Garantir que estamos acessando o painel correto
+        const panel = PanelManager.panels[this.name];
+        
+        if (!panel) {
+            console.error(`❌ Painel ${this.name} não encontrado no PanelManager`);
+            return { passed: 0, failed: 0, error: 'Painel não encontrado' };
+        }
+        
+        const tests = panel.functions || [];
+        console.log(`🧪 EXECUTANDO TODOS OS TESTES DE REFERÊNCIAS (${tests.length} testes)`);
+        
+        if (tests.length === 0) {
+            console.warn('⚠️ Nenhum teste registrado no painel');
+            console.log('📋 Estado do painel:', panel);
+            return { passed: 0, failed: 0, warning: 'Nenhum teste' };
+        }
         
         const results = {
             passed: 0,
@@ -339,8 +453,15 @@ const ReferencesAnalysisPanel = {
         
         tests.forEach((test, index) => {
             try {
-                console.log(`🔍 Executando teste ${index + 1}: ${test.description}`);
-                const result = test.func ? test.func() : 'Função não disponível';
+                console.log(`\n🔍 Executando teste ${index + 1}: ${test.description}`);
+                console.log(`   Função: ${test.name}`);
+                
+                if (!test.func || typeof test.func !== 'function') {
+                    throw new Error(`Função ${test.name} não é válida`);
+                }
+                
+                const result = test.func();
+                
                 results.details.push({
                     test: test.name,
                     description: test.description,
@@ -349,11 +470,17 @@ const ReferencesAnalysisPanel = {
                     timestamp: new Date().toISOString()
                 });
                 results.passed++;
+                
+                console.log(`   ✅ Teste ${index + 1} concluído com sucesso`);
+                
             } catch (error) {
+                console.error(`   ❌ Erro no teste ${index + 1}:`, error.message);
+                
                 results.details.push({
                     test: test.name,
                     description: test.description,
                     error: error.message,
+                    stack: error.stack,
                     status: 'error',
                     timestamp: new Date().toISOString()
                 });
@@ -361,8 +488,18 @@ const ReferencesAnalysisPanel = {
             }
         });
         
-        console.groupEnd();
-        console.log(`📊 Resultados Referências: ${results.passed} passaram, ${results.failed} falharam`);
+        console.log('\n📊 RESULTADOS FINAIS - REFERÊNCIAS:');
+        console.log(`   ✅ Passaram: ${results.passed}`);
+        console.log(`   ❌ Falharam: ${results.failed}`);
+        console.log(`   📋 Total: ${tests.length}`);
+        
+        if (results.details.length > 0) {
+            console.log('📋 Detalhes:', results.details.map(d => ({
+                teste: d.test,
+                status: d.status,
+                descricao: d.description
+            })));
+        }
         
         return results;
     }
@@ -910,4 +1047,4 @@ window.DiagnosticsSystemV54 = {
     manager: PanelManager,
     windows: WindowManager
 };
-console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Botões de Teste Corrigidos)`);
+console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Painel de Referências Corrigido)`);
