@@ -1,19 +1,17 @@
 // ================== debug/diagnostics/diagnostics59.js ==================
-// DIAGNÓSTICO DO SISTEMA - MÓDULO DE VALIDAÇÃO DE INTEGRIDADE (v5.9.1)
-// CADEIA DE DIAGNÓSTICO: 53 (Base) -> 54 -> 55 -> 56 -> 57 -> 58 -> 59 (Atual) -> 60 -> 61
-// Finalidade: Validar a integridade dos dados, funções e estado do sistema Core.
-// Carregado via: https://rclessa25-hub.github.io/imoveis-maceio/?debug=true&diagnostics=true
-// Modificação: Garantida a coexistência pacífica com outros painéis da cadeia.
-console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
+// DIAGNÓSTICO DO SISTEMA - MÓDULO DE VALIDAÇÃO DE INTEGRIDADE (v5.9.2)
+// CORREÇÃO: z-index MAIS ALTO (100000) e erro de console corrigido
+console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.2)`);
 
 (function() {
     'use strict';
 
     // --- Configuração do Módulo ---
     const MODULE_ID = 'diagnostics59';
-    const MODULE_NAME = 'Validação de Integridade (v5.9.1)';
+    const MODULE_NAME = 'Validação de Integridade (v5.9.2)';
     const PANEL_ID = 'diagnostics59-panel';
     const CONTROL_BTN_ID = 'diag59-control-btn';
+    const Z_INDEX_BASE = 100000; // MAIS ALTO que qualquer outro painel (outros usam 9999 ou 10000)
     let isPanelVisible = false;
     let panelElement = null;
 
@@ -24,10 +22,10 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
     }
     window[`__${MODULE_ID}_LOADED`] = true;
 
-    // --- Utilitários Internos (Evitam poluir o escopo global) ---
+    // --- Utilitários Internos (CORRIGIDO: erro no console.log) ---
     const Utils = {
         log: function(level, ...args) {
-            const prefix = `%c[DIAGNOSTICS59]`;
+            const prefix = '[DIAGNOSTICS59]';
             const styles = {
                 info: 'color: #3498db; font-weight: bold;',
                 success: 'color: #2ecc71; font-weight: bold;',
@@ -35,39 +33,66 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
                 error: 'color: #e74c3c; font-weight: bold;',
                 test: 'color: #9b59b6; font-weight: bold;'
             };
-            console[level === 'test' ? 'log' : level](`${prefix}`, styles[level] || styles.info, ...args);
+            
+            // CORREÇÃO: Usar o método correto do console com os argumentos na ordem certa
+            if (level === 'test') {
+                console.log(`%c${prefix}`, styles[level] || styles.info, ...args);
+            } else {
+                const method = console[level] || console.log;
+                method(`%c${prefix}`, styles[level] || styles.info, ...args);
+            }
         },
         createDraggable: function(element, handle) {
             let isDragging = false;
             let offsetX, offsetY;
+            let startX, startY;
 
             handle.style.cursor = 'grab';
-            handle.addEventListener('mousedown', (e) => {
-                if (e.target.tagName === 'BUTTON') return;
+            
+            const onMouseDown = (e) => {
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+                
+                e.preventDefault();
+                
+                startX = e.clientX;
+                startY = e.clientY;
+                
+                const rect = element.getBoundingClientRect();
+                offsetX = startX - rect.left;
+                offsetY = startY - rect.top;
+                
                 isDragging = true;
-                offsetX = e.clientX - element.getBoundingClientRect().left;
-                offsetY = e.clientY - element.getBoundingClientRect().top;
                 handle.style.cursor = 'grabbing';
-
-                const onMouseMove = (e) => {
-                    if (!isDragging) return;
-                    const x = e.clientX - offsetX;
-                    const y = e.clientY - offsetY;
-                    element.style.left = `${Math.max(10, Math.min(x, window.innerWidth - element.offsetWidth - 10))}px`;
-                    element.style.top = `${Math.max(10, Math.min(y, window.innerHeight - element.offsetHeight - 10))}px`;
-                };
-
-                const onMouseUp = () => {
-                    isDragging = false;
-                    handle.style.cursor = 'grab';
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onMouseUp);
-                };
-
+                
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
+            };
+
+            const onMouseMove = (e) => {
+                if (!isDragging) return;
+                
                 e.preventDefault();
-            });
+                
+                const x = e.clientX - offsetX;
+                const y = e.clientY - offsetY;
+                
+                // Limitar dentro da tela com margem
+                const maxX = window.innerWidth - element.offsetWidth;
+                const maxY = window.innerHeight - element.offsetHeight;
+                
+                element.style.left = `${Math.max(5, Math.min(x, maxX - 5))}px`;
+                element.style.top = `${Math.max(5, Math.min(y, maxY - 5))}px`;
+            };
+
+            const onMouseUp = () => {
+                isDragging = false;
+                handle.style.cursor = 'grab';
+                
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            handle.addEventListener('mousedown', onMouseDown);
         }
     };
 
@@ -134,7 +159,7 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
             ];
 
             criticalFns.forEach(fnName => {
-                const fnPath = fnName.split('.'); // Para objetos aninhados como PdfSystem.showModal
+                const fnPath = fnName.split('.');
                 let exists = false;
                 try {
                     if (fnPath.length > 1) {
@@ -156,7 +181,7 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
             return { status, issues };
         },
 
-        // Teste 3: Validar Estado da UI (Filtros, Container de Propriedades)
+        // Teste 3: Validar Estado da UI
         checkUIState: function() {
             Utils.log('test', '🧪 Executando: Verificação do Estado da UI...');
             const issues = [];
@@ -194,13 +219,12 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
             return { status, issues };
         },
 
-         // Teste 4: Verificar Sistema de Mídia e PDF
+        // Teste 4: Verificar Sistemas de Mídia e PDF
         checkMediaPdfSystems: function() {
             Utils.log('test', '🧪 Executando: Verificação dos Sistemas de Mídia e PDF...');
             const issues = [];
             let status = 'success';
 
-            // MediaSystem
             if (!window.MediaSystem) {
                 issues.push('❌ MediaSystem não disponível.');
                 status = 'error';
@@ -211,7 +235,6 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
                 }
             }
 
-            // PdfSystem
             if (!window.PdfSystem) {
                 issues.push('❌ PdfSystem não disponível.');
                 status = 'error';
@@ -223,7 +246,6 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
                 }
             }
 
-            // SharedCore (funções de formatação)
             if (!window.SharedCore) {
                 issues.push('❌ SharedCore não disponível.');
                 status = 'error';
@@ -241,12 +263,11 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
         }
     };
 
-    // --- Criação do Painel Flutuante (com posicionamento único) ---
+    // --- Criação do Painel Flutuante (com z-index MUITO ALTO) ---
     function createPanel() {
-        // Se o painel já existe, apenas o mostra e traz para frente
         if (panelElement) {
             panelElement.style.display = 'flex';
-            panelElement.style.zIndex = '10000'; // Garantir que fique acima
+            panelElement.style.zIndex = Z_INDEX_BASE; // Garantir que fique no topo
             isPanelVisible = true;
             Utils.log('info', 'Painel existente reexibido.');
             return panelElement;
@@ -254,94 +275,98 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
 
         Utils.log('info', 'Criando novo painel...');
 
-        // Calcular posição única para este painel (canto inferior esquerdo)
-        const posLeft = 20;
-        const posTop = window.innerHeight - 500 - 20; // 500px de altura + margem
+        const posLeft = 30;
+        const posTop = 80;
 
         panelElement = document.createElement('div');
         panelElement.id = PANEL_ID;
+        
+        // Configurar estilos inline completos
+        const panelStyle = {
+            position: 'fixed',
+            top: posTop + 'px',
+            left: posLeft + 'px',
+            width: '520px',
+            height: '550px',
+            background: 'linear-gradient(145deg, #0a1929, #0f2744)',
+            border: '3px solid #ff6b6b', // Borda vermelha para destacar
+            borderRadius: '12px',
+            boxShadow: '0 20px 60px rgba(255, 107, 107, 0.5)',
+            zIndex: Z_INDEX_BASE, // MAIS ALTO que qualquer outro
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            fontFamily: "'Consolas', 'Monaco', monospace",
+            fontSize: '12px',
+            color: '#e0e0e0',
+            resize: 'both',
+            userSelect: 'text',
+            opacity: '1'
+        };
+
+        Object.assign(panelElement.style, panelStyle);
+
         panelElement.innerHTML = `
-            <div style="
-                position: fixed;
-                top: ${posTop}px;
-                left: ${posLeft}px;
-                width: 480px;
-                height: 500px;
-                background: linear-gradient(145deg, #0a1929, #0f2744);
-                border: 2px solid #64b5f6;
-                border-radius: 12px;
-                box-shadow: 0 10px 40px rgba(100, 181, 246, 0.3);
-                z-index: 9999;
+            <!-- Cabeçalho Arrastável -->
+            <div id="${PANEL_ID}-header" style="
+                background: #1e3a5f;
+                padding: 12px 15px;
+                border-bottom: 2px solid #ff6b6b;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                cursor: grab;
+            ">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: #ff6b6b; font-weight: bold; font-size: 14px;">🔬 DIAGNÓSTICO v5.9.2</span>
+                    <span style="background: #2e3b4e; color: #ffaaaa; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${MODULE_NAME}</span>
+                </div>
+                <div>
+                    <button id="${PANEL_ID}-minimize" style="background: #37474f; border: none; color: white; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; margin-right: 5px; font-weight: bold;">−</button>
+                    <button id="${PANEL_ID}-close" style="background: #d32f2f; border: none; color: white; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-weight: bold;">×</button>
+                </div>
+            </div>
+
+            <!-- Corpo do Painel -->
+            <div id="${PANEL_ID}-content" style="
+                flex: 1;
+                padding: 15px;
+                overflow-y: auto;
+                background: #0f2744;
                 display: flex;
                 flex-direction: column;
-                overflow: hidden;
-                font-family: 'Consolas', 'Monaco', monospace;
-                font-size: 12px;
-                color: #e0e0e0;
-                resize: both;
-                user-select: text;
-                opacity: 0.98;
+                gap: 15px;
             ">
-                <!-- Cabeçalho Arrastável -->
-                <div id="${PANEL_ID}-header" style="
-                    background: #1e3a5f;
-                    padding: 10px 15px;
-                    border-bottom: 1px solid #64b5f6;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    cursor: grab;
-                ">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="color: #64b5f6; font-weight: bold;">🔬 DIAGNÓSTICO v5.9.1</span>
-                        <span style="background: #2e3b4e; color: #b0bec5; padding: 2px 6px; border-radius: 4px; font-size: 10px;">${MODULE_NAME}</span>
-                    </div>
-                    <div>
-                        <button id="${PANEL_ID}-minimize" style="background: #37474f; border: none; color: white; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; margin-right: 5px;">−</button>
-                        <button id="${PANEL_ID}-close" style="background: #d32f2f; border: none; color: white; width: 24px; height: 24px; border-radius: 4px; cursor: pointer;">×</button>
-                    </div>
+                <div style="color: #ffaaaa; border-bottom: 1px solid #1e3a5f; padding-bottom: 5px; font-weight: bold;">📋 RESULTADOS DA VALIDAÇÃO DE INTEGRIDADE</div>
+                <div id="${PANEL_ID}-results"></div>
+                <div style="margin-top: auto; padding-top: 10px;">
+                    <button id="${PANEL_ID}-rerun" style="
+                        background: #2e7d32;
+                        color: white;
+                        border: none;
+                        padding: 10px 16px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        width: 100%;
+                        font-weight: bold;
+                        transition: all 0.3s;
+                        font-size: 13px;
+                    ">🔄 RE-EXECUTAR TESTES</button>
                 </div>
+            </div>
 
-                <!-- Corpo do Painel com Resultados -->
-                <div id="${PANEL_ID}-content" style="
-                    flex: 1;
-                    padding: 15px;
-                    overflow-y: auto;
-                    background: #0f2744;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 15px;
-                ">
-                    <div style="color: #90caf9; border-bottom: 1px solid #1e3a5f; padding-bottom: 5px;">📋 RESULTADOS DA VALIDAÇÃO DE INTEGRIDADE</div>
-                    <div id="${PANEL_ID}-results"></div>
-                    <div style="margin-top: auto; padding-top: 10px;">
-                        <button id="${PANEL_ID}-rerun" style="
-                            background: #2e7d32;
-                            color: white;
-                            border: none;
-                            padding: 8px 16px;
-                            border-radius: 4px;
-                            cursor: pointer;
-                            width: 100%;
-                            font-weight: bold;
-                            transition: all 0.3s;
-                        ">🔄 RE-EXECUTAR TESTES</button>
-                    </div>
-                </div>
-
-                <!-- Rodapé -->
-                <div style="
-                    background: #1e3a5f;
-                    padding: 6px 15px;
-                    border-top: 1px solid #64b5f6;
-                    font-size: 10px;
-                    color: #90caf9;
-                    display: flex;
-                    justify-content: space-between;
-                ">
-                    <span>Clique no cabeçalho para arrastar</span>
-                    <span id="${PANEL_ID}-timestamp">${new Date().toLocaleTimeString()}</span>
-                </div>
+            <!-- Rodapé -->
+            <div style="
+                background: #1e3a5f;
+                padding: 8px 15px;
+                border-top: 2px solid #ff6b6b;
+                font-size: 11px;
+                color: #ffaaaa;
+                display: flex;
+                justify-content: space-between;
+            ">
+                <span>Clique no cabeçalho para arrastar | Z-Index: ${Z_INDEX_BASE}</span>
+                <span id="${PANEL_ID}-timestamp">${new Date().toLocaleTimeString()}</span>
             </div>
         `;
 
@@ -350,7 +375,7 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
         // Tornar arrastável
         const header = document.getElementById(`${PANEL_ID}-header`);
         if (header) {
-            Utils.createDraggable(panelElement.querySelector('div'), header); // O elemento raiz é o primeiro div
+            Utils.createDraggable(panelElement, header);
         }
 
         // Event Listeners
@@ -372,7 +397,7 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
         });
 
         isPanelVisible = true;
-        Utils.log('success', 'Painel criado e posicionado no canto inferior esquerdo.');
+        Utils.log('success', '✅ Painel criado com z-index ' + Z_INDEX_BASE + ' (acima de todos)');
         return panelElement;
     }
 
@@ -382,9 +407,8 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
         const resultsContainer = document.getElementById(`${PANEL_ID}-results`);
         if (!resultsContainer) return;
 
-        resultsContainer.innerHTML = '<div style="text-align: center; color: #bbb;">Executando testes, aguarde...</div>';
+        resultsContainer.innerHTML = '<div style="text-align: center; color: #bbb; padding: 20px;">Executando testes, aguarde...</div>';
 
-        // Usar setTimeout para não travar a UI
         setTimeout(() => {
             const testResults = [
                 { name: 'Integridade das Propriedades', result: Tests.checkPropertiesIntegrity() },
@@ -402,25 +426,25 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
                 if (test.result.status !== 'success') allPassed = false;
 
                 html += `
-                    <div style="background: #1e3a5f; border-radius: 6px; padding: 10px; margin-bottom: 10px; border-left: 4px solid ${statusColor};">
+                    <div style="background: #1e3a5f; border-radius: 6px; padding: 12px; margin-bottom: 12px; border-left: 4px solid ${statusColor};">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span style="font-weight: bold; color: #bbb;">${statusIcon} ${test.name}</span>
-                            <span style="color: ${statusColor}; font-size: 11px;">${test.result.status.toUpperCase()}</span>
+                            <span style="font-weight: bold; color: #bbb; font-size: 13px;">${statusIcon} ${test.name}</span>
+                            <span style="color: ${statusColor}; font-size: 12px; font-weight: bold;">${test.result.status.toUpperCase()}</span>
                         </div>
                         ${test.result.issues && test.result.issues.length > 0 ? 
-                            `<div style="font-size: 11px; color: #ffcdd2; background: #2a2a2a; padding: 6px; border-radius: 4px; max-height: 100px; overflow-y: auto;">
+                            `<div style="font-size: 11px; color: #ffcdd2; background: #2a2a2a; padding: 8px; border-radius: 4px; max-height: 120px; overflow-y: auto; border: 1px solid ${statusColor};">
                                 ${test.result.issues.map(issue => `• ${issue}`).join('<br>')}
                             </div>` : 
-                            `<div style="font-size: 11px; color: #a5d6a7;">✅ Nenhum problema detectado.</div>`
+                            `<div style="font-size: 12px; color: #a5d6a7; padding: 5px 0;">✅ Nenhum problema detectado.</div>`
                         }
                     </div>
                 `;
             });
 
             html += `
-                <div style="margin-top: 15px; padding: 10px; background: #1a1a2e; border-radius: 6px; text-align: center; border: 1px solid ${allPassed ? '#2ecc71' : '#e74c3c'};">
-                    <span style="font-weight: bold; color: ${allPassed ? '#2ecc71' : '#e74c3c'};">
-                        ${allPassed ? '✅ SISTEMA ÍNTEGRO' : '⚠️ PROBLEMAS DETECTADOS'}
+                <div style="margin-top: 15px; padding: 12px; background: #1a1a2e; border-radius: 6px; text-align: center; border: 2px solid ${allPassed ? '#2ecc71' : '#e74c3c'};">
+                    <span style="font-weight: bold; font-size: 14px; color: ${allPassed ? '#2ecc71' : '#e74c3c'};">
+                        ${allPassed ? '✅ SISTEMA ÍNTEGRO - NENHUM PROBLEMA CRÍTICO' : '⚠️ PROBLEMAS DETECTADOS - VERIFICAR ACIMA'}
                     </span>
                 </div>
             `;
@@ -431,7 +455,7 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
         }, 100);
     }
 
-    // --- Botão de Controle Flutuante (para reabrir o painel) ---
+    // --- Botão de Controle Flutuante ---
     function createControlButton() {
         if (document.getElementById(CONTROL_BTN_ID)) return;
 
@@ -442,31 +466,40 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
                 position: fixed;
                 bottom: 20px;
                 left: 20px;
-                background: linear-gradient(135deg, #64b5f6, #1e3a5f);
+                background: linear-gradient(135deg, #ff6b6b, #d32f2f);
                 color: white;
                 border: none;
                 border-radius: 50%;
-                width: 55px;
-                height: 55px;
-                font-size: 24px;
+                width: 60px;
+                height: 60px;
+                font-size: 26px;
                 cursor: pointer;
-                box-shadow: 0 4px 15px rgba(100, 181, 246, 0.5);
-                z-index: 9998;
+                box-shadow: 0 4px 20px rgba(255, 107, 107, 0.6);
+                z-index: ${Z_INDEX_BASE - 1};
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 transition: all 0.3s;
-            " title="Diagnóstico v5.9.1">🔬</button>
+                font-weight: bold;
+                border: 2px solid white;
+            " title="Diagnóstico v5.9.2 (Clique para abrir)">🔬</button>
         `;
         document.body.appendChild(btn);
 
         btn.querySelector('button').addEventListener('click', () => {
             if (!isPanelVisible || !panelElement) {
-                createPanel();
+                const panel = createPanel();
                 runAllTestsAndDisplay();
+                // Garantir que o painel fique visível e no topo
+                setTimeout(() => {
+                    if (panel) {
+                        panel.style.zIndex = Z_INDEX_BASE;
+                        panel.style.display = 'flex';
+                    }
+                }, 50);
             } else {
                 panelElement.style.display = 'flex';
-                panelElement.style.zIndex = '10000';
+                panelElement.style.zIndex = Z_INDEX_BASE;
                 isPanelVisible = true;
             }
         });
@@ -474,11 +507,29 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
         Utils.log('info', 'Botão de controle (🔬) criado no canto inferior esquerdo.');
     }
 
+    // --- Forçar todos os outros painéis a ficarem atrás (se necessário) ---
+    function forceThisPanelOnTop() {
+        if (!panelElement) return;
+        
+        // Garantir que este painel tenha o maior z-index
+        panelElement.style.zIndex = Z_INDEX_BASE;
+        
+        // Encontrar todos os outros painéis de diagnóstico e colocá-los atrás
+        const allDiagnosticPanels = document.querySelectorAll('[id^="diagnostics"], [class*="diagnostics"], .diagnostics-panel, [id*="diagnostic"]');
+        allDiagnosticPanels.forEach(panel => {
+            if (panel.id !== PANEL_ID) {
+                panel.style.zIndex = (Z_INDEX_BASE - 10).toString();
+            }
+        });
+        
+        Utils.log('info', `Painel forçado para frente. Z-index atual: ${panelElement.style.zIndex}`);
+    }
+
     // --- Inicialização ---
     function init() {
         Utils.log('info', 'Inicializando módulo...');
 
-        // Registrar no sistema de diagnóstico global, se existir
+        // Registrar no sistema de diagnóstico global
         if (window.Diagnostics && typeof window.Diagnostics.registerModule === 'function') {
             window.Diagnostics.registerModule(MODULE_ID, {
                 name: MODULE_NAME,
@@ -494,20 +545,39 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
             Utils.log('success', 'Registrado no sistema Diagnostics global.');
         }
 
-        // Criar botão de controle imediatamente
+        // Criar botão de controle
         createControlButton();
 
         // Se a URL contiver 'diagnostics=true', abrir o painel automaticamente
         if (window.location.search.includes('diagnostics=true')) {
             setTimeout(() => {
-                createPanel();
+                const panel = createPanel();
                 runAllTestsAndDisplay();
-            }, 1500); // Pequeno delay para garantir que o Core esteja carregado
+                
+                // Pequeno delay extra para garantir que o painel fique no topo
+                setTimeout(() => {
+                    forceThisPanelOnTop();
+                }, 500);
+            }, 2000);
         }
 
-        // Executar testes no console também
-        Utils.log('test', 'Testes disponíveis no objeto window.Tests59 para execução manual.');
-        window.Tests59 = Tests; // Expor para console, se necessário
+        // Expor testes para console
+        window.Tests59 = Tests;
+        
+        // Adicionar função de emergência para trazer painel para frente
+        window.bringDiagnostics59ToFront = function() {
+            if (panelElement) {
+                panelElement.style.zIndex = Z_INDEX_BASE;
+                panelElement.style.display = 'flex';
+                Utils.log('success', 'Painel trazido para frente!');
+                forceThisPanelOnTop();
+            } else {
+                createPanel();
+                runAllTestsAndDisplay();
+            }
+        };
+        
+        Utils.log('info', 'Para trazer este painel para frente: window.bringDiagnostics59ToFront()');
     }
 
     // Iniciar quando o DOM estiver pronto
@@ -520,3 +590,4 @@ console.log(`🔬 [DIAGNOSTICS59] Carregando... (v5.9.1)`);
 })();
 
 console.log(`🔬 [DIAGNOSTICS59] Carregamento concluído. Use o botão 🔬 no canto inferior esquerdo.`);
+console.log(`🔬 [DIAGNOSTICS59] Se o painel ficar atrás, execute: window.bringDiagnostics59ToFront()`);
