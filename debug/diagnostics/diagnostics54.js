@@ -2,11 +2,11 @@
 // debug/diagnostics/diagnostics54.js - ESTRUTURA MODULAR E ORGANIZADA
 // ============================================================
 // Sistema organizado em painéis temáticos com limites de testes
-// Versão: 5.4 - Painel Posicionado para Coexistência com a Cadeia de Diagnóstico
+// Versão: 5.4.1 - Z-Index Elevado para Sobrepujar Painéis Anteriores
 // ============================================================
 
 /* ================== CONFIGURAÇÕES GLOBAIS ================== */
-console.log('🚀 diagnostics54.js v5.4 - Sistema modular organizado (Painel Posicionado)');
+console.log('🚀 diagnostics54.js v5.4.1 - Sistema modular organizado (Z-Index Elevado)');
 
 // ================== CONSTANTES E FLAGS ==================
 const DIAG_CONFIG = {
@@ -14,7 +14,7 @@ const DIAG_CONFIG = {
     MAX_PANELS_PER_FILE: 4,
     CURRENT_PANEL_COUNT: 0,
     PANEL_CAPACITY_WARNING: 80, // % de ocupação para alerta
-    VERSION: '5.4',
+    VERSION: '5.4.1',
     BASE_URL: 'https://rclessa25-hub.github.io/imoveis-maceio/',
     DEBUG_PARAMS: ['debug', 'diagnostics', 'mobiletest', 'refcheck', 'pdfdebug']
 };
@@ -525,8 +525,16 @@ function createMainControlPanel() {
     // Verifica se há outros painéis de diagnóstico na tela para evitar sobreposição.
     const existingPanels = document.querySelectorAll('[id^="diagnostics-control-panel"]').length;
     // Desloca este painel para a direita baseado no número de painéis existentes.
-    // Ex: Se houver 1 painel (v53), este (v54) se posiciona em left: 330px.
     const baseLeft = 10 + (existingPanels * 320);
+    
+    // --- CALCULAR Z-INDEX BASEADO NA VERSÃO ---
+    // Versões mais recentes (números maiores) ficam com z-index mais alto
+    // Extrair número da versão (5.4.1 -> 541)
+    const versionNumber = parseInt(DIAG_CONFIG.VERSION.replace(/\./g, ''));
+    const baseZIndex = 999990;
+    const calculatedZIndex = baseZIndex + versionNumber; // 999990 + 541 = 1000531
+    
+    console.log(`📐 diagnostics54.js: Posicionando painel em left: ${baseLeft}px, z-index: ${calculatedZIndex}`);
     
     const controlPanel = document.createElement('div');
     controlPanel.id = `diagnostics-control-panel-v${DIAG_CONFIG.VERSION.replace('.', '-')}`;
@@ -538,7 +546,7 @@ function createMainControlPanel() {
         border: 2px solid #00aaff; /* Cor diferente para fácil identificação */
         border-radius: 8px;
         padding: 15px;
-        z-index: 999998;
+        z-index: ${calculatedZIndex}; /* Z-INDEX MAIS ALTO QUE VERSÕES ANTERIORES */
         min-width: 300px;
         box-shadow: 0 0 20px rgba(0, 170, 255, 0.3);
     `;
