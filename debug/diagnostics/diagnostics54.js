@@ -2,11 +2,11 @@
 // debug/diagnostics/diagnostics54.js - ESTRUTURA MODULAR E ORGANIZADA
 // ============================================================
 // Sistema organizado em painéis temáticos com limites de testes
-// Versão: 5.4.5 - Sistema de Camadas para Múltiplas Janelas
+// Versão: 5.4.6 - Painel de Análise Profunda de Referências
 // ============================================================
 
 /* ================== CONFIGURAÇÕES GLOBAIS ================== */
-console.log('🚀 diagnostics54.js v5.4.5 - Sistema modular organizado (Sistema de Camadas)');
+console.log('🚀 diagnostics54.js v5.4.6 - Sistema modular organizado (Análise Profunda)');
 
 // ================== CONSTANTES E FLAGS ==================
 const DIAG_CONFIG = {
@@ -14,7 +14,7 @@ const DIAG_CONFIG = {
     MAX_PANELS_PER_FILE: 4,
     CURRENT_PANEL_COUNT: 0,
     PANEL_CAPACITY_WARNING: 80, // % de ocupação para alerta
-    VERSION: '5.4.5',
+    VERSION: '5.4.6',
     BASE_URL: 'https://rclessa25-hub.github.io/imoveis-maceio/',
     DEBUG_PARAMS: ['debug', 'diagnostics', 'mobiletest', 'refcheck', 'pdfdebug']
 };
@@ -598,6 +598,203 @@ const SystemPerformancePanel = {
     }
 };
 
+/* ================== NOVO PAINEL: ANÁLISE PROFUNDA DE REFERÊNCIAS ================== */
+const DeepReferencesAnalysisPanel = {
+    name: 'Análise Profunda de Referências',
+    description: 'Análise detalhada de todas as referências do sistema',
+    
+    initialize: function() {
+        console.log('🔍 Inicializando Painel de Análise Profunda de Referências');
+        return this;
+    },
+    
+    runDeepAnalysis: function() {
+        console.group('🔍 ANÁLISE PROFUNDA DE REFERÊNCIAS');
+        
+        const results = {
+            scripts: this.analyzeScripts(),
+            styles: this.analyzeStyles(),
+            images: this.analyzeImages(),
+            links: this.analyzeLinks(),
+            iframes: this.analyzeIframes(),
+            timestamp: new Date().toISOString()
+        };
+        
+        console.log('📊 Resultados da análise:', results);
+        console.groupEnd();
+        
+        return results;
+    },
+    
+    analyzeScripts: function() {
+        const scripts = Array.from(document.scripts);
+        return {
+            total: scripts.length,
+            inline: scripts.filter(s => !s.src).length,
+            external: scripts.filter(s => s.src).length,
+            loaded: scripts.filter(s => s.src && s.complete).length,
+            failed: scripts.filter(s => s.src && !s.complete && s.readyState === 'error').length,
+            details: scripts.map(s => ({
+                src: s.src.split('/').pop() || 'inline',
+                type: s.type || 'text/javascript',
+                async: s.async,
+                defer: s.defer,
+                status: s.src ? (s.complete ? 'carregado' : 'carregando') : 'inline'
+            }))
+        };
+    },
+    
+    analyzeStyles: function() {
+        const styles = Array.from(document.styleSheets);
+        return {
+            total: styles.length,
+            details: styles.map(ss => {
+                try {
+                    return {
+                        href: ss.href?.split('/').pop() || 'inline',
+                        rules: ss.cssRules?.length || 0,
+                        disabled: ss.disabled
+                    };
+                } catch (e) {
+                    return {
+                        href: 'cross-origin',
+                        error: 'Acesso negado (CORS)'
+                    };
+                }
+            })
+        };
+    },
+    
+    analyzeImages: function() {
+        const images = Array.from(document.images);
+        return {
+            total: images.length,
+            loaded: images.filter(i => i.complete && i.naturalWidth > 0).length,
+            failed: images.filter(i => !i.complete || i.naturalWidth === 0).length,
+            details: images.map(img => ({
+                src: img.src.split('/').pop() || 'sem src',
+                alt: img.alt || 'sem alt',
+                width: img.naturalWidth || img.width,
+                height: img.naturalHeight || img.height,
+                complete: img.complete,
+                dimensions: img.naturalWidth > 0 ? `${img.naturalWidth}x${img.naturalHeight}` : 'não carregada'
+            }))
+        };
+    },
+    
+    analyzeLinks: function() {
+        const links = Array.from(document.links);
+        return {
+            total: links.length,
+            internal: links.filter(l => l.href.includes(window.location.hostname)).length,
+            external: links.filter(l => !l.href.includes(window.location.hostname) && l.href.startsWith('http')).length,
+            anchors: links.filter(l => l.href.startsWith('#')).length,
+            details: links.slice(0, 20).map(l => ({ // Limitar para não poluir
+                href: l.href.substring(0, 50) + (l.href.length > 50 ? '...' : ''),
+                text: l.textContent?.substring(0, 30) || 'sem texto',
+                target: l.target || '_self'
+            }))
+        };
+    },
+    
+    analyzeIframes: function() {
+        const iframes = Array.from(document.getElementsByTagName('iframe'));
+        return {
+            total: iframes.length,
+            details: iframes.map(iframe => ({
+                src: iframe.src || 'sem src',
+                width: iframe.width || 'auto',
+                height: iframe.height || 'auto',
+                sandbox: iframe.sandbox?.value || 'none'
+            }))
+        };
+    },
+    
+    generateReportHTML: function() {
+        const results = this.runDeepAnalysis();
+        
+        return `
+            <div style="padding: 10px;">
+                <h3 style="color: #ffaa00; margin-bottom: 15px;">📊 RELATÓRIO DE ANÁLISE PROFUNDA</h3>
+                
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px;">
+                    <div style="background: #111; padding: 10px; border-radius: 4px;">
+                        <div style="color: #888;">Scripts</div>
+                        <div style="font-size: 24px; color: #ffaa00;">${results.scripts.total}</div>
+                        <div style="font-size: 10px;">${results.scripts.loaded} carregados</div>
+                    </div>
+                    <div style="background: #111; padding: 10px; border-radius: 4px;">
+                        <div style="color: #888;">Estilos</div>
+                        <div style="font-size: 24px; color: #ffaa00;">${results.styles.total}</div>
+                    </div>
+                    <div style="background: #111; padding: 10px; border-radius: 4px;">
+                        <div style="color: #888;">Imagens</div>
+                        <div style="font-size: 24px; color: #ffaa00;">${results.images.total}</div>
+                        <div style="font-size: 10px;">${results.images.loaded} carregadas</div>
+                    </div>
+                    <div style="background: #111; padding: 10px; border-radius: 4px;">
+                        <div style="color: #888;">Links</div>
+                        <div style="font-size: 24px; color: #ffaa00;">${results.links.total}</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <h4 style="color: #ffaa00; margin-bottom: 10px;">📋 Detalhamento</h4>
+                    
+                    <details style="margin-bottom: 10px;">
+                        <summary style="cursor: pointer; color: #ffaa00;">📜 Scripts (${results.scripts.total})</summary>
+                        <pre style="background: #111; padding: 10px; border-radius: 4px; margin-top: 5px; font-size: 10px; overflow-x: auto; max-height: 200px;">
+${JSON.stringify(results.scripts.details, null, 2)}
+                        </pre>
+                    </details>
+                    
+                    <details style="margin-bottom: 10px;">
+                        <summary style="cursor: pointer; color: #ffaa00;">🎨 Estilos (${results.styles.total})</summary>
+                        <pre style="background: #111; padding: 10px; border-radius: 4px; margin-top: 5px; font-size: 10px; overflow-x: auto; max-height: 200px;">
+${JSON.stringify(results.styles.details, null, 2)}
+                        </pre>
+                    </details>
+                    
+                    <details style="margin-bottom: 10px;">
+                        <summary style="cursor: pointer; color: #ffaa00;">🖼️ Imagens (${results.images.total})</summary>
+                        <pre style="background: #111; padding: 10px; border-radius: 4px; margin-top: 5px; font-size: 10px; overflow-x: auto; max-height: 200px;">
+${JSON.stringify(results.images.details, null, 2)}
+                        </pre>
+                    </details>
+                    
+                    <details style="margin-bottom: 10px;">
+                        <summary style="cursor: pointer; color: #ffaa00;">🔗 Links (${results.links.total})</summary>
+                        <pre style="background: #111; padding: 10px; border-radius: 4px; margin-top: 5px; font-size: 10px; overflow-x: auto; max-height: 200px;">
+${JSON.stringify(results.links.details, null, 2)}
+                        </pre>
+                    </details>
+                    
+                    <details style="margin-bottom: 10px;">
+                        <summary style="cursor: pointer; color: #ffaa00;">🖼️ Iframes (${results.iframes.total})</summary>
+                        <pre style="background: #111; padding: 10px; border-radius: 4px; margin-top: 5px; font-size: 10px; overflow-x: auto; max-height: 200px;">
+${JSON.stringify(results.iframes.details, null, 2)}
+                        </pre>
+                    </details>
+                </div>
+                
+                <div style="margin-top: 15px; text-align: center;">
+                    <button onclick="DeepReferencesAnalysisPanel.runDeepAnalysis()" 
+                            style="background: #ffaa00; color: black; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">
+                        🔄 Atualizar Análise
+                    </button>
+                    <button onclick="WindowManager.closeWindow(this.closest('.diagnostics-window').id)" 
+                            style="background: #555; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+                        ❌ Fechar
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+};
+
+// Inicializar o painel
+DeepReferencesAnalysisPanel.initialize();
+
 // ================== SISTEMA DE JANELAS MÚLTIPLAS COM CAMADAS ==================
 const WindowManager = {
     windows: [],
@@ -660,9 +857,9 @@ const WindowManager = {
         const versionNumber = parseInt(DIAG_CONFIG.VERSION.replace(/\./g, ''));
         
         // Cálculo do z-index baseado na camada (layer)
-        // Layer 1: 1,000,000 + versão (ex: 1,000,545)
-        // Layer 2: 2,000,000 + versão (ex: 2,000,545)
-        // Layer 3: 3,000,000 + versão (ex: 3,000,545)
+        // Layer 1: 1,000,000 + versão (ex: 1,000,546)
+        // Layer 2: 2,000,000 + versão (ex: 2,000,546)
+        // Layer 3: 3,000,000 + versão (ex: 3,000,546)
         const baseZIndex = windowConfig.layer * 1000000;
         const windowZIndex = baseZIndex + versionNumber + this.windows.length;
         
@@ -765,7 +962,6 @@ const WindowManager = {
         const contentDiv = document.getElementById(`${windowId}-content`);
         if (!contentDiv) return;
         
-        // Determinar se esta janela tem pai (para saber se deve criar botões que abrem filhos)
         const windowConfig = this.windows.find(w => w.id === windowId);
         const hasParent = windowConfig && windowConfig.parentId !== null;
         
@@ -784,8 +980,14 @@ const WindowManager = {
             case 'System & Performance':
                 contentHTML = this.generateSystemPanelContent(windowId, hasParent);
                 break;
+            case 'Análise Profunda de Referências':
+                contentHTML = DeepReferencesAnalysisPanel.generateReportHTML();
+                break;
             default:
-                contentHTML = '<div>Grupo de painéis não reconhecido</div>';
+                contentHTML = `<div style="padding: 20px; text-align: center;">
+                    <h3 style="color: #ffaa00;">🔍 Painel: ${panelGroup}</h3>
+                    <p style="color: #888;">Conteúdo em desenvolvimento...</p>
+                </div>`;
         }
         
         contentDiv.innerHTML = contentHTML;
@@ -935,7 +1137,7 @@ function createMainControlPanel() {
     
     controlPanel.innerHTML = `
         <div style="font-weight: bold; color: #00aaff; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
-            <span>🎛️ DIAGNÓSTICOS v${DIAG_CONFIG.VERSION} (Sistema de Camadas)</span>
+            <span>🎛️ DIAGNÓSTICOS v${DIAG_CONFIG.VERSION} (Análise Profunda)</span>
             <button onclick="this.parentElement.parentElement.style.display='none'" 
                     style="background: #555; color: white; border: none; padding: 2px 8px; cursor: pointer;">×</button>
         </div>
@@ -1094,7 +1296,8 @@ function initializeDiagnosticsSystem() {
             pdf: PdfDiagnosticsPanel,
             migration: MigrationCompatibilityPanel,
             references: ReferencesAnalysisPanel,
-            system: SystemPerformancePanel
+            system: SystemPerformancePanel,
+            deepReferences: DeepReferencesAnalysisPanel
         },
         manager: PanelManager,
         windows: WindowManager,
@@ -1137,6 +1340,7 @@ function initializeDiagnosticsSystem() {
     
     console.log(`✅ Sistema de diagnósticos v${DIAG_CONFIG.VERSION} inicializado com sucesso!`);
     console.log('🎮 Use window.diag.v54 para acessar as funcionalidades desta versão.');
+    console.log('🔍 Painel de Análise Profunda disponível em window.diag.v54.panels.deepReferences');
 }
 
 // ================== EXECUÇÃO AUTOMÁTICA ==================
@@ -1159,9 +1363,10 @@ window.DiagnosticsSystemV54 = {
         pdf: PdfDiagnosticsPanel,
         migration: MigrationCompatibilityPanel,
         references: ReferencesAnalysisPanel,
-        system: SystemPerformancePanel
+        system: SystemPerformancePanel,
+        deepReferences: DeepReferencesAnalysisPanel
     },
     manager: PanelManager,
     windows: WindowManager
 };
-console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Sistema de Camadas)`);
+console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Análise Profunda)`);
