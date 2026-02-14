@@ -2,11 +2,11 @@
 // debug/diagnostics/diagnostics54.js - ESTRUTURA MODULAR E ORGANIZADA
 // ============================================================
 // Sistema organizado em painéis temáticos com limites de testes
-// Versão: 5.4.4 - Correção do Painel de Referências com Funções Embutidas
+// Versão: 5.4.5 - Sistema de Camadas para Múltiplas Janelas
 // ============================================================
 
 /* ================== CONFIGURAÇÕES GLOBAIS ================== */
-console.log('🚀 diagnostics54.js v5.4.4 - Sistema modular organizado (Painel de Referências Corrigido)');
+console.log('🚀 diagnostics54.js v5.4.5 - Sistema modular organizado (Sistema de Camadas)');
 
 // ================== CONSTANTES E FLAGS ==================
 const DIAG_CONFIG = {
@@ -14,7 +14,7 @@ const DIAG_CONFIG = {
     MAX_PANELS_PER_FILE: 4,
     CURRENT_PANEL_COUNT: 0,
     PANEL_CAPACITY_WARNING: 80, // % de ocupação para alerta
-    VERSION: '5.4.4',
+    VERSION: '5.4.5',
     BASE_URL: 'https://rclessa25-hub.github.io/imoveis-maceio/',
     DEBUG_PARAMS: ['debug', 'diagnostics', 'mobiletest', 'refcheck', 'pdfdebug']
 };
@@ -275,7 +275,7 @@ const MigrationCompatibilityPanel = {
     }
 };
 
-/* ================== PAINEL C: REFERÊNCIAS E 404s (CORRIGIDO) ================== */
+/* ================== PAINEL C: REFERÊNCIAS E 404s ================== */
 const ReferencesAnalysisPanel = {
     name: 'References & 404 Analysis',
     description: 'Análise de referências e prevenção de 404s',
@@ -598,19 +598,57 @@ const SystemPerformancePanel = {
     }
 };
 
-// ================== SISTEMA DE JANELAS MÚLTIPLAS ==================
+// ================== SISTEMA DE JANELAS MÚLTIPLAS COM CAMADAS ==================
 const WindowManager = {
     windows: [],
+    windowCounter: 0,
     
-    createNewWindow: function(panelGroup) {
-        const windowId = `diagnostics-window-${Date.now()}`;
+    createNewWindow: function(panelGroup, parentWindowId = null) {
+        this.windowCounter++;
+        const windowId = `diagnostics-window-${Date.now()}-${this.windowCounter}`;
+        
+        // Calcular posição em cascata baseada no pai
+        let position = { x: 100, y: 100 };
+        let layer = 1; // Camada padrão
+        
+        if (parentWindowId) {
+            const parentWindow = this.windows.find(w => w.id === parentWindowId);
+            if (parentWindow) {
+                // Filho: posição ligeiramente deslocada do pai
+                position = {
+                    x: parentWindow.position.x + 30,
+                    y: parentWindow.position.y + 30
+                };
+                layer = parentWindow.layer + 1; // Herda camada +1
+                console.log(`👪 Criando janela filha para "${parentWindow.panelGroup}" (camada ${parentWindow.layer} -> ${layer})`);
+            }
+        } else {
+            // Janela principal: posição baseada em quantas janelas existem
+            position = { 
+                x: 100 + (this.windows.length * 30), 
+                y: 100 + (this.windows.length * 30) 
+            };
+        }
+        
         const newWindow = {
             id: windowId,
             panelGroup,
+            parentId: parentWindowId,
+            layer: layer,
             minimized: false,
-            position: { x: 100 + (this.windows.length * 30), y: 100 + (this.windows.length * 30) },
-            size: { width: 800, height: 600 }
+            position: position,
+            size: { width: 800, height: 600 },
+            children: []
         };
+        
+        // Registrar como filho se tiver pai
+        if (parentWindowId) {
+            const parent = this.windows.find(w => w.id === parentWindowId);
+            if (parent) {
+                parent.children.push(windowId);
+                console.log(`📌 Janela "${parent.panelGroup}" agora tem ${parent.children.length} filho(s)`);
+            }
+        }
         
         this.windows.push(newWindow);
         this.renderWindow(newWindow);
@@ -620,14 +658,21 @@ const WindowManager = {
     
     renderWindow: function(windowConfig) {
         const versionNumber = parseInt(DIAG_CONFIG.VERSION.replace(/\./g, ''));
-        const baseZIndex = 1000000;
+        
+        // Cálculo do z-index baseado na camada (layer)
+        // Layer 1: 1,000,000 + versão (ex: 1,000,545)
+        // Layer 2: 2,000,000 + versão (ex: 2,000,545)
+        // Layer 3: 3,000,000 + versão (ex: 3,000,545)
+        const baseZIndex = windowConfig.layer * 1000000;
         const windowZIndex = baseZIndex + versionNumber + this.windows.length;
         
-        console.log(`📐 diagnostics54.js: Criando janela com z-index: ${windowZIndex}`);
+        console.log(`📐 diagnostics54.js: Criando janela "${windowConfig.panelGroup}" na camada ${windowConfig.layer} com z-index: ${windowZIndex}`);
         
         const windowElement = document.createElement('div');
         windowElement.id = windowConfig.id;
         windowElement.className = 'diagnostics-window';
+        windowElement.setAttribute('data-layer', windowConfig.layer);
+        windowElement.setAttribute('data-panel', windowConfig.panelGroup);
         windowElement.style.cssText = `
             position: fixed;
             top: ${windowConfig.position.y}px;
@@ -635,7 +680,7 @@ const WindowManager = {
             width: ${windowConfig.size.width}px;
             height: ${windowConfig.size.height}px;
             background: #0a0a0a;
-            border: 2px solid #00aaff;
+            border: 2px solid ${this.getBorderColor(windowConfig.layer)};
             border-radius: 8px;
             z-index: ${windowZIndex};
             box-shadow: 0 0 30px rgba(0, 170, 255, 0.3);
@@ -643,15 +688,22 @@ const WindowManager = {
             display: ${windowConfig.minimized ? 'none' : 'block'};
         `;
         
+        // Criar header com informações da camada
+        const layerIndicator = windowConfig.layer > 1 ? ` [Nível ${windowConfig.layer}]` : '';
+        
         windowElement.innerHTML = `
-            <div style="background: #111; padding: 10px; display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-weight: bold; color: #00aaff;">📊 ${windowConfig.panelGroup}</div>
+            <div style="background: #111; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid ${this.getBorderColor(windowConfig.layer)};">
+                <div style="font-weight: bold; color: ${this.getBorderColor(windowConfig.layer)};">
+                    📊 ${windowConfig.panelGroup}${layerIndicator}
+                </div>
                 <div>
-                    <button onclick="WindowManager.minimizeWindow('${windowConfig.id}')" style="background: #555; color: white; border: none; padding: 2px 8px; margin: 0 2px; cursor: pointer;">_</button>
-                    <button onclick="WindowManager.closeWindow('${windowConfig.id}')" style="background: #f55; color: white; border: none; padding: 2px 8px; margin: 0 2px; cursor: pointer;">×</button>
+                    <button onclick="WindowManager.minimizeWindow('${windowConfig.id}')" 
+                            style="background: #555; color: white; border: none; padding: 2px 8px; margin: 0 2px; cursor: pointer; border-radius: 3px;">_</button>
+                    <button onclick="WindowManager.closeWindow('${windowConfig.id}')" 
+                            style="background: #f55; color: white; border: none; padding: 2px 8px; margin: 0 2px; cursor: pointer; border-radius: 3px;">×</button>
                 </div>
             </div>
-            <div style="padding: 15px; height: calc(100% - 40px); overflow-y: auto;">
+            <div style="padding: 15px; height: calc(100% - 50px); overflow-y: auto;">
                 <div id="${windowConfig.id}-content">
                     Carregando painéis para ${windowConfig.panelGroup}...
                 </div>
@@ -663,6 +715,17 @@ const WindowManager = {
         this.loadWindowContent(windowConfig.id, windowConfig.panelGroup);
     },
     
+    getBorderColor: function(layer) {
+        const colors = {
+            1: '#00aaff', // Azul - painel principal
+            2: '#ff00ff', // Rosa - segundo nível
+            3: '#ffaa00', // Laranja - terceiro nível
+            4: '#00ff9c', // Verde - quarto nível
+            5: '#ff5500'  // Vermelho - quinto nível
+        };
+        return colors[layer] || '#00aaff';
+    },
+    
     minimizeWindow: function(windowId) {
         const window = this.windows.find(w => w.id === windowId);
         if (window) {
@@ -670,6 +733,7 @@ const WindowManager = {
             const element = document.getElementById(windowId);
             if (element) {
                 element.style.display = window.minimized ? 'none' : 'block';
+                console.log(`🪟 Janela "${window.panelGroup}" ${window.minimized ? 'minimizada' : 'restaurada'}`);
             }
         }
     },
@@ -677,11 +741,23 @@ const WindowManager = {
     closeWindow: function(windowId) {
         const windowIndex = this.windows.findIndex(w => w.id === windowId);
         if (windowIndex !== -1) {
+            const window = this.windows[windowIndex];
+            
+            // Fechar também todas as janelas filhas
+            if (window.children && window.children.length > 0) {
+                console.log(`🧹 Fechando ${window.children.length} janela(s) filha(s) de "${window.panelGroup}"`);
+                window.children.forEach(childId => {
+                    this.closeWindow(childId);
+                });
+            }
+            
             this.windows.splice(windowIndex, 1);
             const element = document.getElementById(windowId);
             if (element) {
                 element.remove();
             }
+            
+            console.log(`🗑️ Janela "${window.panelGroup}" (nível ${window.layer}) fechada`);
         }
     },
     
@@ -689,20 +765,24 @@ const WindowManager = {
         const contentDiv = document.getElementById(`${windowId}-content`);
         if (!contentDiv) return;
         
+        // Determinar se esta janela tem pai (para saber se deve criar botões que abrem filhos)
+        const windowConfig = this.windows.find(w => w.id === windowId);
+        const hasParent = windowConfig && windowConfig.parentId !== null;
+        
         let contentHTML = '';
         
         switch(panelGroup) {
             case 'PDF Diagnostics':
-                contentHTML = this.generatePdfPanelContent();
+                contentHTML = this.generatePdfPanelContent(windowId, hasParent);
                 break;
             case 'Migration & Compatibility':
-                contentHTML = this.generateMigrationPanelContent();
+                contentHTML = this.generateMigrationPanelContent(windowId, hasParent);
                 break;
             case 'References & 404 Analysis':
-                contentHTML = this.generateReferencesPanelContent();
+                contentHTML = this.generateReferencesPanelContent(windowId, hasParent);
                 break;
             case 'System & Performance':
-                contentHTML = this.generateSystemPanelContent();
+                contentHTML = this.generateSystemPanelContent(windowId, hasParent);
                 break;
             default:
                 contentHTML = '<div>Grupo de painéis não reconhecido</div>';
@@ -711,7 +791,47 @@ const WindowManager = {
         contentDiv.innerHTML = contentHTML;
     },
     
-    generatePdfPanelContent: function() {
+    generateReferencesPanelContent: function(windowId, hasParent) {
+        const deepAnalysisButton = !hasParent ? `
+            <div style="margin-bottom: 15px; padding: 10px; background: rgba(255, 170, 0, 0.2); border-radius: 6px; border: 1px solid #ffaa00;">
+                <button onclick="WindowManager.createNewWindow('Análise Profunda de Referências', '${windowId}')" 
+                        style="background: #ffaa00; color: black; padding: 12px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">
+                    🔍 ABRIR ANÁLISE PROFUNDA DE REFERÊNCIAS (NÍVEL 3)
+                </button>
+                <div style="color: #ffaa00; font-size: 11px; margin-top: 5px; text-align: center;">
+                    ⚡ Abre uma nova janela com análise detalhada (camada superior)
+                </div>
+            </div>
+        ` : '';
+        
+        return `
+            <h3 style="color: #ff8800; margin-bottom: 15px;">🔗 REFERÊNCIAS & 404s</h3>
+            
+            ${deepAnalysisButton}
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
+                <button onclick="ReferencesAnalysisPanel.runAllTests()" 
+                        style="background: #ff8800; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                    🧪 Executar Todos os Testes
+                </button>
+                <button onclick="if(window.analyzeBrokenReferences) window.analyzeBrokenReferences(); else console.warn('analyzeBrokenReferences não disponível')" 
+                        style="background: #cc6600; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                    🔍 Analisar Referências
+                </button>
+            </div>
+            
+            <div style="background: rgba(255, 136, 0, 0.1); padding: 15px; border-radius: 6px;">
+                <h4 style="color: #ff8800;">📊 Estatísticas do Painel</h4>
+                <div>Testes registrados: ${ReferencesAnalysisPanel.getTestCount()}/${ReferencesAnalysisPanel.maxTests}</div>
+                <div>Capacidade: ${Math.round((ReferencesAnalysisPanel.getTestCount() / ReferencesAnalysisPanel.maxTests) * 100)}%</div>
+                <div style="color: #888; font-size: 11px; margin-top: 10px;">
+                    Camada atual: ${this.windows.find(w => w.id === windowId)?.layer || 1}
+                </div>
+            </div>
+        `;
+    },
+    
+    generatePdfPanelContent: function(windowId, hasParent) {
         return `
             <h3 style="color: #00aaff; margin-bottom: 15px;">📄 DIAGNÓSTICO DO SISTEMA PDF</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
@@ -732,11 +852,14 @@ const WindowManager = {
                 <h4 style="color: #00aaff;">📊 Estatísticas do Painel</h4>
                 <div>Testes registrados: ${PdfDiagnosticsPanel.getTestCount()}/${PdfDiagnosticsPanel.maxTests}</div>
                 <div>Capacidade: ${Math.round((PdfDiagnosticsPanel.getTestCount() / PdfDiagnosticsPanel.maxTests) * 100)}%</div>
+                <div style="color: #888; font-size: 11px; margin-top: 10px;">
+                    Camada atual: ${this.windows.find(w => w.id === windowId)?.layer || 1}
+                </div>
             </div>
         `;
     },
     
-    generateMigrationPanelContent: function() {
+    generateMigrationPanelContent: function(windowId, hasParent) {
         return `
             <h3 style="color: #ff00ff; margin-bottom: 15px;">🚀 MIGRAÇÃO & COMPATIBILIDADE</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
@@ -754,30 +877,14 @@ const WindowManager = {
                 <h4 style="color: #ff00ff;">📊 Estatísticas do Painel</h4>
                 <div>Testes registrados: ${MigrationCompatibilityPanel.getTestCount()}/${MigrationCompatibilityPanel.maxTests}</div>
                 <div>Capacidade: ${Math.round((MigrationCompatibilityPanel.getTestCount() / MigrationCompatibilityPanel.maxTests) * 100)}%</div>
+                <div style="color: #888; font-size: 11px; margin-top: 10px;">
+                    Camada atual: ${this.windows.find(w => w.id === windowId)?.layer || 1}
+                </div>
             </div>
         `;
     },
     
-    generateReferencesPanelContent: function() {
-        return `
-            <h3 style="color: #ff8800; margin-bottom: 15px;">🔗 REFERÊNCIAS & 404s</h3>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
-                <button onclick="ReferencesAnalysisPanel.runAllTests()" style="background: #ff8800; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
-                    🧪 Executar Todos os Testes
-                </button>
-                <button onclick="if(window.analyzeBrokenReferences) window.analyzeBrokenReferences(); else console.warn('analyzeBrokenReferences não disponível')" style="background: #cc6600; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
-                    🔍 Analisar Referências
-                </button>
-            </div>
-            <div style="background: rgba(255, 136, 0, 0.1); padding: 15px; border-radius: 6px;">
-                <h4 style="color: #ff8800;">📊 Estatísticas do Painel</h4>
-                <div>Testes registrados: ${ReferencesAnalysisPanel.getTestCount()}/${ReferencesAnalysisPanel.maxTests}</div>
-                <div>Capacidade: ${Math.round((ReferencesAnalysisPanel.getTestCount() / ReferencesAnalysisPanel.maxTests) * 100)}%</div>
-            </div>
-        `;
-    },
-    
-    generateSystemPanelContent: function() {
+    generateSystemPanelContent: function(windowId, hasParent) {
         return `
             <h3 style="color: #00ff9c; margin-bottom: 15px;">⚙️ SISTEMA & PERFORMANCE</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
@@ -792,6 +899,9 @@ const WindowManager = {
                 <h4 style="color: #00ff9c;">📊 Estatísticas do Painel</h4>
                 <div>Testes registrados: ${SystemPerformancePanel.getTestCount()}/${SystemPerformancePanel.maxTests}</div>
                 <div>Capacidade: ${Math.round((SystemPerformancePanel.getTestCount() / SystemPerformancePanel.maxTests) * 100)}%</div>
+                <div style="color: #888; font-size: 11px; margin-top: 10px;">
+                    Camada atual: ${this.windows.find(w => w.id === windowId)?.layer || 1}
+                </div>
             </div>
         `;
     }
@@ -825,7 +935,7 @@ function createMainControlPanel() {
     
     controlPanel.innerHTML = `
         <div style="font-weight: bold; color: #00aaff; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
-            <span>🎛️ DIAGNÓSTICOS v${DIAG_CONFIG.VERSION} (PDF/Migração)</span>
+            <span>🎛️ DIAGNÓSTICOS v${DIAG_CONFIG.VERSION} (Sistema de Camadas)</span>
             <button onclick="this.parentElement.parentElement.style.display='none'" 
                     style="background: #555; color: white; border: none; padding: 2px 8px; cursor: pointer;">×</button>
         </div>
@@ -905,7 +1015,14 @@ function exportSystemReport() {
             maxPanels: DIAG_CONFIG.MAX_PANELS_PER_FILE,
             percentage: Math.round((DIAG_CONFIG.CURRENT_PANEL_COUNT / DIAG_CONFIG.MAX_PANELS_PER_FILE) * 100)
         },
-        windows: WindowManager.windows,
+        windows: WindowManager.windows.map(w => ({
+            id: w.id,
+            panelGroup: w.panelGroup,
+            layer: w.layer,
+            parentId: w.parentId,
+            children: w.children,
+            minimized: w.minimized
+        })),
         recommendations: []
     };
     
@@ -983,7 +1100,7 @@ function initializeDiagnosticsSystem() {
         windows: WindowManager,
         report: exportSystemReport,
         capacity: showCapacityReport,
-        createNewWindow: (type) => WindowManager.createNewWindow(type)
+        createNewWindow: (type, parentId) => WindowManager.createNewWindow(type, parentId)
     };
     
     const totalCapacity = (DIAG_CONFIG.CURRENT_PANEL_COUNT / DIAG_CONFIG.MAX_PANELS_PER_FILE) * 100;
@@ -1047,4 +1164,4 @@ window.DiagnosticsSystemV54 = {
     manager: PanelManager,
     windows: WindowManager
 };
-console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Painel de Referências Corrigido)`);
+console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Sistema de Camadas)`);
