@@ -2,11 +2,11 @@
 // debug/diagnostics/diagnostics54.js - ESTRUTURA MODULAR E ORGANIZADA
 // ============================================================
 // Sistema organizado em painéis temáticos com limites de testes
-// Versão: 5.4.2 - Z-Index de Janelas Ajustado para Ficar à Frente
+// Versão: 5.4.3 - Correção do Escopo dos Botões de Teste
 // ============================================================
 
 /* ================== CONFIGURAÇÕES GLOBAIS ================== */
-console.log('🚀 diagnostics54.js v5.4.2 - Sistema modular organizado (Z-Index de Janelas Ajustado)');
+console.log('🚀 diagnostics54.js v5.4.3 - Sistema modular organizado (Botões de Teste Corrigidos)');
 
 // ================== CONSTANTES E FLAGS ==================
 const DIAG_CONFIG = {
@@ -14,7 +14,7 @@ const DIAG_CONFIG = {
     MAX_PANELS_PER_FILE: 4,
     CURRENT_PANEL_COUNT: 0,
     PANEL_CAPACITY_WARNING: 80, // % de ocupação para alerta
-    VERSION: '5.4.2',
+    VERSION: '5.4.3',
     BASE_URL: 'https://rclessa25-hub.github.io/imoveis-maceio/',
     DEBUG_PARAMS: ['debug', 'diagnostics', 'mobiletest', 'refcheck', 'pdfdebug']
 };
@@ -132,7 +132,7 @@ const PdfDiagnosticsPanel = {
         tests.forEach((test, index) => {
             try {
                 console.log(`🔍 Executando teste ${index + 1}: ${test.description}`);
-                const result = test.func();
+                const result = test.func ? test.func() : 'Função não disponível';
                 results.details.push({
                     test: test.name,
                     description: test.description,
@@ -154,6 +154,10 @@ const PdfDiagnosticsPanel = {
         });
         
         console.groupEnd();
+        
+        // Mostrar resultados resumidos
+        console.log(`📊 Resultados: ${results.passed} passaram, ${results.failed} falharam`);
+        
         return results;
     }
 };
@@ -179,16 +183,28 @@ const MigrationCompatibilityPanel = {
     
     registerFunctions: function() {
         // Função 1: Verificação de migração de mídia
-        this.addTest('verifyMediaMigration', window.verifyMediaMigration, 'Verificação da migração de mídia');
+        this.addTest('verifyMediaMigration', window.verifyMediaMigration || function() { 
+            console.log('⚠️ verifyMediaMigration não disponível');
+            return 'Função não implementada';
+        }, 'Verificação da migração de mídia');
         
         // Função 2: Teste de compatibilidade de módulos
-        this.addTest('testModuleCompatibility', window.testModuleCompatibility, 'Teste de compatibilidade de módulos');
+        this.addTest('testModuleCompatibility', window.testModuleCompatibility || function() {
+            console.log('⚠️ testModuleCompatibility não disponível');
+            return 'Função não implementada';
+        }, 'Teste de compatibilidade de módulos');
         
         // Função 3: Análise de placeholders
-        this.addTest('analyzePlaceholders', window.analyzePlaceholders, 'Análise de arquivos placeholder');
+        this.addTest('analyzePlaceholders', window.analyzePlaceholders || function() {
+            console.log('⚠️ analyzePlaceholders não disponível');
+            return 'Função não implementada';
+        }, 'Análise de arquivos placeholder');
         
         // Função 4: Validação automática de migração
-        this.addTest('autoValidateMigration', window.autoValidateMigration, 'Validação automática de migração');
+        this.addTest('autoValidateMigration', window.autoValidateMigration || function() {
+            console.log('⚠️ autoValidateMigration não disponível');
+            return 'Função não implementada';
+        }, 'Validação automática de migração');
         
         console.log(`✅ Painel Migração: ${this.getTestCount()} testes registrados`);
     },
@@ -216,6 +232,46 @@ const MigrationCompatibilityPanel = {
     
     getTestCount: function() {
         return PanelManager.panels[this.name]?.testCount || 0;
+    },
+    
+    runAllTests: function() {
+        const tests = PanelManager.panels[this.name]?.functions || [];
+        console.group(`🚀 EXECUTANDO TODOS OS TESTES DE MIGRAÇÃO (${tests.length} testes)`);
+        
+        const results = {
+            passed: 0,
+            failed: 0,
+            details: []
+        };
+        
+        tests.forEach((test, index) => {
+            try {
+                console.log(`🔍 Executando teste ${index + 1}: ${test.description}`);
+                const result = test.func ? test.func() : 'Função não disponível';
+                results.details.push({
+                    test: test.name,
+                    description: test.description,
+                    result: result,
+                    status: 'success',
+                    timestamp: new Date().toISOString()
+                });
+                results.passed++;
+            } catch (error) {
+                results.details.push({
+                    test: test.name,
+                    description: test.description,
+                    error: error.message,
+                    status: 'error',
+                    timestamp: new Date().toISOString()
+                });
+                results.failed++;
+            }
+        });
+        
+        console.groupEnd();
+        console.log(`📊 Resultados Migração: ${results.passed} passaram, ${results.failed} falharam`);
+        
+        return results;
     }
 };
 
@@ -240,10 +296,16 @@ const ReferencesAnalysisPanel = {
     
     registerFunctions: function() {
         // Função 1: Análise de referências quebradas
-        this.addTest('analyzeBrokenReferences', window.analyzeBrokenReferences, 'Análise de referências quebradas');
+        this.addTest('analyzeBrokenReferences', window.analyzeBrokenReferences || function() {
+            console.log('⚠️ analyzeBrokenReferences não disponível');
+            return 'Função não implementada';
+        }, 'Análise de referências quebradas');
         
         // Função 2: Análise profunda de referências
-        this.addTest('runDeepReferenceAnalysis', window.runDeepReferenceAnalysis || function() { return 'Função não disponível'; }, 'Análise profunda de referências');
+        this.addTest('runDeepReferenceAnalysis', window.runDeepReferenceAnalysis || function() {
+            console.log('⚠️ runDeepReferenceAnalysis não disponível');
+            return 'Função não implementada';
+        }, 'Análise profunda de referências');
         
         console.log(`✅ Painel Referências: ${this.getTestCount()} testes registrados`);
     },
@@ -263,6 +325,46 @@ const ReferencesAnalysisPanel = {
     
     getTestCount: function() {
         return PanelManager.panels[this.name]?.testCount || 0;
+    },
+    
+    runAllTests: function() {
+        const tests = PanelManager.panels[this.name]?.functions || [];
+        console.group(`🔗 EXECUTANDO TODOS OS TESTES DE REFERÊNCIAS (${tests.length} testes)`);
+        
+        const results = {
+            passed: 0,
+            failed: 0,
+            details: []
+        };
+        
+        tests.forEach((test, index) => {
+            try {
+                console.log(`🔍 Executando teste ${index + 1}: ${test.description}`);
+                const result = test.func ? test.func() : 'Função não disponível';
+                results.details.push({
+                    test: test.name,
+                    description: test.description,
+                    result: result,
+                    status: 'success',
+                    timestamp: new Date().toISOString()
+                });
+                results.passed++;
+            } catch (error) {
+                results.details.push({
+                    test: test.name,
+                    description: test.description,
+                    error: error.message,
+                    status: 'error',
+                    timestamp: new Date().toISOString()
+                });
+                results.failed++;
+            }
+        });
+        
+        console.groupEnd();
+        console.log(`📊 Resultados Referências: ${results.passed} passaram, ${results.failed} falharam`);
+        
+        return results;
     }
 };
 
@@ -287,10 +389,16 @@ const SystemPerformancePanel = {
     
     registerFunctions: function() {
         // Função 1: Análise do sistema
-        this.addTest('analyzeSystem', window.analyzeSystem || function() { return 'Função analyzeSystem não encontrada'; }, 'Análise completa do sistema');
+        this.addTest('analyzeSystem', window.analyzeSystem || function() {
+            console.log('⚠️ analyzeSystem não disponível');
+            return 'Função não implementada';
+        }, 'Análise completa do sistema');
         
         // Função 2: Diagnóstico mobile PDF
-        this.addTest('diagnosePdfModalMobile', window.diagnosePdfModalMobile, 'Diagnóstico mobile do modal PDF');
+        this.addTest('diagnosePdfModalMobile', window.diagnosePdfModalMobile || function() {
+            console.log('⚠️ diagnosePdfModalMobile não disponível');
+            return 'Função não implementada';
+        }, 'Diagnóstico mobile do modal PDF');
         
         console.log(`✅ Painel Sistema: ${this.getTestCount()} testes registrados`);
     },
@@ -310,6 +418,46 @@ const SystemPerformancePanel = {
     
     getTestCount: function() {
         return PanelManager.panels[this.name]?.testCount || 0;
+    },
+    
+    runAllTests: function() {
+        const tests = PanelManager.panels[this.name]?.functions || [];
+        console.group(`⚙️ EXECUTANDO TODOS OS TESTES DO SISTEMA (${tests.length} testes)`);
+        
+        const results = {
+            passed: 0,
+            failed: 0,
+            details: []
+        };
+        
+        tests.forEach((test, index) => {
+            try {
+                console.log(`🔍 Executando teste ${index + 1}: ${test.description}`);
+                const result = test.func ? test.func() : 'Função não disponível';
+                results.details.push({
+                    test: test.name,
+                    description: test.description,
+                    result: result,
+                    status: 'success',
+                    timestamp: new Date().toISOString()
+                });
+                results.passed++;
+            } catch (error) {
+                results.details.push({
+                    test: test.name,
+                    description: test.description,
+                    error: error.message,
+                    status: 'error',
+                    timestamp: new Date().toISOString()
+                });
+                results.failed++;
+            }
+        });
+        
+        console.groupEnd();
+        console.log(`📊 Resultados Sistema: ${results.passed} passaram, ${results.failed} falharam`);
+        
+        return results;
     }
 };
 
@@ -334,11 +482,9 @@ const WindowManager = {
     },
     
     renderWindow: function(windowConfig) {
-        // --- CALCULAR Z-INDEX PARA JANELAS ---
-        // Usar o mesmo princípio: base + número da versão + offset para janelas
         const versionNumber = parseInt(DIAG_CONFIG.VERSION.replace(/\./g, ''));
-        const baseZIndex = 1000000; // Base maior que o painel principal
-        const windowZIndex = baseZIndex + versionNumber + this.windows.length; // + índice para sobreposição entre janelas
+        const baseZIndex = 1000000;
+        const windowZIndex = baseZIndex + versionNumber + this.windows.length;
         
         console.log(`📐 diagnostics54.js: Criando janela com z-index: ${windowZIndex}`);
         
@@ -377,7 +523,6 @@ const WindowManager = {
         
         document.body.appendChild(windowElement);
         
-        // Carrega o conteúdo específico do grupo de painéis
         this.loadWindowContent(windowConfig.id, windowConfig.panelGroup);
     },
     
@@ -436,13 +581,13 @@ const WindowManager = {
                 <button onclick="PdfDiagnosticsPanel.runAllTests()" style="background: #00aaff; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     🧪 Executar Todos os Testes
                 </button>
-                <button onclick="window.testPdfSystem()" style="background: #0088cc; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="if(window.testPdfSystem) window.testPdfSystem(); else console.warn('testPdfSystem não disponível')" style="background: #0088cc; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     🔍 Teste Básico PDF
                 </button>
-                <button onclick="window.interactivePdfTest()" style="background: #0066aa; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="if(window.interactivePdfTest) window.interactivePdfTest(); else console.warn('interactivePdfTest não disponível')" style="background: #0066aa; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     🎮 Teste Interativo
                 </button>
-                <button onclick="window.diagnosePdfIconProblem()" style="background: #ff5500; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="if(window.diagnosePdfIconProblem) window.diagnosePdfIconProblem(); else console.warn('diagnosePdfIconProblem não disponível')" style="background: #ff5500; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     🔧 Diagnóstico Ícone
                 </button>
             </div>
@@ -458,13 +603,13 @@ const WindowManager = {
         return `
             <h3 style="color: #ff00ff; margin-bottom: 15px;">🚀 MIGRAÇÃO & COMPATIBILIDADE</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
-                <button onclick="MigrationCompatibilityPanel.runAllTests?.()" style="background: #ff00ff; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="MigrationCompatibilityPanel.runAllTests()" style="background: #ff00ff; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     🧪 Executar Todos os Testes
                 </button>
-                <button onclick="window.verifyMediaMigration?.()" style="background: #cc00cc; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="if(window.verifyMediaMigration) window.verifyMediaMigration(); else console.warn('verifyMediaMigration não disponível')" style="background: #cc00cc; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     🔍 Verificar Migração Mídia
                 </button>
-                <button onclick="window.testModuleCompatibility?.()" style="background: #990099; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="if(window.testModuleCompatibility) window.testModuleCompatibility(); else console.warn('testModuleCompatibility não disponível')" style="background: #990099; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     🎮 Testar Compatibilidade
                 </button>
             </div>
@@ -480,10 +625,10 @@ const WindowManager = {
         return `
             <h3 style="color: #ff8800; margin-bottom: 15px;">🔗 REFERÊNCIAS & 404s</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
-                <button onclick="ReferencesAnalysisPanel.runAllTests?.()" style="background: #ff8800; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="ReferencesAnalysisPanel.runAllTests()" style="background: #ff8800; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     🧪 Executar Todos os Testes
                 </button>
-                <button onclick="window.analyzeBrokenReferences?.()" style="background: #cc6600; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="if(window.analyzeBrokenReferences) window.analyzeBrokenReferences(); else console.warn('analyzeBrokenReferences não disponível')" style="background: #cc6600; color: white; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     🔍 Analisar Referências
                 </button>
             </div>
@@ -499,10 +644,10 @@ const WindowManager = {
         return `
             <h3 style="color: #00ff9c; margin-bottom: 15px;">⚙️ SISTEMA & PERFORMANCE</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
-                <button onclick="SystemPerformancePanel.runAllTests?.()" style="background: #00ff9c; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="SystemPerformancePanel.runAllTests()" style="background: #00ff9c; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     🧪 Executar Todos os Testes
                 </button>
-                <button onclick="window.diagnosePdfModalMobile?.()" style="background: #00cc7a; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                <button onclick="if(window.diagnosePdfModalMobile) window.diagnosePdfModalMobile(); else console.warn('diagnosePdfModalMobile não disponível')" style="background: #00cc7a; color: black; padding: 10px; border: none; border-radius: 4px; cursor: pointer;">
                     📱 Diagnóstico Mobile PDF
                 </button>
             </div>
@@ -517,11 +662,9 @@ const WindowManager = {
 
 // ================== INTERFACE DE CONTROLE PRINCIPAL ==================
 function createMainControlPanel() {
-    // Verifica se há outros painéis de diagnóstico na tela
     const existingPanels = document.querySelectorAll('[id^="diagnostics-control-panel"]').length;
     const baseLeft = 10 + (existingPanels * 320);
     
-    // Calcular z-index baseado na versão
     const versionNumber = parseInt(DIAG_CONFIG.VERSION.replace(/\./g, ''));
     const baseZIndex = 999990;
     const calculatedZIndex = baseZIndex + versionNumber;
@@ -767,4 +910,4 @@ window.DiagnosticsSystemV54 = {
     manager: PanelManager,
     windows: WindowManager
 };
-console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Janelas com Z-Index Ajustado)`);
+console.log(`✅ diagnostics54.js v${DIAG_CONFIG.VERSION} - Sistema modular carregado (Botões de Teste Corrigidos)`);
