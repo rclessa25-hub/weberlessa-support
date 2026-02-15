@@ -2547,3 +2547,618 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
     }, 3000);
     
 })();
+
+// =====================================================================
+// SEÇÃO VISÍVEL DE TESTES NO PAINEL - v2.0
+// Adicionar no final do arquivo diagnostics62.js
+// Cria uma seção visual com todos os testes (debounce, throttle, formatPrice, etc)
+// =====================================================================
+
+(function addVisibleTestSection() {
+    console.log('%c🔧 ADICIONANDO SEÇÃO VISÍVEL DE TESTES AO PAINEL - v2.0', 'color: #00ffff; font-weight: bold; background: #003333; padding: 5px;');
+    
+    // === 1. AGUARDAR PAINEL EXISTIR ===
+    const waitForPanel = () => {
+        return new Promise((resolve) => {
+            const checkInterval = setInterval(() => {
+                // Procurar o painel do diagnostics62.js
+                const panel = document.querySelector('[id^="sharedcore-migration-panel-"]') || 
+                             document.getElementById('sharedcore-migration-panel') ||
+                             document.querySelector('.diagnostics-panel');
+                
+                if (panel) {
+                    clearInterval(checkInterval);
+                    resolve(panel);
+                }
+            }, 500);
+            
+            // Timeout após 10 segundos
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                resolve(null);
+            }, 10000);
+        });
+    };
+    
+    // === 2. CRIAR SEÇÃO DE TESTES VISÍVEL ===
+    const createTestSection = (panel) => {
+        if (!panel) {
+            console.log('⚠️ Painel não encontrado, criando painel independente...');
+            createStandaloneTestPanel();
+            return;
+        }
+        
+        console.log('✅ Painel encontrado, adicionando seção de testes...');
+        
+        // Verificar se já existe
+        if (document.getElementById('visible-test-section')) {
+            console.log('ℹ️ Seção de testes já existe');
+            return;
+        }
+        
+        // Criar a seção
+        const testSection = document.createElement('div');
+        testSection.id = 'visible-test-section';
+        testSection.style.cssText = `
+            background: linear-gradient(135deg, #003333, #004444);
+            border: 3px solid #00ffff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            animation: pulseTest 2s infinite;
+        `;
+        
+        // Adicionar estilo de animação
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulseTest {
+                0% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); }
+                50% { box-shadow: 0 0 30px rgba(0, 255, 255, 0.6); }
+                100% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); }
+            }
+            .test-button {
+                background: #006666;
+                color: white;
+                border: 2px solid #00ffff;
+                padding: 10px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 12px;
+                transition: all 0.3s;
+                width: 100%;
+            }
+            .test-button:hover {
+                background: #008888;
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(0,255,255,0.3);
+            }
+            .test-result-item {
+                background: #002222;
+                border-left: 4px solid #00ffff;
+                padding: 10px;
+                margin: 10px 0;
+                border-radius: 5px;
+                animation: slideIn 0.3s;
+            }
+            @keyframes slideIn {
+                from { opacity: 0; transform: translateX(-20px); }
+                to { opacity: 1; transform: translateX(0); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // HTML da seção
+        testSection.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span style="color: #00ffff; font-weight: bold; font-size: 16px;">
+                    🧪 TESTES VISÍVEIS DO SHAREDCORE
+                </span>
+                <span style="color: #00ffff; font-size: 12px; background: #004444; padding: 3px 10px; border-radius: 10px;">
+                    v2.0
+                </span>
+            </div>
+            
+            <!-- Status do SharedCore -->
+            <div style="background: #004444; padding: 10px; border-radius: 5px; margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <div style="flex: 1; text-align: center;">
+                    <div style="color: #00ffff; font-size: 20px; font-weight: bold;" id="sc-function-count">0</div>
+                    <div style="color: #aaa; font-size: 10px;">FUNÇÕES</div>
+                </div>
+                <div style="flex: 1; text-align: center;">
+                    <div style="color: #00ffff; font-size: 20px; font-weight: bold;" id="sc-status">⏳</div>
+                    <div style="color: #aaa; font-size: 10px;">STATUS</div>
+                </div>
+                <div style="flex: 1; text-align: center;">
+                    <div style="color: #00ffff; font-size: 20px; font-weight: bold;" id="sc-version">1.0</div>
+                    <div style="color: #aaa; font-size: 10px;">VERSÃO</div>
+                </div>
+            </div>
+            
+            <!-- Botões de Teste Rápidos -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+                <button class="test-button" id="test-formatPrice">💰 formatPrice</button>
+                <button class="test-button" id="test-debounce">⏱️ debounce</button>
+                <button class="test-button" id="test-throttle">⏱️ throttle</button>
+                <button class="test-button" id="test-stringSimilarity">🔤 stringSimilarity</button>
+                <button class="test-button" id="test-elementExists">🔍 elementExists</button>
+                <button class="test-button" id="test-isMobile">📱 isMobile</button>
+                <button class="test-button" id="test-logModule">📝 logModule</button>
+                <button class="test-button" id="test-runLowPriority">⚡ runLowPriority</button>
+                <button class="test-button" id="test-supabaseFetch">🌐 supabaseFetch</button>
+            </div>
+            
+            <!-- Testes Específicos (8/9: debounce/throttle wrappers) -->
+            <div style="background: #004444; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                <div style="color: #00ffff; font-weight: bold; margin-bottom: 10px;">
+                    🔄 TESTE 8/9: DEBOUNCE/THROTTLE WRAPPERS
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button class="test-button" id="test-debounce-wrapper" style="background: #006688;">🔁 Testar Debounce Wrapper</button>
+                    <button class="test-button" id="test-throttle-wrapper" style="background: #006688;">🔁 Testar Throttle Wrapper</button>
+                </div>
+                <div id="wrapper-test-result" style="margin-top: 10px; padding: 10px; background: #002222; border-radius: 5px; min-height: 40px;">
+                    Clique nos botões para testar os wrappers
+                </div>
+            </div>
+            
+            <!-- Funções Críticas (Testar cada função crítica) -->
+            <div style="background: #004444; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                <div style="color: #00ffff; font-weight: bold; margin-bottom: 10px;">
+                    ⚡ FUNÇÕES CRÍTICAS (TESTE COMPLETO)
+                </div>
+                <button class="test-button" id="test-all-critical" style="background: #00aaaa; margin-bottom: 10px;">
+                    🚀 TESTAR TODAS AS FUNÇÕES CRÍTICAS
+                </button>
+                <div id="critical-test-results" style="max-height: 200px; overflow-y: auto;">
+                    <!-- Resultados aparecerão aqui -->
+                </div>
+            </div>
+            
+            <!-- Resultados dos Testes -->
+            <div style="background: #002222; padding: 15px; border-radius: 5px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="color: #00ffff; font-weight: bold;">📊 RESULTADOS</span>
+                    <button id="clear-results" style="background: #660000; color: white; border: none; padding: 2px 8px; border-radius: 3px; cursor: pointer;">Limpar</button>
+                </div>
+                <div id="test-results-container" style="min-height: 150px; max-height: 300px; overflow-y: auto;">
+                    <div style="color: #aaa; text-align: center; padding: 20px;">
+                        Clique em qualquer teste para ver resultados
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Encontrar onde inserir no painel
+        const contentArea = panel.querySelector('.tests-container') || 
+                           panel.querySelector('div[style*="overflow-y"]') ||
+                           panel.children[1];
+        
+        if (contentArea) {
+            contentArea.appendChild(testSection);
+            console.log('✅ Seção de testes adicionada ao painel');
+        } else {
+            panel.appendChild(testSection);
+            console.log('✅ Seção de testes adicionada ao final do painel');
+        }
+        
+        // === 3. INICIALIZAR FUNCIONALIDADES ===
+        initializeTestButtons();
+        updateSharedCoreStatus();
+    };
+    
+    // === 4. INICIALIZAR BOTÕES DE TESTE ===
+    const initializeTestButtons = () => {
+        setTimeout(() => {
+            const sc = window.SharedCore;
+            if (!sc) {
+                console.error('❌ SharedCore não disponível');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('test-results-container');
+            const criticalResultsDiv = document.getElementById('critical-test-results');
+            const wrapperResultDiv = document.getElementById('wrapper-test-result');
+            
+            const addResult = (testName, result, status = 'success') => {
+                if (!resultsDiv) return;
+                
+                const color = status === 'success' ? '#00ff9c' : status === 'warning' ? '#ffaa00' : '#ff5555';
+                const resultHtml = `
+                    <div class="test-result-item" style="border-left-color: ${color};">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: ${color};">${testName}</span>
+                            <span style="color: ${color};">${status === 'success' ? '✅' : status === 'warning' ? '⚠️' : '❌'}</span>
+                        </div>
+                        <pre style="color: #aaa; font-size: 11px; margin-top: 5px; overflow-x: auto;">${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `;
+                
+                if (resultsDiv.innerHTML.includes('Clique em qualquer teste')) {
+                    resultsDiv.innerHTML = resultHtml;
+                } else {
+                    resultsDiv.innerHTML = resultHtml + resultsDiv.innerHTML;
+                }
+            };
+            
+            // TESTE 1: formatPrice
+            document.getElementById('test-formatPrice')?.addEventListener('click', () => {
+                const tests = [
+                    { input: 450000, expected: 'R$ 450.000,00' },
+                    { input: '450.000', expected: 'R$ 450.000,00' },
+                    { input: 'R$ 450.000', expected: 'R$ 450.000,00' },
+                    { input: 0, expected: 'R$ 0,00' }
+                ];
+                
+                tests.forEach(test => {
+                    const result = sc.formatPrice(test.input);
+                    const passed = result.includes('R$') && result.length > 5;
+                    addResult(`formatPrice(${test.input})`, { result, passed }, passed ? 'success' : 'error');
+                });
+            });
+            
+            // TESTE 2: debounce (wrapper)
+            document.getElementById('test-debounce')?.addEventListener('click', () => {
+                const debounced = sc.debounce(() => 'test', 100);
+                const isValid = typeof debounced === 'function';
+                addResult('debounce()', { 
+                    type: typeof debounced,
+                    isValid,
+                    message: isValid ? '✅ Retorna função' : '❌ Não retorna função'
+                }, isValid ? 'success' : 'error');
+            });
+            
+            // TESTE 3: throttle (wrapper)
+            document.getElementById('test-throttle')?.addEventListener('click', () => {
+                const throttled = sc.throttle(() => 'test', 100);
+                const isValid = typeof throttled === 'function';
+                addResult('throttle()', { 
+                    type: typeof throttled,
+                    isValid,
+                    message: isValid ? '✅ Retorna função' : '❌ Não retorna função'
+                }, isValid ? 'success' : 'error');
+            });
+            
+            // TESTE 4: stringSimilarity
+            document.getElementById('test-stringSimilarity')?.addEventListener('click', () => {
+                const tests = [
+                    { a: 'hello', b: 'hello', expected: 1 },
+                    { a: 'hello', b: 'hell', expected: 0.8 },
+                    { a: 'hello', b: 'world', expected: 0.2 }
+                ];
+                
+                tests.forEach(test => {
+                    const result = sc.stringSimilarity(test.a, test.b);
+                    const diff = Math.abs(result - test.expected);
+                    const passed = diff < 0.1;
+                    addResult(`stringSimilarity("${test.a}", "${test.b}")`, { 
+                        result: result.toFixed(3),
+                        expected: test.expected,
+                        diff: diff.toFixed(3),
+                        passed 
+                    }, passed ? 'success' : 'warning');
+                });
+            });
+            
+            // TESTE 5: elementExists
+            document.getElementById('test-elementExists')?.addEventListener('click', () => {
+                const tests = [
+                    { id: 'body', exists: true },
+                    { id: 'nonexistent-' + Date.now(), exists: false }
+                ];
+                
+                tests.forEach(test => {
+                    const result = sc.elementExists(test.id);
+                    const passed = result === test.exists;
+                    addResult(`elementExists("${test.id}")`, { 
+                        result,
+                        expected: test.exists,
+                        passed
+                    }, passed ? 'success' : 'error');
+                });
+            });
+            
+            // TESTE 6: isMobile
+            document.getElementById('test-isMobile')?.addEventListener('click', () => {
+                const result = sc.isMobileDevice();
+                addResult('isMobileDevice()', { 
+                    result,
+                    type: typeof result,
+                    userAgent: navigator.userAgent.substring(0, 50) + '...'
+                }, 'success');
+            });
+            
+            // TESTE 7: logModule
+            document.getElementById('test-logModule')?.addEventListener('click', () => {
+                try {
+                    sc.logModule('TESTE', 'Mensagem de teste');
+                    addResult('logModule()', { 
+                        message: '✅ Função executada sem erros',
+                        note: 'Verifique o console para a mensagem'
+                    }, 'success');
+                } catch (e) {
+                    addResult('logModule()', { error: e.message }, 'error');
+                }
+            });
+            
+            // TESTE 8: runLowPriority
+            document.getElementById('test-runLowPriority')?.addEventListener('click', () => {
+                return new Promise((resolve) => {
+                    let executed = false;
+                    
+                    sc.runLowPriority(() => {
+                        executed = true;
+                        addResult('runLowPriority()', { 
+                            executed: true,
+                            message: '✅ Callback executado'
+                        }, 'success');
+                        resolve();
+                    });
+                    
+                    setTimeout(() => {
+                        if (!executed) {
+                            addResult('runLowPriority()', { 
+                                executed: false,
+                                message: '⚠️ Callback não executou imediatamente (pode ser normal)'
+                            }, 'warning');
+                            resolve();
+                        }
+                    }, 1000);
+                });
+            });
+            
+            // TESTE 9: supabaseFetch
+            document.getElementById('test-supabaseFetch')?.addEventListener('click', async () => {
+                try {
+                    addResult('supabaseFetch()', { status: 'testando...' }, 'warning');
+                    const result = await sc.supabaseFetch('/properties?select=id&limit=1');
+                    addResult('supabaseFetch()', { 
+                        ok: result.ok,
+                        hasData: !!result.data,
+                        message: result.ok ? '✅ Conexão OK' : '⚠️ Fallback pode estar ativo'
+                    }, result.ok ? 'success' : 'warning');
+                } catch (e) {
+                    addResult('supabaseFetch()', { error: e.message }, 'error');
+                }
+            });
+            
+            // TESTE ESPECÍFICO: debounce wrapper (teste 8/9)
+            document.getElementById('test-debounce-wrapper')?.addEventListener('click', () => {
+                const debounced = sc.debounce(() => 'executado', 100);
+                const tests = [
+                    { name: 'typeof', result: typeof debounced, expected: 'function', passed: typeof debounced === 'function' },
+                    { name: 'é função', result: debounced instanceof Function, expected: true, passed: debounced instanceof Function }
+                ];
+                
+                let html = '<div style="color: #00ffff;">Resultados do teste debounce wrapper:</div>';
+                tests.forEach(t => {
+                    html += `<div style="color: ${t.passed ? '#00ff9c' : '#ff5555'}; margin: 5px 0;">
+                        ${t.passed ? '✅' : '❌'} ${t.name}: ${t.result} (esperado: ${t.expected})
+                    </div>`;
+                });
+                
+                if (wrapperResultDiv) {
+                    wrapperResultDiv.innerHTML = html;
+                }
+                
+                addResult('🔁 TESTE 8/9: debounce wrapper', { 
+                    type: typeof debounced,
+                    isFunction: debounced instanceof Function,
+                    passed: typeof debounced === 'function'
+                }, typeof debounced === 'function' ? 'success' : 'error');
+            });
+            
+            // TESTE ESPECÍFICO: throttle wrapper (teste 8/9)
+            document.getElementById('test-throttle-wrapper')?.addEventListener('click', () => {
+                const throttled = sc.throttle(() => 'executado', 100);
+                const tests = [
+                    { name: 'typeof', result: typeof throttled, expected: 'function', passed: typeof throttled === 'function' },
+                    { name: 'é função', result: throttled instanceof Function, expected: true, passed: throttled instanceof Function }
+                ];
+                
+                let html = '<div style="color: #00ffff;">Resultados do teste throttle wrapper:</div>';
+                tests.forEach(t => {
+                    html += `<div style="color: ${t.passed ? '#00ff9c' : '#ff5555'}; margin: 5px 0;">
+                        ${t.passed ? '✅' : '❌'} ${t.name}: ${t.result} (esperado: ${t.expected})
+                    </div>`;
+                });
+                
+                if (wrapperResultDiv) {
+                    wrapperResultDiv.innerHTML = html;
+                }
+                
+                addResult('🔁 TESTE 8/9: throttle wrapper', { 
+                    type: typeof throttled,
+                    isFunction: throttled instanceof Function,
+                    passed: typeof throttled === 'function'
+                }, typeof throttled === 'function' ? 'success' : 'error');
+            });
+            
+            // TESTAR TODAS AS FUNÇÕES CRÍTICAS
+            document.getElementById('test-all-critical')?.addEventListener('click', async () => {
+                if (!criticalResultsDiv) return;
+                
+                criticalResultsDiv.innerHTML = '<div style="color: #00ffff;">Executando todos os testes...</div>';
+                
+                const results = [];
+                
+                // Teste 1: formatPrice
+                try {
+                    const price = sc.formatPrice(450000);
+                    results.push({ name: 'formatPrice', passed: price.includes('R$'), result: price });
+                } catch (e) {
+                    results.push({ name: 'formatPrice', passed: false, error: e.message });
+                }
+                
+                // Teste 2: debounce
+                try {
+                    const debounced = sc.debounce(() => {}, 100);
+                    results.push({ name: 'debounce', passed: typeof debounced === 'function', result: typeof debounced });
+                } catch (e) {
+                    results.push({ name: 'debounce', passed: false, error: e.message });
+                }
+                
+                // Teste 3: throttle
+                try {
+                    const throttled = sc.throttle(() => {}, 100);
+                    results.push({ name: 'throttle', passed: typeof throttled === 'function', result: typeof throttled });
+                } catch (e) {
+                    results.push({ name: 'throttle', passed: false, error: e.message });
+                }
+                
+                // Teste 4: stringSimilarity
+                try {
+                    const sim = sc.stringSimilarity('hello', 'hell');
+                    results.push({ name: 'stringSimilarity', passed: sim > 0.7, result: sim.toFixed(2) });
+                } catch (e) {
+                    results.push({ name: 'stringSimilarity', passed: false, error: e.message });
+                }
+                
+                // Teste 5: elementExists
+                try {
+                    const exists = sc.elementExists('body');
+                    results.push({ name: 'elementExists', passed: exists === true, result: exists });
+                } catch (e) {
+                    results.push({ name: 'elementExists', passed: false, error: e.message });
+                }
+                
+                // Teste 6: isMobileDevice
+                try {
+                    const isMobile = sc.isMobileDevice();
+                    results.push({ name: 'isMobileDevice', passed: typeof isMobile === 'boolean', result: isMobile });
+                } catch (e) {
+                    results.push({ name: 'isMobileDevice', passed: false, error: e.message });
+                }
+                
+                // Teste 7: logModule
+                try {
+                    sc.logModule('TESTE', 'teste crítico');
+                    results.push({ name: 'logModule', passed: true, result: 'executado' });
+                } catch (e) {
+                    results.push({ name: 'logModule', passed: false, error: e.message });
+                }
+                
+                // Mostrar resultados
+                let html = '<div style="color: #00ffff; margin-bottom: 10px;">📊 RESULTADOS DOS TESTES CRÍTICOS:</div>';
+                let passedCount = 0;
+                
+                results.forEach(r => {
+                    if (r.passed) passedCount++;
+                    html += `
+                        <div style="background: #003333; margin: 5px 0; padding: 8px; border-radius: 5px; border-left: 4px solid ${r.passed ? '#00ff9c' : '#ff5555'};">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: ${r.passed ? '#00ff9c' : '#ff5555'};">${r.name}</span>
+                                <span style="color: ${r.passed ? '#00ff9c' : '#ff5555'};">${r.passed ? '✅' : '❌'}</span>
+                            </div>
+                            <div style="color: #aaa; font-size: 11px;">
+                                ${r.result ? `Resultado: ${r.result}` : ''}
+                                ${r.error ? `Erro: ${r.error}` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                    <div style="margin-top: 10px; padding: 10px; background: #004444; border-radius: 5px; text-align: center;">
+                        <span style="color: #00ffff; font-weight: bold;">${passedCount}/${results.length} testes passaram</span>
+                    </div>
+                `;
+                
+                criticalResultsDiv.innerHTML = html;
+                addResult('🚀 TESTE COMPLETO', { passed: passedCount, total: results.length }, passedCount === results.length ? 'success' : 'warning');
+            });
+            
+            // Botão limpar resultados
+            document.getElementById('clear-results')?.addEventListener('click', () => {
+                if (resultsDiv) {
+                    resultsDiv.innerHTML = '<div style="color: #aaa; text-align: center; padding: 20px;">Resultados limpos</div>';
+                }
+                if (wrapperResultDiv) {
+                    wrapperResultDiv.innerHTML = 'Clique nos botões para testar os wrappers';
+                }
+                if (criticalResultsDiv) {
+                    criticalResultsDiv.innerHTML = '';
+                }
+            });
+            
+        }, 500);
+    };
+    
+    // === 5. ATUALIZAR STATUS DO SHAREDCORE ===
+    const updateSharedCoreStatus = () => {
+        const updateInterval = setInterval(() => {
+            const sc = window.SharedCore;
+            if (!sc) return;
+            
+            const funcCount = document.getElementById('sc-function-count');
+            const status = document.getElementById('sc-status');
+            
+            if (funcCount) {
+                const count = Object.keys(sc).filter(k => typeof sc[k] === 'function').length;
+                funcCount.textContent = count;
+            }
+            
+            if (status) {
+                status.textContent = sc ? '✅ ATIVO' : '❌ INATIVO';
+                status.style.color = sc ? '#00ff9c' : '#ff5555';
+            }
+        }, 1000);
+        
+        // Parar após 30 segundos
+        setTimeout(() => clearInterval(updateInterval), 30000);
+    };
+    
+    // === 6. CRIAR PAINEL INDEPENDENTE SE NECESSÁRIO ===
+    const createStandaloneTestPanel = () => {
+        if (document.getElementById('standalone-test-panel')) return;
+        
+        const panel = document.createElement('div');
+        panel.id = 'standalone-test-panel';
+        panel.style.cssText = `
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            background: linear-gradient(135deg, #002222, #003333);
+            border: 3px solid #00ffff;
+            border-radius: 10px;
+            z-index: 100000;
+            color: white;
+            font-family: monospace;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            padding: 20px;
+        `;
+        
+        panel.innerHTML = `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                <span style="color: #00ffff; font-weight: bold;">🧪 PAINEL DE TESTES INDEPENDENTE</span>
+                <button id="close-standalone-panel" style="background: #ff5555; color: white; border: none; width: 25px; height: 25px; border-radius: 5px; cursor: pointer;">×</button>
+            </div>
+            <div style="color: #ffaa00; margin-bottom: 15px;">
+                ⚠️ Painel principal não encontrado. Testes disponíveis aqui.
+            </div>
+        `;
+        
+        document.body.appendChild(panel);
+        
+        document.getElementById('close-standalone-panel')?.addEventListener('click', () => {
+            panel.remove();
+        });
+        
+        // Adicionar a seção de testes neste painel
+        createTestSection(panel);
+    };
+    
+    // === 7. EXECUTAR ===
+    waitForPanel().then(panel => {
+        if (panel) {
+            createTestSection(panel);
+        } else {
+            console.log('⚠️ Criando painel independente de testes...');
+            createStandaloneTestPanel();
+        }
+    });
+    
+})();
