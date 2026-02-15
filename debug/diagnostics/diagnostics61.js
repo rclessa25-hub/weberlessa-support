@@ -1,7 +1,7 @@
-// ================== DIAGNOSTICS61.JS - VERSÃO 6.1.8 ==================
+// ================== DIAGNOSTICS61.JS - VERSÃO 6.1.9 ==================
 // CADEIA PROGRESSIVA DE DIAGNÓSTICO - MÓDULO DE VALIDAÇÃO AVANÇADA
-// VERSÃO FINAL COM DADOS EXATOS DO SISTEMA
-// MÉTRICAS REAIS: Média 58.69ms | 27 imóveis | 9/9 módulos | 0 zumbis
+// VERSÃO FINAL COM DADOS REAIS DE PRODUÇÃO
+// MÉTRICAS REAIS: Média 1456.98ms | 27 imóveis | 9/9 módulos | 0 zumbis
 
 (function() {
     'use strict';
@@ -9,7 +9,7 @@
     // ========== CONFIGURAÇÃO DO PAINEL ==========
     const PANEL_CONFIG = {
         id: 'diagnostics-panel-61',
-        title: '🔬 DIAGNOSTICS61 - SISTEMA OTIMIZADO v6.1.8',
+        title: '🔬 DIAGNOSTICS61 - SISTEMA EM PRODUÇÃO v6.1.9',
         width: '620px',
         defaultPosition: { left: '280px', top: '120px' }
     };
@@ -111,7 +111,7 @@
         
         // Header com dados reais
         html += `<div style="text-align: center; margin-bottom: 15px;">`;
-        html += `<div style="color: #00ffff; font-size: 18px; font-weight: bold;">🎉 SISTEMA 100% FUNCIONAL</div>`;
+        html += `<div style="color: #00ffff; font-size: 18px; font-weight: bold;">🎉 SISTEMA EM PRODUÇÃO</div>`;
         html += `<div style="color: #88ff88; font-size: 12px;">${data.storage.propertyCount} imóveis • 9/9 módulos • ${data.zombies.length} zumbis</div>`;
         html += `</div>`;
         
@@ -123,11 +123,11 @@
         html += `<div style="background: ${health.color}; color: #0a0a1f; padding: 3px 10px; border-radius: 20px; font-weight: bold; font-size: 12px;">${health.text}</div>`;
         html += `</div></div>`;
         
-        // Cards de performance JavaScript
+        // Cards de performance JavaScript (DADOS REAIS)
         html += `<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px;">`;
         
         html += `<div style="background: #1a1a2f; border-radius: 8px; padding: 10px; text-align: center;">`;
-        html += `<div style="color: #88ddff; font-size: 10px;">MÉDIA JS</div>`;
+        html += `<div style="color: #88ddff; font-size: 10px;">MÉDIA JS (1ª CARGA)</div>`;
         html += `<div style="color: #88ff88; font-size: 24px; font-weight: bold;">${jsPerf.jsAverage}ms</div>`;
         html += `<div style="color: #8888aa; font-size: 8px;">${jsPerf.totalJsModules} módulos</div>`;
         html += `</div>`;
@@ -191,7 +191,7 @@
         
         // Ranking dos módulos (ORDENADO DO MAIS RÁPIDO PARA O MAIS LENTO)
         html += `<div style="margin-top: 15px; background: #1a1a2f; border-radius: 8px; padding: 10px;">`;
-        html += `<div style="color: #88ddff; font-size: 11px; margin-bottom: 8px;">🏆 RANKING DE PERFORMANCE</div>`;
+        html += `<div style="color: #88ddff; font-size: 11px; margin-bottom: 8px;">🏆 RANKING DE PERFORMANCE (1ª CARGA)</div>`;
         
         // Ordenar do mais rápido para o mais lento
         const sortedModules = Object.entries(jsPerf.moduleTimes)
@@ -199,7 +199,8 @@
         
         sortedModules.forEach(([name, time], index) => {
             const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📄';
-            const timeColor = index === sortedModules.length - 1 ? '#ffaa88' : '#88ff88';
+            // Destacar admin.js que é o mais lento
+            const timeColor = name === jsPerf.slowestModule ? '#ffaa88' : '#88ff88';
             
             html += `<div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #00ffff20;">`;
             html += `<span style="color: #ccccff;">${medal} ${name}</span>`;
@@ -211,12 +212,12 @@
         
         // Resumo rápido
         html += `<div style="margin-top: 10px; display: flex; justify-content: space-between; background: #00ffff10; padding: 8px; border-radius: 5px;">`;
-        html += `<span style="color: #88ddff;">Módulo mais rápido:</span>`;
+        html += `<span style="color: #88ddff;">⚡ Mais rápido:</span>`;
         html += `<span style="color: #88ff88; font-weight: bold;">${jsPerf.fastestModule} (${jsPerf.fastest}ms)</span>`;
         html += `</div>`;
         
         html += `<div style="margin-top: 5px; display: flex; justify-content: space-between; background: #ffaa0010; padding: 8px; border-radius: 5px;">`;
-        html += `<span style="color: #ffaa88;">Módulo mais lento:</span>`;
+        html += `<span style="color: #ffaa88;">🐢 Mais lento:</span>`;
         html += `<span style="color: #ffaa88; font-weight: bold;">${jsPerf.slowestModule} (${jsPerf.slowest}ms)</span>`;
         html += `</div>`;
         
@@ -237,7 +238,7 @@
         const jsPerf = calculateJSPerformance();
         
         html += `<div style="color: #88ddff; margin-bottom: 8px; display: flex; justify-content: space-between;">`;
-        html += `<span>⚡ Tempos de Carregamento JS</span>`;
+        html += `<span>⚡ Tempos de Carregamento JS (1ª CARGA)</span>`;
         html += `<span style="color: #88ff88;">Média: ${jsPerf.jsAverage}ms</span>`;
         html += `</div>`;
         
@@ -247,14 +248,14 @@
         
         sortedModules.forEach(([name, time]) => {
             const timeValue = parseFloat(time);
-            const barWidth = Math.min(100, (timeValue / 80) * 100); // 80ms = 100%
+            const barWidth = Math.min(100, (timeValue / 2200) * 100); // 2200ms = 100%
             
             html += `<div style="margin-bottom: 8px;">`;
             html += `<div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">`;
             html += `<span style="color: #ccccff;">${name}</span>`;
             html += `<span style="color: #88ff88; font-weight: bold;">${time}ms</span>`;
             html += `</div>`;
-            html += `<div style="background: #1a1a2f; height: 6px; border-radius: 3px; overflow: hidden;">`;
+            html += `<div style="background: #1a1a2f; height: 8px; border-radius: 4px; overflow: hidden;">`;
             html += `<div style="width: ${barWidth}%; height: 100%; background: linear-gradient(90deg, #00aaff, #00ffff);"></div>`;
             html += `</div>`;
             html += `</div>`;
@@ -298,7 +299,7 @@
     }
 
     function analyzeLoadPerformance() {
-        console.group('⚡ [DIAGNOSTICS61] Análise de Performance de Carregamento');
+        console.group('⚡ [DIAGNOSTICS61] Análise de Performance de Carregamento (1ª CARGA)');
         
         const resources = performance.getEntriesByType('resource') || [];
         const jsFiles = resources.filter(r => 
@@ -483,7 +484,7 @@
         const panel = document.createElement('div');
         panel.id = PANEL_CONFIG.id;
         panel.className = 'diagnostics-panel';
-        panel.setAttribute('data-version', '6.1.8');
+        panel.setAttribute('data-version', '6.1.9');
         panel.style.cssText = `
             position: fixed;
             left: ${calculatedLeft};
@@ -551,7 +552,7 @@
             max-height: 400px;
             overflow-y: auto;
         `;
-        resultsArea.innerHTML = `<div style="text-align: center; color: #00ffff80; padding: 20px;">🚀 Sistema 100% funcional - Clique em "Executar Validação Completa"</div>`;
+        resultsArea.innerHTML = `<div style="text-align: center; color: #00ffff80; padding: 20px;">🚀 Sistema em produção - Clique em "Executar Validação Completa"</div>`;
 
         // Botões
         const actionsDiv = document.createElement('div');
@@ -597,7 +598,7 @@
                 zombies: detectOrphanedElements()
             };
             
-            displayResults('DASHBOARD - SISTEMA OTIMIZADO', allResults);
+            displayResults('DASHBOARD - SISTEMA EM PRODUÇÃO', allResults);
         });
 
         document.getElementById('diag61-core')?.addEventListener('click', () => {
@@ -605,7 +606,7 @@
         });
 
         document.getElementById('diag61-perf')?.addEventListener('click', () => {
-            displayResults('Performance JS', analyzeLoadPerformance());
+            displayResults('Performance JS (1ª CARGA)', analyzeLoadPerformance());
         });
 
         document.getElementById('diag61-storage')?.addEventListener('click', () => {
@@ -659,8 +660,8 @@
 
     // ========== INICIALIZAÇÃO ==========
     function initialize() {
-        console.log('%c🔬 [DIAGNOSTICS61] v6.1.8 - SISTEMA 100% OTIMIZADO', 'color: #00ffff; font-weight: bold; font-size: 14px;');
-        console.log('%c📊 MÉTRICAS REAIS: Média 58.69ms | 27 imóveis | 9/9 módulos | 0 zumbis', 'color: #88ff88;');
+        console.log('%c🔬 [DIAGNOSTICS61] v6.1.9 - SISTEMA EM PRODUÇÃO', 'color: #00ffff; font-weight: bold; font-size: 14px;');
+        console.log('%c📊 MÉTRICAS REAIS: Média 1456.98ms | 27 imóveis | 9/9 módulos | 0 zumbis', 'color: #88ff88; font-weight: bold;');
 
         if (window.location.search.includes('diagnostics=true')) {
             setTimeout(createPanel, 1500);
@@ -680,9 +681,9 @@
                 properties: window.properties?.length || 0,
                 modules: 9,
                 zombies: 0,
-                avgTime: '58.69ms',
-                fastest: 'loading-manager.js (41.30ms)',
-                slowest: 'admin.js (77.10ms)',
+                avgTime: '1456.98ms',
+                fastest: 'loading-manager.js (919.40ms)',
+                slowest: 'admin.js (2117.70ms)',
                 health: '100%'
             })
         };
