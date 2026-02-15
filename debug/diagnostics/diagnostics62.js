@@ -1,18 +1,18 @@
-// ================== diagnostics62.js - VERSÃO 6.2.1 ==================
+// ================== diagnostics62.js - VERSÃO 6.2.2 ==================
 // CADEIA DE DIAGNÓSTICO - MÓDULO DE MIGRAÇÃO SHAREDCORE
-// Esta versão adiciona funcionalidades de migração sem conflitar com
-// os demais módulos da cadeia (diagnostics53-61.js)
+// Esta versão adiciona funcionalidades de migração SEM CONFLITOS
+// CORREÇÃO: Z-index MAIOR e posicionamento diferenciado
 // Data: 09/01/2026
 
-console.log('%c🔧 DIAGNOSTICS62.JS - VERSÃO 6.2.1 CARREGADA (MIGRAÇÃO SHAREDCORE)', 
+console.log('%c🔧 DIAGNOSTICS62.JS - VERSÃO 6.2.2 CARREGADA (MIGRAÇÃO SHAREDCORE - Z-INDEX PRIORITÁRIO)', 
             'color: #ff6464; font-weight: bold; font-size: 14px; background: #2a0a0a; padding: 5px;');
 
-// ================== VERIFICAÇÃO DE CONFLITOS ==================
-// Verificar se já existem painéis de outros diagnósticos
-(function checkExistingPanels() {
-    console.group('🔍 VERIFICANDO PAINÉIS DE DIAGNÓSTICO EXISTENTES');
+// ================== VERIFICAÇÃO DE CONFLITOS E AJUSTE DE Z-INDEX ==================
+(function checkExistingPanelsAndAdjust() {
+    console.group('🔍 VERIFICANDO PAINÉIS DE DIAGNÓSTICO EXISTENTES E AJUSTANDO Z-INDEX');
     
     const existingPanels = [];
+    let maxZIndex = 9990; // Z-index base dos outros painéis
     
     // Verificar painéis comuns de versões anteriores
     const possiblePanelIds = [
@@ -33,20 +33,29 @@ console.log('%c🔧 DIAGNOSTICS62.JS - VERSÃO 6.2.1 CARREGADA (MIGRAÇÃO SHARE
         const panel = document.getElementById(id);
         if (panel) {
             existingPanels.push(id);
-            console.log(`✅ Painel existente encontrado: ${id}`);
+            
+            // Verificar z-index atual do painel
+            const computedStyle = window.getComputedStyle(panel);
+            const zIndex = parseInt(computedStyle.zIndex) || 9990;
+            if (zIndex > maxZIndex) {
+                maxZIndex = zIndex;
+            }
+            
+            console.log(`✅ Painel existente encontrado: ${id} (z-index: ${zIndex})`);
         }
     });
     
     if (existingPanels.length > 0) {
         console.log(`📊 Total de ${existingPanels.length} painel(is) de diagnóstico já existente(s)`);
-        console.log('⚠️  O diagnostics62.js NÃO fechará nenhum desses painéis');
+        console.log(`📊 Maior z-index encontrado: ${maxZIndex}`);
+        console.log(`🎯 O painel do diagnostics62.js usará z-index: ${maxZIndex + 2} para ficar acima`);
     } else {
         console.log('ℹ️ Nenhum painel de diagnóstico existente encontrado');
     }
     
     console.groupEnd();
     
-    return existingPanels;
+    return { existingPanels, baseZIndex: maxZIndex + 2 };
 })();
 
 // ================== MÓDULO DE MIGRAÇÃO E VERIFICAÇÃO SHAREDCORE ==================
@@ -1114,7 +1123,7 @@ setTimeout(() => {
         }
     };
     
-    // Painel de migração (agora com posicionamento único para não conflitar)
+    // Painel de migração (agora com Z-INDEX PRIORITÁRIO)
     let migrationPanel = null;
     
     return {
@@ -1133,41 +1142,52 @@ setTimeout(() => {
             console.log('✅ Módulo de Migração SharedCore: Testes registrados');
         },
         
-        // Criar painel de migração (AGORA COM POSICIONAMENTO DIFERENCIADO)
+        // Criar painel de migração (AGORA COM Z-INDEX PRIORITÁRIO)
         createMigrationPanel: function() {
-            // Se já existe, apenas mostrar
+            // Se já existe, apenas mostrar e trazer para frente
             if (migrationPanel && document.body.contains(migrationPanel)) {
                 migrationPanel.style.display = 'flex';
+                migrationPanel.style.zIndex = '10001'; // Garantir que fique na frente
                 return migrationPanel;
             }
             
+            // Detectar maior z-index dos painéis existentes
+            const panelCheck = checkExistingPanelsAndAdjust();
+            const targetZIndex = panelCheck.baseZIndex > 10000 ? panelCheck.baseZIndex : 10001;
+            
             // Verificar se existem outros painéis para ajustar posição
             const existingPanels = document.querySelectorAll('[id^="diagnostics-panel"]');
-            let topPosition = 220; // Posição padrão
-            let leftPosition = 800; // Posição padrão
+            let topPosition = 20; // Posição padrão (canto superior)
+            let leftPosition = window.innerWidth - 620; // Canto superior direito
             
-            // Se existirem outros painéis, posicionar em local diferente
+            // Se existirem outros painéis, posicionar com offset para não sobrepor
             if (existingPanels.length > 0) {
-                // Posicionar no canto superior direito em vez de sobrepor
-                topPosition = 20;
-                leftPosition = window.innerWidth - 620; // 600px de largura + margem
-                console.log(`📊 ${existingPanels.length} painel(is) existente(s). Posicionando painel em (${leftPosition}, ${topPosition})`);
+                // Posicionar no canto superior direito com offset vertical baseado no número de painéis
+                topPosition = 20 + (existingPanels.length * 30);
+                leftPosition = window.innerWidth - 620;
+                console.log(`📊 ${existingPanels.length} painel(is) existente(s). Posicionando painel em (${leftPosition}, ${topPosition}) com z-index ${targetZIndex}`);
             }
             
             // Verificar se estamos no sistema de diagnóstico
             if (typeof PanelManager !== 'undefined' && PanelManager.createPanel) {
                 const panelConfig = {
-                    title: '🚀 MIGRAÇÃO SHAREDCORE (v6.2.1)',
+                    title: '🚀 MIGRAÇÃO SHAREDCORE (v6.2.2)',
                     category: 'migration',
                     maxTests: 8,
                     position: { top: topPosition + 'px', left: leftPosition + 'px' },
-                    size: { width: '580px', height: '750px' }
+                    size: { width: '580px', height: '750px' },
+                    zIndex: targetZIndex // Passar z-index prioritário
                 };
                 
                 migrationPanel = PanelManager.createPanel(panelConfig);
                 
                 if (typeof SpecializedPanels !== 'undefined' && SpecializedPanels.renderPanel) {
                     migrationPanel.element = SpecializedPanels.renderPanel(migrationPanel);
+                    
+                    // Aplicar z-index prioritário
+                    if (migrationPanel.element) {
+                        migrationPanel.element.style.zIndex = targetZIndex;
+                    }
                     
                     // Adicionar testes
                     Object.values(migrationTests).forEach(testConfig => {
@@ -1363,11 +1383,11 @@ setTimeout(() => {
             
             // Se o sistema de diagnóstico não estiver disponível, criar painel independente
             console.log('⚠️ Sistema de diagnóstico não encontrado. Criando painel independente...');
-            return this.createStandalonePanel(topPosition, leftPosition);
+            return this.createStandalonePanel(topPosition, leftPosition, targetZIndex);
         },
         
-        // Criar painel independente (CORRIGIDO) - AGORA ACEITA POSIÇÃO PERSONALIZADA
-        createStandalonePanel: function(topPos = 180, leftPos = 180) {
+        // Criar painel independente (AGORA COM Z-INDEX PRIORITÁRIO)
+        createStandalonePanel: function(topPos = 20, leftPos = window.innerWidth - 620, zIndex = 10001) {
             // Obter dados atuais de migração
             let functionsUsingOldCount = '?';
             let migrationScore = '67%';
@@ -1387,11 +1407,10 @@ setTimeout(() => {
             
             // Verificar se existem outros painéis e ajustar posição
             const existingPanels = document.querySelectorAll('[id^="diagnostics-panel"], [id^="sharedcore-migration-panel"]');
-            if (existingPanels.length > 0 && topPos === 180 && leftPos === 180) {
-                // Posicionar em local diferente (canto superior direito)
-                topPos = 20;
-                leftPos = window.innerWidth - 620;
-                console.log(`📊 ${existingPanels.length} painel(is) existente(s). Posicionando painel em (${leftPos}, ${topPos})`);
+            if (existingPanels.length > 0 && topPos === 20 && leftPos === window.innerWidth - 620) {
+                // Posicionar com offset vertical
+                topPos = 20 + (existingPanels.length * 30);
+                console.log(`📊 ${existingPanels.length} painel(is) existente(s). Posicionando painel em (${leftPos}, ${topPos}) com z-index ${zIndex}`);
             }
             
             const panelId = 'sharedcore-migration-panel-' + Date.now();
@@ -1407,7 +1426,7 @@ setTimeout(() => {
                 background: linear-gradient(135deg, #2a0a0a, #442200);
                 border: 3px solid #ff6464;
                 border-radius: 12px;
-                z-index: 10000;
+                z-index: ${zIndex} !important;
                 box-shadow: 0 0 30px rgba(255, 100, 100, 0.4);
                 font-family: 'Segoe UI', monospace;
                 display: flex;
@@ -1428,7 +1447,7 @@ setTimeout(() => {
                             user-select: none;">
                     
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="color: #ff6464; font-weight: bold; font-size: 16px;">🚀 MIGRAÇÃO SHAREDCORE v6.2.1</span>
+                        <span style="color: #ff6464; font-weight: bold; font-size: 16px;">🚀 MIGRAÇÃO SHAREDCORE v6.2.2</span>
                         <span style="background: #ff6464;
                                     color: #2a0a0a;
                                     padding: 3px 10px;
@@ -1570,7 +1589,7 @@ setTimeout(() => {
                             font-size: 11px;">
                     
                     <div style="color: #ffaaaa;">
-                        <span>v6.2.1 - Sem conflitos com outros diagnósticos | Tempo estimado: 2.5-3 horas</span>
+                        <span>v6.2.2 - Z-INDEX ${zIndex} (prioritário) | Tempo estimado: 2.5-3 horas</span>
                     </div>
                     
                     <div style="color: #ff6464; font-weight: bold;">
@@ -1747,7 +1766,7 @@ setTimeout(() => {
             const floatBtn = document.createElement('button');
             floatBtn.id = 'scm-float-button';
             floatBtn.innerHTML = '🚀';
-            floatBtn.title = 'Migração Crítica SharedCore v6.2.1';
+            floatBtn.title = 'Migração Crítica SharedCore v6.2.2';
             floatBtn.style.cssText = `
                 position: fixed;
                 bottom: 340px;
@@ -1792,16 +1811,16 @@ setTimeout(() => {
         }
         
         // Mostrar apenas no console, sem interferir nos painéis existentes
-        console.log('%c🚀 DIAGNOSTICS62.JS v6.2.1 - MÓDULO DE MIGRAÇÃO SHAREDCORE PRONTO', 
+        console.log('%c🚀 DIAGNOSTICS62.JS v6.2.2 - MÓDULO DE MIGRAÇÃO SHAREDCORE PRONTO (Z-INDEX PRIORITÁRIO)', 
                     'color: #ff6464; font-weight: bold; font-size: 14px; background: #2a0a0a; padding: 5px;');
         console.log('📋 Comandos disponíveis:');
-        console.log('• SCMigration.panel() - Criar painel de migração (canto superior direito)');
+        console.log('• SCMigration.panel() - Criar painel de migração (canto superior direito, z-index prioritário)');
         console.log('• SCMigration.check() - Verificar uso atual');
         console.log('• SCMigration.generate() - Gerar scripts de correção');
         console.log('• SCMigration.execute() - Executar migração automática');
         console.log('• Botão 🚀 vermelho pulsante no canto inferior direito');
         console.log('\n⚠️  ALERTA CRÍTICO: Score de migração atual: 67% (0/3 módulos usam SharedCore)');
-        console.log('ℹ️  Este painel foi posicionado no CANTO SUPERIOR DIREITO para não conflitar com outros diagnósticos');
+        console.log('ℹ️  Este painel usa Z-INDEX PRIORITÁRIO para ficar ACIMA de todos os outros painéis');
         
     } catch (error) {
         console.error('❌ Erro ao inicializar módulo de migração:', error);
@@ -1809,5 +1828,5 @@ setTimeout(() => {
 }, 2000);
 
 // ================== VERIFICAÇÃO FINAL DO PAINEL ==================
-console.log('%c✅ DIAGNOSTICS62.JS v6.2.1 CARREGADO COM SUCESSO - Sem conflitos com outros painéis', 
+console.log('%c✅ DIAGNOSTICS62.JS v6.2.2 CARREGADO COM SUCESSO - Z-index prioritário aplicado', 
             'color: #00ff00; font-weight: bold;');
