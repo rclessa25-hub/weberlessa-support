@@ -527,7 +527,7 @@
         const panel = document.createElement('div');
         panel.id = PANEL_CONFIG.id;
         panel.className = 'diagnostics-panel';
-        panel.setAttribute('data-version', '6.2.1');
+        panel.setAttribute('data-version', '6.1.9.2');
         panel.style.cssText = `
             position: fixed;
             left: ${calculatedLeft};
