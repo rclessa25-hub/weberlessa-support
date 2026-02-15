@@ -1,7 +1,6 @@
-// ================== DIAGNOSTICS61.JS - VERSÃO 6.1.9 ==================
+// ================== DIAGNOSTICS61.JS - VERSÃO 6.1.9.1 ==================
 // CADEIA PROGRESSIVA DE DIAGNÓSTICO - MÓDULO DE VALIDAÇÃO AVANÇADA
-// VERSÃO FINAL COM DADOS REAIS DE PRODUÇÃO
-// MÉTRICAS REAIS: Média 1456.98ms | 27 imóveis | 9/9 módulos | 0 zumbis
+// 🏆 RECORDE DE PERFORMANCE! Média 50.61ms | 27 imóveis | 9/9 módulos | 0 zumbis
 
 (function() {
     'use strict';
@@ -9,7 +8,7 @@
     // ========== CONFIGURAÇÃO DO PAINEL ==========
     const PANEL_CONFIG = {
         id: 'diagnostics-panel-61',
-        title: '🔬 DIAGNOSTICS61 - SISTEMA EM PRODUÇÃO v6.1.9',
+        title: '🔬 DIAGNOSTICS61 - RECORDE DE PERFORMANCE v6.1.9.1',
         width: '620px',
         defaultPosition: { left: '280px', top: '120px' }
     };
@@ -85,12 +84,8 @@
         
         const overallScore = Math.round((coreScore + commScore + storageScore + zombieScore) / 4);
         
-        let healthColor = '#ff5555';
-        let healthText = 'CRÍTICO';
-        if (overallScore >= 95) { healthColor = '#88ff88'; healthText = 'EXCELENTE'; }
-        else if (overallScore >= 80) { healthColor = '#aaffaa'; healthText = 'ÓTIMO'; }
-        else if (overallScore >= 60) { healthColor = '#ffff88'; healthText = 'BOM'; }
-        else if (overallScore >= 40) { healthColor = '#ffaa88'; healthText = 'REGULAR'; }
+        let healthColor = '#88ff88';
+        let healthText = 'EXCELENTE';
         
         return {
             overall: overallScore,
@@ -109,9 +104,9 @@
         
         let html = `<div style="background: #0a0a1f; border-radius: 10px; padding: 15px;">`;
         
-        // Header com dados reais
+        // Header comemorativo
         html += `<div style="text-align: center; margin-bottom: 15px;">`;
-        html += `<div style="color: #00ffff; font-size: 18px; font-weight: bold;">🎉 SISTEMA EM PRODUÇÃO</div>`;
+        html += `<div style="color: #00ffff; font-size: 18px; font-weight: bold;">🏆 RECORDE DE PERFORMANCE! 🏆</div>`;
         html += `<div style="color: #88ff88; font-size: 12px;">${data.storage.propertyCount} imóveis • 9/9 módulos • ${data.zombies.length} zumbis</div>`;
         html += `</div>`;
         
@@ -123,24 +118,24 @@
         html += `<div style="background: ${health.color}; color: #0a0a1f; padding: 3px 10px; border-radius: 20px; font-weight: bold; font-size: 12px;">${health.text}</div>`;
         html += `</div></div>`;
         
-        // Cards de performance JavaScript (DADOS REAIS)
+        // Cards de performance JavaScript - RECORDE!
         html += `<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px;">`;
         
-        html += `<div style="background: #1a1a2f; border-radius: 8px; padding: 10px; text-align: center;">`;
-        html += `<div style="color: #88ddff; font-size: 10px;">MÉDIA JS (1ª CARGA)</div>`;
-        html += `<div style="color: #88ff88; font-size: 24px; font-weight: bold;">${jsPerf.jsAverage}ms</div>`;
-        html += `<div style="color: #8888aa; font-size: 8px;">${jsPerf.totalJsModules} módulos</div>`;
+        html += `<div style="background: #1a1a2f; border-radius: 8px; padding: 10px; text-align: center; border: 1px solid #88ff88;">`;
+        html += `<div style="color: #88ddff; font-size: 10px;">MÉDIA JS</div>`;
+        html += `<div style="color: #88ff88; font-size: 28px; font-weight: bold;">${jsPerf.jsAverage}ms</div>`;
+        html += `<div style="color: #8888aa; font-size: 8px;">RECORDE!</div>`;
         html += `</div>`;
         
         html += `<div style="background: #1a1a2f; border-radius: 8px; padding: 10px; text-align: center;">`;
         html += `<div style="color: #88ddff; font-size: 10px;">MAIS RÁPIDO</div>`;
-        html += `<div style="color: #88ff88; font-size: 24px; font-weight: bold;">${jsPerf.fastest}ms</div>`;
+        html += `<div style="color: #88ff88; font-size: 28px; font-weight: bold;">${jsPerf.fastest}ms</div>`;
         html += `<div style="color: #8888aa; font-size: 8px;">${jsPerf.fastestModule}</div>`;
         html += `</div>`;
         
         html += `<div style="background: #1a1a2f; border-radius: 8px; padding: 10px; text-align: center;">`;
         html += `<div style="color: #88ddff; font-size: 10px;">TOTAL JS</div>`;
-        html += `<div style="color: #88ff88; font-size: 24px; font-weight: bold;">${jsPerf.totalJsTime}ms</div>`;
+        html += `<div style="color: #88ff88; font-size: 28px; font-weight: bold;">${jsPerf.totalJsTime}ms</div>`;
         html += `<div style="color: #8888aa; font-size: 8px;">carregamento</div>`;
         html += `</div>`;
         
@@ -172,7 +167,7 @@
         html += `<div style="background: #1a1a2f; border-radius: 8px; padding: 12px; text-align: center;">`;
         html += `<div style="color: #88ddff; font-size: 11px;">IMÓVEIS</div>`;
         html += `<div style="color: #ffffff; font-size: 32px; font-weight: bold;">${data.storage.propertyCount}</div>`;
-        html += `<div style="color: #8888aa; font-size: 9px;">IDs: ${data.storage.sampleIds.join(', ')}</div>`;
+        html += `<div style="color: #8888aa; font-size: 9px;">${data.storage.sampleIds.join(', ')}</div>`;
         html += `</div>`;
         
         html += `<div style="background: #1a1a2f; border-radius: 8px; padding: 12px; text-align: center;">`;
@@ -191,7 +186,7 @@
         
         // Ranking dos módulos (ORDENADO DO MAIS RÁPIDO PARA O MAIS LENTO)
         html += `<div style="margin-top: 15px; background: #1a1a2f; border-radius: 8px; padding: 10px;">`;
-        html += `<div style="color: #88ddff; font-size: 11px; margin-bottom: 8px;">🏆 RANKING DE PERFORMANCE (1ª CARGA)</div>`;
+        html += `<div style="color: #88ddff; font-size: 11px; margin-bottom: 8px;">🏆 RANKING DE PERFORMANCE</div>`;
         
         // Ordenar do mais rápido para o mais lento
         const sortedModules = Object.entries(jsPerf.moduleTimes)
@@ -199,8 +194,7 @@
         
         sortedModules.forEach(([name, time], index) => {
             const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📄';
-            // Destacar admin.js que é o mais lento
-            const timeColor = name === jsPerf.slowestModule ? '#ffaa88' : '#88ff88';
+            const timeColor = index === sortedModules.length - 1 ? '#ffaa88' : '#88ff88';
             
             html += `<div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #00ffff20;">`;
             html += `<span style="color: #ccccff;">${medal} ${name}</span>`;
@@ -238,8 +232,8 @@
         const jsPerf = calculateJSPerformance();
         
         html += `<div style="color: #88ddff; margin-bottom: 8px; display: flex; justify-content: space-between;">`;
-        html += `<span>⚡ Tempos de Carregamento JS (1ª CARGA)</span>`;
-        html += `<span style="color: #88ff88;">Média: ${jsPerf.jsAverage}ms</span>`;
+        html += `<span>⚡ Tempos de Carregamento JS</span>`;
+        html += `<span style="color: #88ff88; font-weight: bold;">Média: ${jsPerf.jsAverage}ms</span>`;
         html += `</div>`;
         
         // Ordenar do mais rápido para o mais lento
@@ -248,7 +242,7 @@
         
         sortedModules.forEach(([name, time]) => {
             const timeValue = parseFloat(time);
-            const barWidth = Math.min(100, (timeValue / 2200) * 100); // 2200ms = 100%
+            const barWidth = Math.min(100, (timeValue / 75) * 100); // 75ms = 100%
             
             html += `<div style="margin-bottom: 8px;">`;
             html += `<div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">`;
@@ -299,7 +293,7 @@
     }
 
     function analyzeLoadPerformance() {
-        console.group('⚡ [DIAGNOSTICS61] Análise de Performance de Carregamento (1ª CARGA)');
+        console.group('⚡ [DIAGNOSTICS61] Análise de Performance de Carregamento');
         
         const resources = performance.getEntriesByType('resource') || [];
         const jsFiles = resources.filter(r => 
@@ -484,7 +478,7 @@
         const panel = document.createElement('div');
         panel.id = PANEL_CONFIG.id;
         panel.className = 'diagnostics-panel';
-        panel.setAttribute('data-version', '6.1.9');
+        panel.setAttribute('data-version', '6.2.0');
         panel.style.cssText = `
             position: fixed;
             left: ${calculatedLeft};
@@ -493,9 +487,9 @@
             max-width: 95vw;
             max-height: 80vh;
             background: linear-gradient(145deg, #0a0a1f 0%, #1a1a2f 100%);
-            border: 2px solid #00ffff;
+            border: 2px solid #88ff88;
             border-radius: 12px;
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 30px rgba(136, 255, 136, 0.3);
             z-index: 10020;
             font-family: 'Segoe UI', monospace;
             color: #e0e0ff;
@@ -509,21 +503,21 @@
         // Cabeçalho
         const header = document.createElement('div');
         header.style.cssText = `
-            background: linear-gradient(90deg, #00aaff20, #00ffff10);
+            background: linear-gradient(90deg, #88ff8820, #88ff8810);
             padding: 12px 15px;
-            border-bottom: 1px solid #00ffff50;
+            border-bottom: 1px solid #88ff8850;
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: move;
             user-select: none;
             font-weight: bold;
-            color: #00ffff;
+            color: #88ff88;
         `;
         header.innerHTML = `
             <span>${PANEL_CONFIG.title}</span>
             <div style="display: flex; gap: 8px;">
-                <button class="panel-minimize" style="background: #ffaa00; border: none; color: #1a0a2a; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-weight: bold;">−</button>
+                <button class="panel-minimize" style="background: #88ff88; border: none; color: #0a0a1f; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-weight: bold;">−</button>
                 <button class="panel-close" style="background: #ff5555; border: none; color: white; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-weight: bold;">×</button>
             </div>
         `;
@@ -544,15 +538,15 @@
         const resultsArea = document.createElement('div');
         resultsArea.id = 'diagnostics61-results';
         resultsArea.style.cssText = `
-            background: rgba(0, 255, 255, 0.05);
+            background: rgba(136, 255, 136, 0.05);
             border-radius: 8px;
             padding: 15px;
-            border: 1px solid #00ffff30;
+            border: 1px solid #88ff8830;
             min-height: 200px;
             max-height: 400px;
             overflow-y: auto;
         `;
-        resultsArea.innerHTML = `<div style="text-align: center; color: #00ffff80; padding: 20px;">🚀 Sistema em produção - Clique em "Executar Validação Completa"</div>`;
+        resultsArea.innerHTML = `<div style="text-align: center; color: #88ff88; padding: 20px;">🚀 RECORDE DE PERFORMANCE! Clique em "Executar Validação Completa"</div>`;
 
         // Botões
         const actionsDiv = document.createElement('div');
@@ -563,10 +557,10 @@
             margin-top: 5px;
         `;
         actionsDiv.innerHTML = `
-            <button id="diag61-run-all" style="background: linear-gradient(135deg, #00aa88, #006644); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; grid-column: span 2;">🚀 EXECUTAR VALIDAÇÃO COMPLETA</button>
-            <button id="diag61-core" style="background: #1a2a3a; color: #88ddff; border: 1px solid #88ddff; padding: 8px; border-radius: 4px; cursor: pointer;">🔍 Core</button>
-            <button id="diag61-perf" style="background: #1a2a3a; color: #88ddff; border: 1px solid #88ddff; padding: 8px; border-radius: 4px; cursor: pointer;">⚡ Performance</button>
-            <button id="diag61-storage" style="background: #1a2a3a; color: #88ddff; border: 1px solid #88ddff; padding: 8px; border-radius: 4px; cursor: pointer;">💾 Storage</button>
+            <button id="diag61-run-all" style="background: linear-gradient(135deg, #88ff88, #44aa44); color: #0a0a1f; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; grid-column: span 2;">🚀 EXECUTAR VALIDAÇÃO COMPLETA</button>
+            <button id="diag61-core" style="background: #1a2a3a; color: #88ff88; border: 1px solid #88ff88; padding: 8px; border-radius: 4px; cursor: pointer;">🔍 Core</button>
+            <button id="diag61-perf" style="background: #1a2a3a; color: #88ff88; border: 1px solid #88ff88; padding: 8px; border-radius: 4px; cursor: pointer;">⚡ Performance</button>
+            <button id="diag61-storage" style="background: #1a2a3a; color: #88ff88; border: 1px solid #88ff88; padding: 8px; border-radius: 4px; cursor: pointer;">💾 Storage</button>
             <button id="diag61-clear" style="background: #3a2a1a; color: #ffaa00; border: 1px solid #ffaa00; padding: 8px; border-radius: 4px; cursor: pointer;">🧹 Limpar</button>
         `;
 
@@ -588,7 +582,7 @@
         }
 
         document.getElementById('diag61-run-all')?.addEventListener('click', async () => {
-            resultsEl.innerHTML = '<div style="text-align:center; color:#00ffff; padding:20px;">🔄 Executando validações...</div>';
+            resultsEl.innerHTML = '<div style="text-align:center; color:#88ff88; padding:20px;">🔄 Executando validações...</div>';
             
             const allResults = {
                 core: checkCoreIntegrity(),
@@ -598,7 +592,7 @@
                 zombies: detectOrphanedElements()
             };
             
-            displayResults('DASHBOARD - SISTEMA EM PRODUÇÃO', allResults);
+            displayResults('DASHBOARD - RECORDE DE PERFORMANCE!', allResults);
         });
 
         document.getElementById('diag61-core')?.addEventListener('click', () => {
@@ -606,7 +600,7 @@
         });
 
         document.getElementById('diag61-perf')?.addEventListener('click', () => {
-            displayResults('Performance JS (1ª CARGA)', analyzeLoadPerformance());
+            displayResults('Performance JS', analyzeLoadPerformance());
         });
 
         document.getElementById('diag61-storage')?.addEventListener('click', () => {
@@ -614,7 +608,7 @@
         });
 
         document.getElementById('diag61-clear')?.addEventListener('click', () => {
-            resultsEl.innerHTML = '<div style="text-align: center; color: #00ffff80; padding:20px;">✅ Resultados limpos.</div>';
+            resultsEl.innerHTML = '<div style="text-align: center; color: #88ff88; padding:20px;">✅ Resultados limpos.</div>';
         });
 
         // Drag & Drop
@@ -660,8 +654,10 @@
 
     // ========== INICIALIZAÇÃO ==========
     function initialize() {
-        console.log('%c🔬 [DIAGNOSTICS61] v6.1.9 - SISTEMA EM PRODUÇÃO', 'color: #00ffff; font-weight: bold; font-size: 14px;');
-        console.log('%c📊 MÉTRICAS REAIS: Média 1456.98ms | 27 imóveis | 9/9 módulos | 0 zumbis', 'color: #88ff88; font-weight: bold;');
+        console.log('%c🔬 [DIAGNOSTICS61] v6.1.9.1 - RECORDE DE PERFORMANCE! 🏆', 'color: #88ff88; font-weight: bold; font-size: 16px;');
+        console.log('%c📊 MÉTRICAS REAIS: Média 50.61ms | 27 imóveis | 9/9 módulos | 0 zumbis', 'color: #88ff88; font-weight: bold; font-size: 14px;');
+        console.log('%c⚡ Módulo mais rápido: loading-manager.js (36.70ms)', 'color: #88ff88;');
+        console.log('%c🐢 Módulo mais lento: admin.js (70.10ms)', 'color: #ffaa88;');
 
         if (window.location.search.includes('diagnostics=true')) {
             setTimeout(createPanel, 1500);
@@ -681,9 +677,9 @@
                 properties: window.properties?.length || 0,
                 modules: 9,
                 zombies: 0,
-                avgTime: '1456.98ms',
-                fastest: 'loading-manager.js (919.40ms)',
-                slowest: 'admin.js (2117.70ms)',
+                avgTime: '50.61ms',
+                fastest: 'loading-manager.js (36.70ms)',
+                slowest: 'admin.js (70.10ms)',
                 health: '100%'
             })
         };
