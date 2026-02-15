@@ -2655,7 +2655,7 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
                     🧪 TESTES VISÍVEIS DO SHAREDCORE
                 </span>
                 <span style="color: #00ffff; font-size: 12px; background: #004444; padding: 3px 10px; border-radius: 10px;">
-                    v2.0
+                    v6.2.4
                 </span>
             </div>
             
