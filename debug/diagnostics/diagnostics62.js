@@ -2549,13 +2549,13 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
 })();
 
 // =====================================================================
-// SEÇÃO VISÍVEL DE TESTES NO PAINEL - v2.0
+// SEÇÃO VISÍVEL DE TESTES NO PAINEL - v6.2.4
 // Adicionar no final do arquivo diagnostics62.js
 // Cria uma seção visual com todos os testes (debounce, throttle, formatPrice, etc)
 // =====================================================================
 
 (function addVisibleTestSection() {
-    console.log('%c🔧 ADICIONANDO SEÇÃO VISÍVEL DE TESTES AO PAINEL - v2.0', 'color: #00ffff; font-weight: bold; background: #003333; padding: 5px;');
+    console.log('%c🔧 ADICIONANDO SEÇÃO VISÍVEL DE TESTES AO PAINEL - v6.2.4', 'color: #00ffff; font-weight: bold; background: #003333; padding: 5px;');
     
     // === 1. AGUARDAR PAINEL EXISTIR ===
     const waitForPanel = () => {
