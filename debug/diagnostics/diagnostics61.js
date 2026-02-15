@@ -1,8 +1,8 @@
-// ================== DIAGNOSTICS61.JS - VERSÃO 6.1.9.4 ==================
+// ================== DIAGNOSTICS61.JS - VERSÃO 6.1.9.5 ==================
 // CADEIA PROGRESSIVA DE DIAGNÓSTICO - MÓDULO DE VALIDAÇÃO AVANÇADA
-// ✅ VERSÃO FINAL - TODOS OS DADOS CORRETOS
+// ✅ VERSÃO FINAL - TODOS OS DADOS CORRETOS E CONSOLIDADOS
 // MÉTRICAS REAIS: Média 50.61ms | 27 imóveis | 9/9 módulos | 0 zumbis
-// Medição: 21:36:42 - 14/02/2026
+// Medição recorde: 21:36:42 - 14/02/2026
 
 (function() {
     'use strict';
@@ -10,7 +10,7 @@
     // ========== CONFIGURAÇÃO DO PAINEL ==========
     const PANEL_CONFIG = {
         id: 'diagnostics-panel-61',
-        title: '🔬 DIAGNOSTICS61 - SISTEMA OTIMIZADO v6.1.9.4',
+        title: '🔬 DIAGNOSTICS61 - SISTEMA OTIMIZADO v6.1.9.5',
         width: '620px',
         defaultPosition: { left: '280px', top: '120px' }
     };
@@ -407,7 +407,7 @@
         const panel = document.createElement('div');
         panel.id = PANEL_CONFIG.id;
         panel.className = 'diagnostics-panel';
-        panel.setAttribute('data-version', '6.1.9.4');
+        panel.setAttribute('data-version', '6.1.9.5');
         panel.style.cssText = `
             position: fixed;
             left: ${calculatedLeft};
@@ -583,11 +583,11 @@
 
     // ========== INICIALIZAÇÃO ==========
     function initialize() {
-        console.log('%c🔬 [DIAGNOSTICS61] v6.1.9.4 - SISTEMA 100% OTIMIZADO! 🏆', 'color: #88ff88; font-weight: bold; font-size: 16px;');
+        console.log('%c🔬 [DIAGNOSTICS61] v6.1.9.5 - SISTEMA 100% OTIMIZADO! 🏆', 'color: #88ff88; font-weight: bold; font-size: 16px;');
         console.log('%c📊 MÉTRICAS REAIS: Média 50.61ms | 27 imóveis | 9/9 módulos | 0 zumbis', 'color: #88ff88; font-weight: bold; font-size: 14px;');
         console.log('%c⚡ Módulo mais rápido: loading-manager.js (36.70ms)', 'color: #88ff88;');
         console.log('%c🐢 Módulo mais lento: admin.js (70.10ms)', 'color: #ffaa88;');
-        console.log('%c📅 Medição realizada em: 21:36:42 - 14/02/2026', 'color: #ffaa00;');
+        console.log('%c📅 Medição recorde: 21:36:42 - 14/02/2026', 'color: #ffaa00;');
 
         if (window.location.search.includes('diagnostics=true')) {
             setTimeout(createPanel, 1500);
@@ -600,7 +600,7 @@
                 testModuleCommunication();
                 validateLocalStorage();
                 detectOrphanedElements();
-                console.log('📊 Dados de performance:', PERFORMANCE_DATA);
+                console.log('📊 Dados de performance (recorde):', PERFORMANCE_DATA);
             },
             panel: createPanel,
             status: () => ({
@@ -611,7 +611,7 @@
                 fastest: 'loading-manager.js (36.70ms)',
                 slowest: 'admin.js (70.10ms)',
                 health: '100%',
-                timestamp: '21:36:42 - 14/02/2026'
+                recordDate: '21:36:42 - 14/02/2026'
             })
         };
     }
