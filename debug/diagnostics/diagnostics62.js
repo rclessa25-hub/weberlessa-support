@@ -2549,13 +2549,13 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
 })();
 
 // =====================================================================
-// INJEÇÃO DE SEÇÃO DE TESTES NO PAINEL EXISTENTE DO DIAGNOSTICS62.JS - v4.0
+// INJEÇÃO DE SEÇÃO DE TESTES NO PAINEL EXISTENTE DO DIAGNOSTICS62.JS - v4.1
 // Adicionar no final do arquivo diagnostics62.js
-// NÃO CRIA NOVO PAINEL - APENAS INJETA NO EXISTENTE
+// CORREÇÃO: Removido seletor :contains() inválido
 // =====================================================================
 
 (function injectTestSectionIntoExistingPanel() {
-    console.log('%c🔧 INJETANDO SEÇÃO DE TESTES NO PAINEL EXISTENTE - v4.0', 
+    console.log('%c🔧 INJETANDO SEÇÃO DE TESTES NO PAINEL EXISTENTE - v4.1', 
                 'color: #ff00ff; font-weight: bold; background: #330033; padding: 5px;');
     
     // === 1. AGUARDAR O PAINEL EXISTENTE DO DIAGNOSTICS62.JS ===
@@ -2568,6 +2568,7 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
                 attempts++;
                 
                 // Procurar pelo painel que JÁ EXISTE (criado pelo próprio diagnostics62.js)
+                // CORREÇÃO: Removido :contains() que causa erro - substituído por find com innerHTML
                 const existingPanel = 
                     // Primeiro: painel com ID sharedcore-migration-panel-*
                     document.querySelector('[id^="sharedcore-migration-panel-"]') ||
@@ -2576,8 +2577,11 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
                         const zIndex = window.getComputedStyle(div).zIndex;
                         return zIndex === '199902';
                     }) ||
-                    // Terceiro: painel com conteúdo diagnostics62
-                    document.querySelector('div:contains("diagnostics62"), div:contains("v6.2.4")');
+                    // Terceiro: procurar por texto no conteúdo (sem usar :contains)
+                    Array.from(document.querySelectorAll('div')).find(div => {
+                        const html = div.innerHTML || '';
+                        return html.includes('diagnostics62') || html.includes('v6.2.4');
+                    });
                 
                 if (existingPanel) {
                     clearInterval(checkInterval);
@@ -2686,7 +2690,7 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
                     🧪 TESTES VISÍVEIS DO SHAREDCORE (INJETADO)
                 </span>
                 <span style="color: #ff8888; font-size: 10px; background: #442222; padding: 2px 8px; border-radius: 10px;">
-                    diagnostics62.js
+                    diagnostics62.js v4.1
                 </span>
             </div>
             
@@ -2782,7 +2786,7 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
                     </div>
                 `;
                 
-                if (resultsDiv.innerHTML.includes('Clique nos testes')) {
+                if (resultsDiv.innerHTML.includes('Clique nos testes') || resultsDiv.innerHTML.includes('Resultados limpos')) {
                     resultsDiv.innerHTML = resultHtml;
                 } else {
                     resultsDiv.innerHTML = resultHtml + resultsDiv.innerHTML;
@@ -2839,7 +2843,7 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
                                 
                             case 'supabaseFetch':
                                 const r9 = await sc.supabaseFetch('/properties?select=id&limit=1');
-                                addResult('supabaseFetch', { ok: r9.ok }, r9.ok ? 'success' : 'warning');
+                                addResult('supabaseFetch', { ok: r9.ok, status: r9.status }, r9.ok ? 'success' : 'warning');
                                 break;
                                 
                             case 'debounce-wrapper':
@@ -2882,6 +2886,22 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
                                 
                                 try { results.push({ name: 'stringSimilarity', passed: sc.stringSimilarity('hello', 'world') > 0.1 }); } 
                                 catch (e) { results.push({ name: 'stringSimilarity', passed: false, error: e.message }); }
+                                
+                                try { results.push({ name: 'elementExists', passed: sc.elementExists('body') === true }); } 
+                                catch (e) { results.push({ name: 'elementExists', passed: false, error: e.message }); }
+                                
+                                try { results.push({ name: 'isMobileDevice', passed: typeof sc.isMobileDevice() === 'boolean' }); } 
+                                catch (e) { results.push({ name: 'isMobileDevice', passed: false, error: e.message }); }
+                                
+                                try { 
+                                    sc.logModule('TEST', 'all-test');
+                                    results.push({ name: 'logModule', passed: true });
+                                } catch (e) { results.push({ name: 'logModule', passed: false, error: e.message }); }
+                                
+                                try { 
+                                    sc.runLowPriority(() => {});
+                                    results.push({ name: 'runLowPriority', passed: true });
+                                } catch (e) { results.push({ name: 'runLowPriority', passed: false, error: e.message }); }
                                 
                                 let html = '<div style="color: #ff6464;">📊 RESULTADO COMPLETO:</div>';
                                 let passedCount = 0;
@@ -2948,6 +2968,7 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
             }
         }, 1000);
         
+        // Parar após 30 segundos para não ficar rodando eternamente
         setTimeout(() => clearInterval(interval), 30000);
     };
     
