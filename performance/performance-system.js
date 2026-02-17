@@ -556,6 +556,77 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
         }
     };
     
+    // ========== VERIFICAÇÃO PÓS-EXCLUSÃO ==========
+    function verifyPostExclusion() {
+        console.log('\n' + '='.repeat(60));
+        console.log('🔍 VERIFICAÇÃO DO PERFORMANCE SYSTEM PÓS-EXCLUSÃO');
+        console.log('='.repeat(60));
+        
+        // 1. Verificar se os módulos antigos NÃO existem mais
+        const oldModules = {
+            'benchmark.js': typeof window.BenchmarkSystem !== 'undefined',
+            'core-optimizer.js': typeof window.analyzeCoreSystem === 'function',
+            'optimizer.js': typeof window.PerformanceCache !== 'undefined'
+        };
+        
+        console.log('\n📦 MÓDULOS ANTIGOS (devem ser FALSE):');
+        Object.entries(oldModules).forEach(([module, exists]) => {
+            console.log(`   ${module}: ${exists ? '❌ TRUE (AINDA EXISTE!)' : '✅ FALSE (removido)'}`);
+        });
+        
+        // 2. Verificar se o novo módulo existe
+        const newModule = {
+            'PerformanceSystem': typeof window.PerformanceSystem === 'object',
+            'PerformanceSystem.cache': typeof window.PerformanceSystem?.cache === 'object',
+            'PerformanceSystem.benchmark': typeof window.PerformanceSystem?.benchmark === 'object',
+            'PerformanceSystem.analyzer': typeof window.PerformanceSystem?.analyzer === 'object',
+            'PerformanceSystem.reporter': typeof window.PerformanceSystem?.reporter === 'object'
+        };
+        
+        console.log('\n🎯 MÓDULO NOVO (devem ser TRUE):');
+        Object.entries(newModule).forEach(([module, exists]) => {
+            console.log(`   ${module}: ${exists ? '✅ TRUE' : '❌ FALSE'}`);
+        });
+        
+        // 3. Teste rápido
+        console.log('\n⚡ TESTE RÁPIDO:');
+        if (window.PerformanceSystem) {
+            const test = window.PerformanceSystem.quickTest();
+            
+            if (test.cache && test.benchmark && test.analyzer && test.reporter) {
+                console.log('   ✅ SISTEMA 100% FUNCIONAL');
+                console.log('   📊 Todos os componentes estão operacionais');
+            } else {
+                console.warn('   ⚠️ Sistema com problemas:');
+                Object.entries(test).forEach(([component, working]) => {
+                    console.log(`      ${component}: ${working ? '✅' : '❌'}`);
+                });
+            }
+        } else {
+            console.error('   ❌ PerformanceSystem não encontrado!');
+        }
+        
+        // 4. Resumo final
+        console.log('\n📋 RESUMO FINAL:');
+        const allOldRemoved = Object.values(oldModules).every(v => v === false);
+        const allNewPresent = Object.values(newModule).every(v => v === true);
+        
+        if (allOldRemoved && allNewPresent) {
+            console.log('   ✅ TODAS AS VERIFICAÇÕES PASSARAM!');
+            console.log('   🎯 O sistema está pronto para produção');
+        } else {
+            console.log('   ⚠️ VERIFICAÇÕES COM PROBLEMAS:');
+            if (!allOldRemoved) {
+                console.log('      - Módulos antigos ainda presentes');
+            }
+            if (!allNewPresent) {
+                console.log('      - Módulo novo incompleto');
+            }
+        }
+        
+        console.log('='.repeat(60) + '\n');
+    }
+    
     // ========== API PÚBLICA ==========
     window.PerformanceSystem = {
         // Cache
@@ -592,12 +663,14 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
             // Finalizar medição
             BenchmarkSystem.endMeasurement('performance_system_init');
             
-            // Gerar relatório inicial (apenas debug)
-            if (CONFIG.isDebugMode) {
-                setTimeout(() => {
-                    PerformanceReporter.printReportToConsole();
-                }, 3000);
-            }
+            // Gerar relatório inicial
+            setTimeout(() => {
+                console.log('\n' + '📊 GERANDO RELATÓRIO AUTOMÁTICO...');
+                PerformanceReporter.printReportToConsole();
+                
+                // Executar verificação pós-exclusão
+                verifyPostExclusion();
+            }, 3000);
             
             console.log(`✅ Performance System inicializado com ${optimizations.length} otimizações`);
             return optimizations;
@@ -628,47 +701,7 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
             // Teste de reporter
             testResult.reporter = typeof PerformanceReporter.printReportToConsole === 'function';
             
-            console.log('⚡ Teste rápido do PerformanceSystem:', testResult);
-            
-            if (testResult.cache && testResult.benchmark && testResult.analyzer && testResult.reporter) {
-                console.log('✅ SISTEMA 100% FUNCIONAL');
-            } else {
-                console.warn('⚠️ Sistema com problemas:', 
-                    Object.entries(testResult)
-                        .filter(([_, v]) => !v)
-                        .map(([k]) => k)
-                        .join(', ')
-                );
-            }
-            
             return testResult;
-        },
-        
-        // Função para verificar se módulos antigos foram removidos
-        verifyOldModulesRemoved() {
-            const oldModules = {
-                'benchmark.js': typeof window.BenchmarkSystem !== 'undefined',
-                'core-optimizer.js': typeof window.analyzeCoreSystem === 'function',
-                'optimizer.js': typeof window.PerformanceCache !== 'undefined'
-            };
-            
-            console.group('🔍 VERIFICAÇÃO DE MÓDULOS ANTIGOS');
-            console.log('📦 Módulos antigos (devem ser FALSE):', oldModules);
-            
-            const allFalse = Object.values(oldModules).every(v => v === false);
-            if (allFalse) {
-                console.log('✅ Todos os módulos antigos foram removidos com sucesso!');
-            } else {
-                console.warn('⚠️ Alguns módulos antigos ainda estão presentes:', 
-                    Object.entries(oldModules)
-                        .filter(([_, v]) => v === true)
-                        .map(([k]) => k)
-                        .join(', ')
-                );
-            }
-            console.groupEnd();
-            
-            return oldModules;
         }
     };
     
@@ -678,11 +711,6 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 window.PerformanceSystem.init();
-                
-                // Verificar módulos antigos após inicialização
-                setTimeout(() => {
-                    window.PerformanceSystem.verifyOldModulesRemoved();
-                }, 2000);
             }, 1000);
         });
     } else {
@@ -704,6 +732,7 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
         }
     }
     
-    // Expor função para teste no console
-    console.log('📊 Performance System pronto! Digite: PerformanceSystem.reporter.printReportToConsole() para ver relatório');
+    // Mostrar instruções no console
+    console.log('📊 Performance System pronto!');
+    console.log('⏳ Aguarde 3 segundos para o relatório automático...');
 })();
