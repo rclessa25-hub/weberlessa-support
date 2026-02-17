@@ -627,6 +627,63 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
         console.log('='.repeat(60) + '\n');
     }
     
+    // ========== FUNÇÃO DE INICIALIZAÇÃO CORRIGIDA ==========
+    function initializeWhenReady() {
+        console.log('⏰ Iniciando contador de 1 segundo para inicialização...');
+        setTimeout(() => {
+            console.log('🚀 Chamando PerformanceSystem.init()...');
+            window.PerformanceSystem.init();
+            
+            // Agendar verificação pós-exclusão após o init
+            setTimeout(() => {
+                verifyPostExclusion();
+            }, 2000);
+            
+        }, 1000);
+    }
+    
+    // ========== DIAGNÓSTICO INICIAL ==========
+    console.log('📊 Performance System pronto!');
+    console.log('⏳ Aguarde 3 segundos para o relatório automático...');
+    
+    // Mostrar diagnóstico do ambiente
+    console.log('\n🔧 DIAGNÓSTICO DO AMBIENTE:');
+    console.log(`   readyState: ${document.readyState}`);
+    console.log(`   isDebugMode: ${CONFIG.isDebugMode}`);
+    console.log(`   URL: ${window.location.href}`);
+    console.log(`   hostname: ${window.location.hostname}`);
+    console.log(`   debug param: ${window.location.search.includes('debug=true')}`);
+    
+    // ========== INICIALIZAÇÃO AUTOMÁTICA CORRIGIDA ==========
+    if (CONFIG.isDebugMode) {
+        console.log('🔧 Modo debug detectado, preparando inicialização...');
+        
+        if (document.readyState === 'loading') {
+            console.log('📄 DOM ainda carregando, aguardando DOMContentLoaded...');
+            document.addEventListener('DOMContentLoaded', initializeWhenReady);
+        } else {
+            console.log(`✅ DOM já carregado (${document.readyState}), inicializando agora...`);
+            initializeWhenReady();
+        }
+    } else {
+        // Em produção, inicializar com baixa prioridade
+        console.log('🌍 Modo produção detectado, inicialização com baixa prioridade...');
+        
+        const initProduction = () => {
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(() => window.PerformanceSystem.init());
+            } else {
+                setTimeout(() => window.PerformanceSystem.init(), 5000);
+            }
+        };
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initProduction);
+        } else {
+            initProduction();
+        }
+    }
+    
     // ========== API PÚBLICA ==========
     window.PerformanceSystem = {
         // Cache
@@ -647,7 +704,7 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
         // Utilitários
         config: CONFIG,
         
-        // Inicialização
+        // Inicialização manual
         init() {
             console.log('🚀 Inicializando Performance System...');
             
@@ -661,16 +718,17 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
             const optimizations = CoreAnalyzer.optimizeCriticalFunctions();
             
             // Finalizar medição
-            BenchmarkSystem.endMeasurement('performance_system_init');
+            const initTime = BenchmarkSystem.endMeasurement('performance_system_init');
             
-            // Gerar relatório inicial
+            if (initTime) {
+                console.log(`⏱️ performance_system_init: ${initTime.duration.toFixed(2)}ms`);
+            }
+            
+            // Gerar relatório automático após 2 segundos
             setTimeout(() => {
                 console.log('\n' + '📊 GERANDO RELATÓRIO AUTOMÁTICO...');
                 PerformanceReporter.printReportToConsole();
-                
-                // Executar verificação pós-exclusão
-                verifyPostExclusion();
-            }, 3000);
+            }, 2000);
             
             console.log(`✅ Performance System inicializado com ${optimizations.length} otimizações`);
             return optimizations;
@@ -686,53 +744,43 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
             };
             
             // Teste de cache
-            SmartCache.set('test_key', 'test_value', 1000);
-            testResult.cache = SmartCache.get('test_key') === 'test_value';
+            try {
+                SmartCache.set('test_key', 'test_value', 1000);
+                testResult.cache = SmartCache.get('test_key') === 'test_value';
+            } catch (e) {
+                console.error('Erro no teste de cache:', e);
+            }
             
             // Teste de benchmark
-            testResult.benchmark = !!BenchmarkSystem.metrics && 
-                                   typeof BenchmarkSystem.startMeasurement === 'function';
+            try {
+                testResult.benchmark = !!BenchmarkSystem.metrics && 
+                                       typeof BenchmarkSystem.startMeasurement === 'function';
+            } catch (e) {
+                console.error('Erro no teste de benchmark:', e);
+            }
             
             // Teste de analyzer
-            const analysis = CoreAnalyzer.analyze();
-            testResult.analyzer = analysis && typeof analysis === 'object' && 
-                                 analysis.modules !== undefined;
+            try {
+                const analysis = CoreAnalyzer.analyze();
+                testResult.analyzer = analysis && typeof analysis === 'object' && 
+                                     analysis.modules !== undefined;
+            } catch (e) {
+                console.error('Erro no teste de analyzer:', e);
+            }
             
             // Teste de reporter
-            testResult.reporter = typeof PerformanceReporter.printReportToConsole === 'function';
+            try {
+                testResult.reporter = typeof PerformanceReporter.printReportToConsole === 'function';
+            } catch (e) {
+                console.error('Erro no teste de reporter:', e);
+            }
             
             return testResult;
+        },
+        
+        // Função para forçar verificação manual
+        runVerification() {
+            verifyPostExclusion();
         }
     };
-    
-    // ========== INICIALIZAÇÃO AUTOMÁTICA ==========
-    if (CONFIG.isDebugMode) {
-        // Em modo debug, inicializar imediatamente
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                window.PerformanceSystem.init();
-            }, 1000);
-        });
-    } else {
-        // Em produção, inicializar com baixa prioridade
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                if ('requestIdleCallback' in window) {
-                    requestIdleCallback(() => window.PerformanceSystem.init());
-                } else {
-                    setTimeout(() => window.PerformanceSystem.init(), 5000);
-                }
-            });
-        } else {
-            if ('requestIdleCallback' in window) {
-                requestIdleCallback(() => window.PerformanceSystem.init());
-            } else {
-                setTimeout(() => window.PerformanceSystem.init(), 5000);
-            }
-        }
-    }
-    
-    // Mostrar instruções no console
-    console.log('📊 Performance System pronto!');
-    console.log('⏳ Aguarde 3 segundos para o relatório automático...');
 })();
