@@ -2549,294 +2549,215 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
 })();
 
 // =====================================================================
-// SEÇÃO VISÍVEL DE TESTES NO PAINEL DO DIAGNOSTICS62.JS - v3.0
+// INJEÇÃO DE SEÇÃO DE TESTES NO PAINEL EXISTENTE DO DIAGNOSTICS62.JS - v4.0
 // Adicionar no final do arquivo diagnostics62.js
-// FORÇA a criação no painel do diagnostics62.js
+// NÃO CRIA NOVO PAINEL - APENAS INJETA NO EXISTENTE
 // =====================================================================
 
-(function addVisibleTestSectionToDiagnostics62() {
-    console.log('%c🔧 ADICIONANDO SEÇÃO VISÍVEL DE TESTES AO DIAGNOSTICS62.JS - v3.0', 
+(function injectTestSectionIntoExistingPanel() {
+    console.log('%c🔧 INJETANDO SEÇÃO DE TESTES NO PAINEL EXISTENTE - v4.0', 
                 'color: #ff00ff; font-weight: bold; background: #330033; padding: 5px;');
     
-    // === 1. IDENTIFICADOR ÚNICO DO DIAGNOSTICS62 ===
-    const DIAGNOSTICS62_ID = 'diagnostics62-panel';
-    const DIAGNOSTICS62_MARKER = 'diagnostics62-version';
-    
-    // === 2. FUNÇÃO PARA ENCONTRAR O PAINEL CORRETO ===
-    const findDiagnostics62Panel = () => {
-        console.log('🔍 Procurando painel do diagnostics62.js...');
-        
-        // Lista de seletores específicos do diagnostics62
-        const selectors = [
-            // Pelo ID específico que criamos
-            '#diagnostics62-panel',
-            // Pelo conteúdo (deve conter "v6.2.4" ou "diagnostics62")
-            '[id*="diagnostics62"]',
-            '[id*="sharedcore-migration-panel"]',
-            // Pelo texto "v6.2.4" no cabeçalho
-            'div:contains("v6.2.4")',
-            'div:contains("diagnostics62")',
-            'div:contains("MIGRAÇÃO SHAREDCORE")'
-        ];
-        
-        // Procurar por ID específico primeiro
-        let panel = document.getElementById(DIAGNOSTICS62_ID);
-        if (panel) {
-            console.log('✅ Painel encontrado por ID:', DIAGNOSTICS62_ID);
-            return panel;
-        }
-        
-        // Procurar por outros IDs
-        const allPanels = document.querySelectorAll('[id^="sharedcore-migration-panel-"], [id*="diagnostics"], .diagnostics-panel');
-        
-        for (let p of allPanels) {
-            // Verificar se é do diagnostics62 pelo conteúdo
-            const html = p.innerHTML || '';
-            if (html.includes('v6.2.4') || html.includes('diagnostics62') || html.includes('MIGRAÇÃO SHAREDCORE')) {
-                console.log('✅ Painel diagnostics62 encontrado por conteúdo:', p.id || 'sem ID');
-                
-                // Atribuir ID para referência futura
-                if (!p.id) {
-                    p.id = DIAGNOSTICS62_ID + '-' + Date.now();
-                }
-                return p;
-            }
+    // === 1. AGUARDAR O PAINEL EXISTENTE DO DIAGNOSTICS62.JS ===
+    const waitForExistingPanel = () => {
+        return new Promise((resolve) => {
+            let attempts = 0;
+            const maxAttempts = 20; // 10 segundos (500ms * 20)
             
-            // Verificar z-index (diagnostics62 tem 199902)
-            const zIndex = parseInt(window.getComputedStyle(p).zIndex);
-            if (zIndex === 199902) {
-                console.log('✅ Painel diagnostics62 encontrado por z-index:', zIndex);
-                if (!p.id) {
-                    p.id = DIAGNOSTICS62_ID + '-' + Date.now();
+            const checkInterval = setInterval(() => {
+                attempts++;
+                
+                // Procurar pelo painel que JÁ EXISTE (criado pelo próprio diagnostics62.js)
+                const existingPanel = 
+                    // Primeiro: painel com ID sharedcore-migration-panel-*
+                    document.querySelector('[id^="sharedcore-migration-panel-"]') ||
+                    // Segundo: qualquer div com z-index 199902
+                    Array.from(document.querySelectorAll('div')).find(div => {
+                        const zIndex = window.getComputedStyle(div).zIndex;
+                        return zIndex === '199902';
+                    }) ||
+                    // Terceiro: painel com conteúdo diagnostics62
+                    document.querySelector('div:contains("diagnostics62"), div:contains("v6.2.4")');
+                
+                if (existingPanel) {
+                    clearInterval(checkInterval);
+                    console.log('✅ Painel existente encontrado:', existingPanel.id || 'sem ID');
+                    resolve(existingPanel);
                 }
-                return p;
-            }
-        }
-        
-        // Se não encontrou, criar um novo painel
-        console.log('⚠️ Painel diagnostics62 não encontrado, criando novo...');
-        return createDiagnostics62Panel();
-    };
-    
-    // === 3. CRIAR PAINEL DO DIAGNOSTICS62 SE NÃO EXISTIR ===
-    const createDiagnostics62Panel = () => {
-        const panel = document.createElement('div');
-        panel.id = DIAGNOSTICS62_ID;
-        panel.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            width: 650px;
-            max-height: 90vh;
-            overflow-y: auto;
-            background: linear-gradient(135deg, #2a0a0a, #442200);
-            border: 3px solid #ff6464;
-            border-radius: 12px;
-            z-index: 199902;
-            box-shadow: 0 0 30px rgba(255, 100, 100, 0.4);
-            font-family: 'Segoe UI', monospace;
-            color: white;
-        `;
-        
-        panel.innerHTML = `
-            <div style="padding: 15px; border-bottom: 2px solid #ff6464; background: rgba(255,100,100,0.1);">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #ff6464; font-weight: bold; font-size: 16px;">
-                        🚀 DIAGNOSTICS62.JS v6.2.4
-                    </span>
-                    <button id="close-diagnostics62-panel" style="background: #ff5555; color: white; border: none; width: 25px; height: 25px; border-radius: 5px; cursor: pointer;">×</button>
-                </div>
-            </div>
-            <div class="diagnostics62-content" style="padding: 15px;">
-                <!-- Conteúdo será adicionado aqui -->
-            </div>
-        `;
-        
-        document.body.appendChild(panel);
-        
-        document.getElementById('close-diagnostics62-panel')?.addEventListener('click', () => {
-            panel.remove();
+                
+                if (attempts >= maxAttempts) {
+                    clearInterval(checkInterval);
+                    console.log('⚠️ Painel existente não encontrado após', maxAttempts, 'tentativas');
+                    
+                    // ÚLTIMO RECURSO: procurar por qualquer painel de diagnóstico
+                    const anyPanel = document.querySelector('[id^="diagnostics-panel"], [class*="diagnostics"]');
+                    if (anyPanel) {
+                        console.log('⚠️ Usando painel alternativo como fallback');
+                        resolve(anyPanel);
+                    } else {
+                        resolve(null);
+                    }
+                }
+            }, 500);
         });
-        
-        console.log('✅ Novo painel diagnostics62.js criado');
-        return panel;
     };
     
-    // === 4. CRIAR SEÇÃO DE TESTES ESPECÍFICA PARA DIAGNOSTICS62 ===
-    const createTestSection = (panel) => {
-        if (!panel) return;
-        
-        // Verificar se já existe no painel correto
-        if (document.getElementById('diagnostics62-test-section')) {
-            console.log('ℹ️ Seção de testes já existe no diagnostics62');
+    // === 2. VERIFICAR SE A SEÇÃO JÁ EXISTE NO PAINEL ===
+    const sectionExists = (panel) => {
+        return !!(
+            panel.querySelector('#injected-test-section') ||
+            panel.querySelector('[data-diagnostics62="test-section"]') ||
+            panel.innerHTML.includes('TESTES VISÍVEIS DO SHAREDCORE (INJETADO)')
+        );
+    };
+    
+    // === 3. INJETAR SEÇÃO NO PAINEL EXISTENTE ===
+    const injectTestSection = (panel) => {
+        if (!panel) {
+            console.error('❌ Painel não encontrado para injeção');
             return;
         }
         
-        console.log('✅ Adicionando seção de testes ao painel diagnostics62');
+        // Verificar se já existe
+        if (sectionExists(panel)) {
+            console.log('ℹ️ Seção de testes já existe neste painel');
+            return;
+        }
         
-        // Estilos específicos
-        const style = document.createElement('style');
-        style.id = 'diagnostics62-test-styles';
-        style.textContent = `
-            .diagnostics62-test-button {
-                background: #660000;
-                color: white;
-                border: 2px solid #ff6464;
-                padding: 8px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 11px;
-                transition: all 0.3s;
-                width: 100%;
-                font-weight: bold;
-            }
-            .diagnostics62-test-button:hover {
-                background: #993333;
-                transform: translateY(-2px);
-                box-shadow: 0 5px 15px rgba(255,100,100,0.3);
-            }
-            .diagnostics62-test-result {
-                background: #331111;
-                border-left: 4px solid #ff6464;
-                padding: 10px;
-                margin: 10px 0;
-                border-radius: 5px;
-                animation: slideIn 0.3s;
-            }
-            @keyframes slideIn {
-                from { opacity: 0; transform: translateX(-20px); }
-                to { opacity: 1; transform: translateX(0); }
-            }
-            .diagnostics62-section-title {
-                color: #ff6464;
-                font-weight: bold;
-                font-size: 14px;
-                margin-bottom: 10px;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }
-        `;
+        console.log('📝 Injetando seção de testes no painel existente...');
         
-        // Remover estilo antigo se existir
-        const oldStyle = document.getElementById('diagnostics62-test-styles');
-        if (oldStyle) oldStyle.remove();
+        // Estilos (adicionar apenas uma vez)
+        if (!document.getElementById('injected-test-styles')) {
+            const style = document.createElement('style');
+            style.id = 'injected-test-styles';
+            style.textContent = `
+                .injected-test-button {
+                    background: #660000;
+                    color: white;
+                    border: 2px solid #ff6464;
+                    padding: 8px;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 11px;
+                    transition: all 0.3s;
+                    width: 100%;
+                    font-weight: bold;
+                }
+                .injected-test-button:hover {
+                    background: #993333;
+                    transform: translateY(-2px);
+                    box-shadow: 0 5px 15px rgba(255,100,100,0.3);
+                }
+                .injected-test-result {
+                    background: #331111;
+                    border-left: 4px solid #ff6464;
+                    padding: 10px;
+                    margin: 10px 0;
+                    border-radius: 5px;
+                    animation: slideIn 0.3s;
+                }
+                @keyframes slideIn {
+                    from { opacity: 0; transform: translateX(-20px); }
+                    to { opacity: 1; transform: translateX(0); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
         
-        document.head.appendChild(style);
-        
-        // Criar seção
+        // Criar seção para injetar
         const testSection = document.createElement('div');
-        testSection.id = 'diagnostics62-test-section';
+        testSection.id = 'injected-test-section';
+        testSection.setAttribute('data-diagnostics62', 'test-section');
         testSection.style.cssText = `
             background: linear-gradient(135deg, #331111, #442222);
             border: 3px solid #ff6464;
             border-radius: 10px;
             padding: 20px;
-            margin: 20px 0;
+            margin: 20px;
             box-shadow: 0 0 20px rgba(255, 100, 100, 0.3);
+            position: relative;
+            z-index: 10;
         `;
         
-        // HTML da seção
+        // HTML da seção (versão simplificada e encapsulada)
         testSection.innerHTML = `
-            <div class="diagnostics62-section-title">
-                🧪 TESTES VISÍVEIS DO SHAREDCORE (DIAGNOSTICS62.JS)
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span style="color: #ff6464; font-weight: bold; font-size: 14px;">
+                    🧪 TESTES VISÍVEIS DO SHAREDCORE (INJETADO)
+                </span>
+                <span style="color: #ff8888; font-size: 10px; background: #442222; padding: 2px 8px; border-radius: 10px;">
+                    diagnostics62.js
+                </span>
             </div>
             
-            <!-- Status do SharedCore -->
-            <div style="background: #442222; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                <div style="text-align: center;">
-                    <div style="color: #ff6464; font-size: 24px; font-weight: bold;" id="d62-function-count">0</div>
-                    <div style="color: #ffaaaa; font-size: 10px;">FUNÇÕES</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="color: #ff6464; font-size: 24px; font-weight: bold;" id="d62-status">⏳</div>
-                    <div style="color: #ffaaaa; font-size: 10px;">STATUS</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="color: #ff6464; font-size: 24px; font-weight: bold;" id="d62-version">1.0</div>
-                    <div style="color: #ffaaaa; font-size: 10px;">VERSÃO</div>
-                </div>
+            <!-- Status rápido -->
+            <div style="background: #442222; padding: 10px; border-radius: 5px; margin-bottom: 15px; display: flex; gap: 10px; font-size: 11px;">
+                <div><span style="color: #ff6464;">SharedCore:</span> <span id="inj-status">⏳</span></div>
+                <div><span style="color: #ff6464;">Funções:</span> <span id="inj-func-count">0</span></div>
             </div>
             
-            <!-- Botões de Teste Rápidos -->
-            <div style="margin-bottom: 20px;">
-                <div style="color: #ffaaaa; margin-bottom: 10px;">🔧 TESTES RÁPIDOS:</div>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
-                    <button class="diagnostics62-test-button" id="d62-test-formatPrice">💰 formatPrice</button>
-                    <button class="diagnostics62-test-button" id="d62-test-debounce">⏱️ debounce</button>
-                    <button class="diagnostics62-test-button" id="d62-test-throttle">⏱️ throttle</button>
-                    <button class="diagnostics62-test-button" id="d62-test-stringSimilarity">🔤 stringSimilarity</button>
-                    <button class="diagnostics62-test-button" id="d62-test-elementExists">🔍 elementExists</button>
-                    <button class="diagnostics62-test-button" id="d62-test-isMobile">📱 isMobile</button>
-                    <button class="diagnostics62-test-button" id="d62-test-logModule">📝 logModule</button>
-                    <button class="diagnostics62-test-button" id="d62-test-runLowPriority">⚡ runLowPriority</button>
-                    <button class="diagnostics62-test-button" id="d62-test-supabaseFetch">🌐 supabaseFetch</button>
-                </div>
+            <!-- Botões de teste em grid compacto -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 15px;">
+                <button class="injected-test-button" data-test="formatPrice">💰 formatPrice</button>
+                <button class="injected-test-button" data-test="debounce">⏱️ debounce</button>
+                <button class="injected-test-button" data-test="throttle">⏱️ throttle</button>
+                <button class="injected-test-button" data-test="stringSimilarity">🔤 stringSim</button>
+                <button class="injected-test-button" data-test="elementExists">🔍 elementExists</button>
+                <button class="injected-test-button" data-test="isMobile">📱 isMobile</button>
+                <button class="injected-test-button" data-test="logModule">📝 logModule</button>
+                <button class="injected-test-button" data-test="runLowPriority">⚡ runLow</button>
+                <button class="injected-test-button" data-test="supabaseFetch">🌐 supabase</button>
             </div>
             
-            <!-- TESTE 8/9: DEBOUNCE/THROTTLE WRAPPERS -->
-            <div style="background: #442222; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <div style="color: #ffaa00; font-weight: bold; margin-bottom: 10px;">
-                    🔄 TESTE 8/9: DEBOUNCE/THROTTLE WRAPPERS
+            <!-- Teste 8/9 específico -->
+            <div style="background: #442222; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <div style="color: #ffaa00; font-size: 12px; margin-bottom: 8px;">🔁 TESTE 8/9: WRAPPERS</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                    <button class="injected-test-button" data-test="debounce-wrapper" style="background: #884444;">Debounce</button>
+                    <button class="injected-test-button" data-test="throttle-wrapper" style="background: #884444;">Throttle</button>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <button class="diagnostics62-test-button" id="d62-test-debounce-wrapper" style="background: #884444;">🔁 Testar Debounce</button>
-                    <button class="diagnostics62-test-button" id="d62-test-throttle-wrapper" style="background: #884444;">🔁 Testar Throttle</button>
-                </div>
-                <div id="d62-wrapper-result" style="margin-top: 10px; padding: 10px; background: #331111; border-radius: 5px; min-height: 40px; color: #ffaaaa;">
-                    Clique nos botões para testar
+                <div id="inj-wrapper-result" style="margin-top: 8px; padding: 8px; background: #331111; border-radius: 5px; font-size: 11px; min-height: 30px;">
+                    Clique para testar
                 </div>
             </div>
             
-            <!-- FUNÇÕES CRÍTICAS -->
-            <div style="background: #442222; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <div style="color: #ff6464; font-weight: bold; margin-bottom: 10px;">
-                    ⚡ FUNÇÕES CRÍTICAS
-                </div>
-                <button class="diagnostics62-test-button" id="d62-test-all-critical" style="background: #aa5555; margin-bottom: 10px;">
-                    🚀 TESTAR TODAS
-                </button>
-                <div id="d62-critical-results" style="max-height: 200px; overflow-y: auto;">
-                    <!-- Resultados -->
-                </div>
-            </div>
+            <!-- Botão testar todas -->
+            <button class="injected-test-button" data-test="all-critical" style="background: #aa5555; margin-bottom: 10px; width: 100%;">
+                🚀 TESTAR TODAS AS FUNÇÕES
+            </button>
             
-            <!-- RESULTADOS -->
-            <div style="background: #331111; padding: 15px; border-radius: 8px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                    <span style="color: #ff6464; font-weight: bold;">📊 RESULTADOS</span>
-                    <button id="d62-clear-results" style="background: #553333; color: white; border: none; padding: 2px 8px; border-radius: 3px; cursor: pointer;">Limpar</button>
+            <!-- Resultados -->
+            <div style="background: #331111; padding: 10px; border-radius: 5px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: #ff6464; font-size: 12px;">📊 RESULTADOS</span>
+                    <button id="inj-clear-results" style="background: #553333; color: white; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 10px;">Limpar</button>
                 </div>
-                <div id="d62-results-container" style="min-height: 150px; max-height: 300px; overflow-y: auto;">
-                    <div style="color: #ffaaaa; text-align: center; padding: 20px;">
-                        Clique em qualquer teste para ver resultados
+                <div id="inj-results-container" style="min-height: 100px; max-height: 200px; overflow-y: auto; font-size: 11px;">
+                    <div style="color: #ffaaaa; text-align: center; padding: 10px;">
+                        Clique nos testes para ver resultados
                     </div>
                 </div>
             </div>
-            
-            <!-- MARCADOR DO DIAGNOSTICS62 -->
-            <div style="text-align: right; margin-top: 10px; color: #ff8888; font-size: 10px;">
-                diagnostics62.js v6.2.4 - Painel Exclusivo
-            </div>
         `;
         
-        // Encontrar onde inserir
-        const contentArea = panel.querySelector('.diagnostics62-content, .tests-container, div[style*="overflow-y"]');
+        // INJETAR no painel existente (no final do conteúdo)
+        panel.appendChild(testSection);
         
-        if (contentArea) {
-            contentArea.appendChild(testSection);
-        } else {
-            panel.appendChild(testSection);
-        }
+        // Log de sucesso
+        console.log('%c✅ SEÇÃO INJETADA COM SUCESSO NO PAINEL EXISTENTE!', 
+                    'color: #00ff00; font-weight: bold;');
+        console.log('📍 Painel ID:', panel.id || 'sem ID');
+        console.log('📍 Elementos injetados:', testSection.children.length);
         
-        // Inicializar botões
-        initializeDiagnostics62Buttons();
-        
-        // Atualizar status
-        updateDiagnostics62Status();
+        // Inicializar funcionalidades
+        initializeInjectedButtons(panel);
+        updateInjectedStatus();
     };
     
-    // === 5. INICIALIZAR BOTÕES DO DIAGNOSTICS62 ===
-    const initializeDiagnostics62Buttons = () => {
+    // === 4. INICIALIZAR BOTÕES INJETADOS ===
+    const initializeInjectedButtons = (panel) => {
+        if (!panel) return;
+        
         setTimeout(() => {
             const sc = window.SharedCore;
             if (!sc) {
@@ -2844,265 +2765,202 @@ if (typeof SharedCoreMigration !== 'undefined' && SharedCoreMigration.tests) {
                 return;
             }
             
-            const resultsDiv = document.getElementById('d62-results-container');
-            const criticalDiv = document.getElementById('d62-critical-results');
-            const wrapperDiv = document.getElementById('d62-wrapper-result');
+            const resultsDiv = document.getElementById('inj-results-container');
+            const wrapperDiv = document.getElementById('inj-wrapper-result');
             
-            const addResult = (testName, result, status = 'success') => {
+            const addResult = (testName, data, status = 'success') => {
                 if (!resultsDiv) return;
                 
                 const color = status === 'success' ? '#ff6464' : status === 'warning' ? '#ffaa00' : '#ff5555';
                 const resultHtml = `
-                    <div class="diagnostics62-test-result" style="border-left-color: ${color};">
+                    <div class="injected-test-result" style="border-left-color: ${color}; padding: 5px; margin: 5px 0;">
                         <div style="display: flex; justify-content: space-between;">
                             <span style="color: ${color};">${testName}</span>
-                            <span style="color: ${color};">${status === 'success' ? '✅' : status === 'warning' ? '⚠️' : '❌'}</span>
+                            <span style="color: ${color};">${status === 'success' ? '✅' : '⚠️'}</span>
                         </div>
-                        <pre style="color: #ffaaaa; font-size: 11px; margin-top: 5px; overflow-x: auto;">${JSON.stringify(result, null, 2)}</pre>
+                        <pre style="color: #ffaaaa; margin: 2px 0; font-size: 10px;">${JSON.stringify(data).substring(0, 100)}</pre>
                     </div>
                 `;
                 
-                if (resultsDiv.innerHTML.includes('Clique em qualquer teste')) {
+                if (resultsDiv.innerHTML.includes('Clique nos testes')) {
                     resultsDiv.innerHTML = resultHtml;
                 } else {
                     resultsDiv.innerHTML = resultHtml + resultsDiv.innerHTML;
                 }
             };
             
-            // formatPrice
-            document.getElementById('d62-test-formatPrice')?.addEventListener('click', () => {
-                const result = sc.formatPrice(450000);
-                addResult('formatPrice(450000)', { result }, result.includes('R$') ? 'success' : 'error');
-            });
-            
-            // debounce
-            document.getElementById('d62-test-debounce')?.addEventListener('click', () => {
-                const result = sc.debounce(() => {}, 100);
-                const isValid = typeof result === 'function';
-                addResult('debounce()', { type: typeof result, isValid }, isValid ? 'success' : 'error');
-            });
-            
-            // throttle
-            document.getElementById('d62-test-throttle')?.addEventListener('click', () => {
-                const result = sc.throttle(() => {}, 100);
-                const isValid = typeof result === 'function';
-                addResult('throttle()', { type: typeof result, isValid }, isValid ? 'success' : 'error');
-            });
-            
-            // stringSimilarity
-            document.getElementById('d62-test-stringSimilarity')?.addEventListener('click', () => {
-                const result = sc.stringSimilarity('hello', 'world');
-                addResult('stringSimilarity("hello","world")', { 
-                    result: result.toFixed(3),
-                    expected: '~0.2'
-                }, result > 0.1 ? 'success' : 'warning');
-            });
-            
-            // elementExists
-            document.getElementById('d62-test-elementExists')?.addEventListener('click', () => {
-                const result = sc.elementExists('body');
-                addResult('elementExists("body")', { result }, result ? 'success' : 'error');
-            });
-            
-            // isMobile
-            document.getElementById('d62-test-isMobile')?.addEventListener('click', () => {
-                const result = sc.isMobileDevice();
-                addResult('isMobileDevice()', { result });
-            });
-            
-            // logModule
-            document.getElementById('d62-test-logModule')?.addEventListener('click', () => {
-                try {
-                    sc.logModule('D62', 'teste');
-                    addResult('logModule()', { status: 'executado' }, 'success');
-                } catch (e) {
-                    addResult('logModule()', { error: e.message }, 'error');
-                }
-            });
-            
-            // runLowPriority
-            document.getElementById('d62-test-runLowPriority')?.addEventListener('click', () => {
-                let executed = false;
-                sc.runLowPriority(() => {
-                    executed = true;
-                    addResult('runLowPriority()', { executed }, 'success');
-                });
-                setTimeout(() => {
-                    if (!executed) {
-                        addResult('runLowPriority()', { executed: false }, 'warning');
+            // Handler genérico para botões
+            panel.querySelectorAll('[data-test]').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const test = e.target.getAttribute('data-test');
+                    
+                    try {
+                        switch(test) {
+                            case 'formatPrice':
+                                const r1 = sc.formatPrice(450000);
+                                addResult('formatPrice', { result: r1 }, r1.includes('R$') ? 'success' : 'error');
+                                break;
+                                
+                            case 'debounce':
+                                const r2 = sc.debounce(() => {}, 100);
+                                addResult('debounce', { type: typeof r2 }, typeof r2 === 'function' ? 'success' : 'error');
+                                break;
+                                
+                            case 'throttle':
+                                const r3 = sc.throttle(() => {}, 100);
+                                addResult('throttle', { type: typeof r3 }, typeof r3 === 'function' ? 'success' : 'error');
+                                break;
+                                
+                            case 'stringSimilarity':
+                                const r4 = sc.stringSimilarity('hello', 'world');
+                                addResult('stringSimilarity', { result: r4.toFixed(3) }, r4 > 0.1 ? 'success' : 'warning');
+                                break;
+                                
+                            case 'elementExists':
+                                const r5 = sc.elementExists('body');
+                                addResult('elementExists', { result: r5 }, r5 ? 'success' : 'error');
+                                break;
+                                
+                            case 'isMobile':
+                                const r6 = sc.isMobileDevice();
+                                addResult('isMobileDevice', { result: r6 });
+                                break;
+                                
+                            case 'logModule':
+                                sc.logModule('TEST', 'injected');
+                                addResult('logModule', { status: 'executado' }, 'success');
+                                break;
+                                
+                            case 'runLowPriority':
+                                sc.runLowPriority(() => {
+                                    addResult('runLowPriority', { executed: true }, 'success');
+                                });
+                                break;
+                                
+                            case 'supabaseFetch':
+                                const r9 = await sc.supabaseFetch('/properties?select=id&limit=1');
+                                addResult('supabaseFetch', { ok: r9.ok }, r9.ok ? 'success' : 'warning');
+                                break;
+                                
+                            case 'debounce-wrapper':
+                                const r10 = sc.debounce(() => {}, 100);
+                                const isValid1 = typeof r10 === 'function';
+                                if (wrapperDiv) {
+                                    wrapperDiv.innerHTML = `
+                                        <div style="color: ${isValid1 ? '#ff6464' : '#ff5555'};">
+                                            ${isValid1 ? '✅' : '❌'} Debounce: ${typeof r10}
+                                        </div>
+                                    `;
+                                }
+                                addResult('TESTE 8/9: debounce', { type: typeof r10, passed: isValid1 }, isValid1 ? 'success' : 'error');
+                                break;
+                                
+                            case 'throttle-wrapper':
+                                const r11 = sc.throttle(() => {}, 100);
+                                const isValid2 = typeof r11 === 'function';
+                                if (wrapperDiv) {
+                                    wrapperDiv.innerHTML = `
+                                        <div style="color: ${isValid2 ? '#ff6464' : '#ff5555'};">
+                                            ${isValid2 ? '✅' : '❌'} Throttle: ${typeof r11}
+                                        </div>
+                                    `;
+                                }
+                                addResult('TESTE 8/9: throttle', { type: typeof r11, passed: isValid2 }, isValid2 ? 'success' : 'error');
+                                break;
+                                
+                            case 'all-critical':
+                                const results = [];
+                                
+                                try { results.push({ name: 'formatPrice', passed: sc.formatPrice(450000).includes('R$') }); } 
+                                catch (e) { results.push({ name: 'formatPrice', passed: false, error: e.message }); }
+                                
+                                try { results.push({ name: 'debounce', passed: typeof sc.debounce(() => {}, 100) === 'function' }); } 
+                                catch (e) { results.push({ name: 'debounce', passed: false, error: e.message }); }
+                                
+                                try { results.push({ name: 'throttle', passed: typeof sc.throttle(() => {}, 100) === 'function' }); } 
+                                catch (e) { results.push({ name: 'throttle', passed: false, error: e.message }); }
+                                
+                                try { results.push({ name: 'stringSimilarity', passed: sc.stringSimilarity('hello', 'world') > 0.1 }); } 
+                                catch (e) { results.push({ name: 'stringSimilarity', passed: false, error: e.message }); }
+                                
+                                let html = '<div style="color: #ff6464;">📊 RESULTADO COMPLETO:</div>';
+                                let passedCount = 0;
+                                
+                                results.forEach(r => {
+                                    if (r.passed) passedCount++;
+                                    html += `<div style="color: ${r.passed ? '#ff6464' : '#ff5555'}; font-size: 10px; margin: 2px 0;">
+                                        ${r.passed ? '✅' : '❌'} ${r.name}
+                                    </div>`;
+                                });
+                                
+                                html += `<div style="color: #ff6464; margin-top: 5px;">${passedCount}/${results.length} passaram</div>`;
+                                
+                                const criticalDiv = panel.querySelector('#inj-critical-results') || document.createElement('div');
+                                criticalDiv.id = 'inj-critical-results';
+                                criticalDiv.innerHTML = html;
+                                criticalDiv.style.cssText = 'margin-top: 10px; padding: 10px; background: #442222; border-radius: 5px;';
+                                
+                                // Adicionar se não existir
+                                if (!panel.querySelector('#inj-critical-results')) {
+                                    const container = panel.querySelector('[data-test="all-critical"]').parentNode;
+                                    container.appendChild(criticalDiv);
+                                }
+                                break;
+                        }
+                    } catch (error) {
+                        addResult(test, { error: error.message }, 'error');
                     }
-                }, 1000);
-            });
-            
-            // supabaseFetch
-            document.getElementById('d62-test-supabaseFetch')?.addEventListener('click', async () => {
-                try {
-                    const result = await sc.supabaseFetch('/properties?select=id&limit=1');
-                    addResult('supabaseFetch()', { 
-                        ok: result.ok,
-                        hasData: !!result.data
-                    }, result.ok ? 'success' : 'warning');
-                } catch (e) {
-                    addResult('supabaseFetch()', { error: e.message }, 'error');
-                }
-            });
-            
-            // TESTE 8/9: debounce wrapper
-            document.getElementById('d62-test-debounce-wrapper')?.addEventListener('click', () => {
-                const result = sc.debounce(() => {}, 100);
-                const isValid = typeof result === 'function';
-                
-                if (wrapperDiv) {
-                    wrapperDiv.innerHTML = `
-                        <div style="color: ${isValid ? '#ff6464' : '#ff5555'};">
-                            ${isValid ? '✅' : '❌'} Debounce retorna função: ${typeof result}
-                            <br>
-                            <small>Teste 8/9: ${isValid ? 'PASSOU' : 'FALHOU'}</small>
-                        </div>
-                    `;
-                }
-                
-                addResult('🔁 TESTE 8/9: debounce wrapper', { 
-                    type: typeof result,
-                    isValid
-                }, isValid ? 'success' : 'error');
-            });
-            
-            // TESTE 8/9: throttle wrapper
-            document.getElementById('d62-test-throttle-wrapper')?.addEventListener('click', () => {
-                const result = sc.throttle(() => {}, 100);
-                const isValid = typeof result === 'function';
-                
-                if (wrapperDiv) {
-                    wrapperDiv.innerHTML = `
-                        <div style="color: ${isValid ? '#ff6464' : '#ff5555'};">
-                            ${isValid ? '✅' : '❌'} Throttle retorna função: ${typeof result}
-                            <br>
-                            <small>Teste 8/9: ${isValid ? 'PASSOU' : 'FALHOU'}</small>
-                        </div>
-                    `;
-                }
-                
-                addResult('🔁 TESTE 8/9: throttle wrapper', { 
-                    type: typeof result,
-                    isValid
-                }, isValid ? 'success' : 'error');
-            });
-            
-            // TESTAR TODAS
-            document.getElementById('d62-test-all-critical')?.addEventListener('click', async () => {
-                if (!criticalDiv) return;
-                
-                criticalDiv.innerHTML = '<div style="color: #ff6464;">Executando...</div>';
-                
-                const results = [];
-                
-                // formatPrice
-                try {
-                    const r = sc.formatPrice(450000);
-                    results.push({ name: 'formatPrice', passed: r.includes('R$'), result: r });
-                } catch (e) {
-                    results.push({ name: 'formatPrice', passed: false, error: e.message });
-                }
-                
-                // debounce
-                try {
-                    const r = sc.debounce(() => {}, 100);
-                    results.push({ name: 'debounce', passed: typeof r === 'function', result: typeof r });
-                } catch (e) {
-                    results.push({ name: 'debounce', passed: false, error: e.message });
-                }
-                
-                // throttle
-                try {
-                    const r = sc.throttle(() => {}, 100);
-                    results.push({ name: 'throttle', passed: typeof r === 'function', result: typeof r });
-                } catch (e) {
-                    results.push({ name: 'throttle', passed: false, error: e.message });
-                }
-                
-                // stringSimilarity
-                try {
-                    const r = sc.stringSimilarity('hello', 'world');
-                    results.push({ name: 'stringSimilarity', passed: r > 0.1, result: r.toFixed(3) });
-                } catch (e) {
-                    results.push({ name: 'stringSimilarity', passed: false, error: e.message });
-                }
-                
-                let html = '<div style="color: #ff6464; margin-bottom: 10px;">📊 RESULTADOS:</div>';
-                let passedCount = 0;
-                
-                results.forEach(r => {
-                    if (r.passed) passedCount++;
-                    html += `
-                        <div style="background: #442222; margin: 5px 0; padding: 8px; border-radius: 5px;">
-                            <div style="color: ${r.passed ? '#ff6464' : '#ff5555'}">
-                                ${r.passed ? '✅' : '❌'} ${r.name}
-                            </div>
-                            <div style="color: #ffaaaa; font-size: 11px;">
-                                ${r.result || r.error || ''}
-                            </div>
-                        </div>
-                    `;
                 });
-                
-                html += `<div style="margin-top: 10px; color: #ff6464;">${passedCount}/${results.length} passaram</div>`;
-                criticalDiv.innerHTML = html;
             });
             
-            // Limpar resultados
-            document.getElementById('d62-clear-results')?.addEventListener('click', () => {
+            // Botão limpar
+            document.getElementById('inj-clear-results')?.addEventListener('click', () => {
                 if (resultsDiv) {
-                    resultsDiv.innerHTML = '<div style="color: #ffaaaa; text-align: center; padding: 20px;">Resultados limpos</div>';
+                    resultsDiv.innerHTML = '<div style="color: #ffaaaa; text-align: center; padding: 10px;">Resultados limpos</div>';
                 }
                 if (wrapperDiv) {
-                    wrapperDiv.innerHTML = 'Clique nos botões para testar';
+                    wrapperDiv.innerHTML = 'Clique para testar';
                 }
-                if (criticalDiv) {
-                    criticalDiv.innerHTML = '';
-                }
+                const criticalDiv = panel.querySelector('#inj-critical-results');
+                if (criticalDiv) criticalDiv.remove();
             });
             
         }, 500);
     };
     
-    // === 6. ATUALIZAR STATUS ===
-    const updateDiagnostics62Status = () => {
+    // === 5. ATUALIZAR STATUS ===
+    const updateInjectedStatus = () => {
         const interval = setInterval(() => {
             const sc = window.SharedCore;
             if (!sc) return;
             
-            const funcCount = document.getElementById('d62-function-count');
-            const status = document.getElementById('d62-status');
+            const statusEl = document.getElementById('inj-status');
+            const countEl = document.getElementById('inj-func-count');
             
-            if (funcCount) {
-                const count = Object.keys(sc).filter(k => typeof sc[k] === 'function').length;
-                funcCount.textContent = count;
+            if (statusEl) {
+                statusEl.textContent = sc ? '✅ ATIVO' : '❌ INATIVO';
+                statusEl.style.color = sc ? '#ff6464' : '#ff5555';
             }
             
-            if (status) {
-                status.textContent = sc ? '✅ ATIVO' : '❌ INATIVO';
-                status.style.color = sc ? '#ff6464' : '#ff5555';
+            if (countEl && sc) {
+                const count = Object.keys(sc).filter(k => typeof sc[k] === 'function').length;
+                countEl.textContent = count;
             }
         }, 1000);
         
         setTimeout(() => clearInterval(interval), 30000);
     };
     
-    // === 7. EXECUTAR ===
+    // === 6. EXECUTAR APÓS O PAINEL EXISTIR ===
     setTimeout(() => {
-        const panel = findDiagnostics62Panel();
-        if (panel) {
-            createTestSection(panel);
-            
-            // Log de confirmação
-            console.log('%c✅ SEÇÃO DE TESTES ADICIONADA AO DIAGNOSTICS62.JS!', 
-                        'color: #ff00ff; font-weight: bold; font-size: 14px;');
-            console.log('📍 Painel ID:', panel.id);
-            console.log('📍 Z-Index:', window.getComputedStyle(panel).zIndex);
-        } else {
-            console.error('❌ Não foi possível encontrar/criar o painel diagnostics62.js');
-        }
-    }, 3000);
+        waitForExistingPanel().then(panel => {
+            if (panel) {
+                injectTestSection(panel);
+            } else {
+                console.error('❌ Não foi possível encontrar o painel do diagnostics62.js');
+                console.log('🔍 Painéis disponíveis:', document.querySelectorAll('[id^="sharedcore-migration-panel-"], [id^="diagnostics"]').length);
+            }
+        });
+    }, 4000); // Aguardar 4 segundos para o painel original ser criado
     
 })();
