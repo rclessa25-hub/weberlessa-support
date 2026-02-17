@@ -494,10 +494,9 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
         },
         
         printReportToConsole() {
-            if (!CONFIG.isDebugMode) return;
-            
             const report = this.generateComprehensiveReport();
             
+            console.log('📊 GERANDO RELATÓRIO DE PERFORMANCE...');
             console.group('📊 RELATÓRIO COMPREENSIVO DE PERFORMANCE');
             console.log('🕐 Hora:', report.timestamp);
             console.log('🌍 Ambiente:', report.environment);
@@ -506,9 +505,14 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
             console.group('📈 MÉTRICAS PRINCIPAIS');
             console.log('⏱️ Tempo de carregamento:', 
                 report.performance.pageLoad ? report.performance.pageLoad.toFixed(2) + 'ms' : 'N/A');
-            console.log('🧠 Uso de memória:', 
-                report.benchmark.metrics?.memorySnapshots?.length > 0 ? 
-                (report.benchmark.metrics.memorySnapshots.slice(-1)[0].usedJSHeapSize / 1024 / 1024).toFixed(2) + 'MB' : 'N/A');
+            
+            if (report.benchmark.metrics?.memorySnapshots?.length > 0) {
+                const lastSnapshot = report.benchmark.metrics.memorySnapshots.slice(-1)[0];
+                console.log('🧠 Uso de memória:', (lastSnapshot.usedJSHeapSize / 1024 / 1024).toFixed(2) + 'MB');
+            } else {
+                console.log('🧠 Uso de memória: N/A (API memory não disponível)');
+            }
+            
             console.log('💾 Cache:', report.cache.size + ' itens');
             console.groupEnd();
             
@@ -517,6 +521,16 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
             console.log('⚡ Funções essenciais:', report.analysis.functions.essential + '/' + report.analysis.functions.total);
             console.log('🐛 Funções de debug:', report.analysis.functions.debug);
             console.groupEnd();
+            
+            // Benchmark de funções
+            const functionMetrics = report.benchmark.metrics.functionPerformance;
+            if (Object.keys(functionMetrics).length > 0) {
+                console.group('⚡ PERFORMANCE DE FUNÇÕES');
+                Object.entries(functionMetrics).forEach(([fnName, data]) => {
+                    console.log(`  ${fnName}: média ${data.average}ms (${data.callCount} chamadas)`);
+                });
+                console.groupEnd();
+            }
             
             if (report.recommendations.length > 0) {
                 console.group('💡 RECOMENDAÇÕES');
@@ -533,9 +547,12 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
             try {
                 localStorage.setItem('last_performance_report', JSON.stringify(report, null, 2));
                 localStorage.setItem('last_performance_report_time', new Date().toISOString());
+                console.log('✅ Relatório salvo no localStorage (last_performance_report)');
             } catch (e) {
                 console.warn('⚠️ Não foi possível salvar relatório no localStorage');
             }
+            
+            return report;
         }
     };
     
@@ -588,12 +605,70 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
         
         // Função para testes rápidos
         quickTest() {
-            return {
-                cacheWorking: SmartCache.set('test', 'value') && SmartCache.get('test') === 'value',
-                benchmarkWorking: !!BenchmarkSystem.metrics,
-                monitorWorking: !!PerformanceMonitor.metrics,
-                analyzerWorking: !!CoreAnalyzer.analyze()
+            const testResult = {
+                cache: false,
+                benchmark: false,
+                analyzer: false,
+                reporter: false
             };
+            
+            // Teste de cache
+            SmartCache.set('test_key', 'test_value', 1000);
+            testResult.cache = SmartCache.get('test_key') === 'test_value';
+            
+            // Teste de benchmark
+            testResult.benchmark = !!BenchmarkSystem.metrics && 
+                                   typeof BenchmarkSystem.startMeasurement === 'function';
+            
+            // Teste de analyzer
+            const analysis = CoreAnalyzer.analyze();
+            testResult.analyzer = analysis && typeof analysis === 'object' && 
+                                 analysis.modules !== undefined;
+            
+            // Teste de reporter
+            testResult.reporter = typeof PerformanceReporter.printReportToConsole === 'function';
+            
+            console.log('⚡ Teste rápido do PerformanceSystem:', testResult);
+            
+            if (testResult.cache && testResult.benchmark && testResult.analyzer && testResult.reporter) {
+                console.log('✅ SISTEMA 100% FUNCIONAL');
+            } else {
+                console.warn('⚠️ Sistema com problemas:', 
+                    Object.entries(testResult)
+                        .filter(([_, v]) => !v)
+                        .map(([k]) => k)
+                        .join(', ')
+                );
+            }
+            
+            return testResult;
+        },
+        
+        // Função para verificar se módulos antigos foram removidos
+        verifyOldModulesRemoved() {
+            const oldModules = {
+                'benchmark.js': typeof window.BenchmarkSystem !== 'undefined',
+                'core-optimizer.js': typeof window.analyzeCoreSystem === 'function',
+                'optimizer.js': typeof window.PerformanceCache !== 'undefined'
+            };
+            
+            console.group('🔍 VERIFICAÇÃO DE MÓDULOS ANTIGOS');
+            console.log('📦 Módulos antigos (devem ser FALSE):', oldModules);
+            
+            const allFalse = Object.values(oldModules).every(v => v === false);
+            if (allFalse) {
+                console.log('✅ Todos os módulos antigos foram removidos com sucesso!');
+            } else {
+                console.warn('⚠️ Alguns módulos antigos ainda estão presentes:', 
+                    Object.entries(oldModules)
+                        .filter(([_, v]) => v === true)
+                        .map(([k]) => k)
+                        .join(', ')
+                );
+            }
+            console.groupEnd();
+            
+            return oldModules;
         }
     };
     
@@ -603,6 +678,11 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 window.PerformanceSystem.init();
+                
+                // Verificar módulos antigos após inicialização
+                setTimeout(() => {
+                    window.PerformanceSystem.verifyOldModulesRemoved();
+                }, 2000);
             }, 1000);
         });
     } else {
@@ -623,4 +703,7 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
             }
         }
     }
+    
+    // Expor função para teste no console
+    console.log('📊 Performance System pronto! Digite: PerformanceSystem.reporter.printReportToConsole() para ver relatório');
 })();
