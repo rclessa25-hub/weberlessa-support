@@ -1,5 +1,5 @@
 // debug/utils/storage-diagnostics.js
-// Módulo de diagnóstico para localStorage, sincronização de dados, funções de teste e verificação (MIGRADO DO CORE SYSTEM).
+// Módulo de diagnóstico para localStorage, sincronização de dados, funções de teste, verificação e monitoramento (MIGRADO DO CORE SYSTEM).
 console.log('🔧 [SUPORTE] storage-diagnostics.js carregado');
 
 (function() {
@@ -179,3 +179,36 @@ console.log('🔧 [SUPORTE] storage-diagnostics.js carregado');
     console.log('✅ [SUPORTE] Funções de teste testFullUpdate e forceFullGalleryUpdate migradas.');
     console.log('✅ [SUPORTE] Função de verificação checkPropertySystem migrada.');
 })();
+
+// ======================================================================
+// MONITORAMENTO SILENCIOSO CONTÍNUO (APÓS A IIFE)
+// ======================================================================
+// Este monitoramento só atua em modo debug e verifica periodicamente
+// a consistência entre localStorage e memória.
+
+setTimeout(() => {
+    if (window.location.search.includes('debug=true')) {
+        console.log('📊 [SUPORTE] Iniciando monitoramento contínuo de dados (a cada 30s)...');
+        
+        setInterval(() => {
+            // Só executa se ainda estiver em modo debug
+            if (!window.location.search.includes('debug=true')) return;
+            
+            const stored = JSON.parse(localStorage.getItem('properties') || '[]');
+            const inMemory = window.properties?.length || 0;
+            
+            if (Math.abs(stored.length - inMemory) > 0) {
+                console.log(`📊 [MONITOR] Storage: ${stored.length} | Memória: ${inMemory}`);
+                
+                // Se a diferença for pequena (até 3), tenta sincronizar automaticamente
+                if (Math.abs(stored.length - inMemory) <= 3) {
+                    if (typeof window.checkPropertySystem === 'function') {
+                        window.checkPropertySystem(true);
+                    }
+                }
+            }
+        }, 30000); // 30 segundos
+    }
+}, 5000); // Pequeno delay para garantir que o sistema principal já carregou
+
+console.log('✅ [SUPORTE] Monitoramento contínuo configurado. Verificará a cada 30s em modo debug.');
