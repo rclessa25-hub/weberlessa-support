@@ -1,5 +1,5 @@
 // debug/utils/storage-diagnostics.js
-// Módulo de diagnóstico para localStorage, sincronização de dados, funções de teste, verificação e monitoramento (MIGRADO DO CORE SYSTEM).
+// Módulo de diagnóstico para localStorage, sincronização de dados, funções de teste, verificação, monitoramento e inicialização automática (MIGRADO DO CORE SYSTEM).
 console.log('🔧 [SUPORTE] storage-diagnostics.js carregado');
 
 (function() {
@@ -211,4 +211,43 @@ setTimeout(() => {
     }
 }, 5000); // Pequeno delay para garantir que o sistema principal já carregou
 
+// ======================================================================
+// SISTEMA DE VERIFICAÇÃO AUTOMÁTICA INICIAL (MIGRADO DO PROPERTIES.JS)
+// ======================================================================
+
+// Definir a função autoSyncOnLoad (se ainda não existir globalmente)
+if (typeof window.autoSyncOnLoad !== 'function') {
+    window.autoSyncOnLoad = function() {
+        // Pequeno atraso para garantir que tudo carregou
+        setTimeout(() => {
+            try {
+                console.log('🔄 [SUPORTE] Executando verificação automática inicial...');
+                const syncResult = window.checkPropertySystem ? window.checkPropertySystem(true) : null;
+                
+                if (window.location.search.includes('debug=true')) {
+                    console.log('🔄 [SUPORTE] Sincronização automática:', syncResult);
+                }
+                
+                if (syncResult && syncResult.action !== 'no_sync_needed') {
+                    setTimeout(() => {
+                        if (typeof window.renderProperties === 'function' && syncResult.count > 0) {
+                            window.renderProperties('todos');
+                        }
+                    }, 500);
+                }
+            } catch (e) {
+                console.warn('⚠️ [SUPORTE] Sincronização automática falhou (não crítico):', e.message);
+            }
+        }, 3000); // Mesmo delay de 3 segundos do original
+    };
+}
+
+// Executar automaticamente quando o DOM estiver pronto
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.autoSyncOnLoad);
+} else {
+    setTimeout(window.autoSyncOnLoad, 1000);
+}
+
+console.log('✅ [SUPORTE] Sistema de verificação automática inicial (autoSyncOnLoad) migrado.');
 console.log('✅ [SUPORTE] Monitoramento contínuo configurado. Verificará a cada 30s em modo debug.');
