@@ -181,6 +181,114 @@ console.log('🔧 [SUPORTE] storage-diagnostics.js carregado');
 })();
 
 // ======================================================================
+// VERIFICADOR DE MIGRAÇÃO - GARANTE QUE O CORE NÃO TEM FUNÇÕES DUPLICADAS
+// ======================================================================
+// Esta função verifica se as funções migradas foram removidas do Core System
+// e só executa em modo debug, sem afetar a produção.
+
+window.verificarMigracaoStorage = function() {
+    // Só executa em modo debug - NUNCA em produção
+    if (!window.location.search.includes('debug=true')) {
+        return { executado: false, motivo: 'Modo produção' };
+    }
+    
+    console.group('🔍 VERIFICAÇÃO DE MIGRAÇÃO - STORAGE DIAGNOSTICS');
+    console.log('📋 Verificando se funções foram removidas do Core System...');
+    
+    const resultados = {
+        funcoesNoCore: [],
+        funcoesCorretas: [],
+        status: 'OK'
+    };
+    
+    // Lista de funções que DEVERIAM estar APENAS no Support System
+    const funcoesMigradas = [
+        'diagnosticoSincronizacao',
+        'testFullUpdate',
+        'forceFullGalleryUpdate',
+        'checkPropertySystem',
+        'autoSyncOnLoad'
+    ];
+    
+    // Verificar cada função
+    funcoesMigradas.forEach(nomeFuncao => {
+        const existeNoCore = typeof window[nomeFuncao] === 'function';
+        
+        if (existeNoCore) {
+            // A função ainda existe no escopo global - pode vir do Core ou Support
+            // Precisamos verificar de onde ela veio
+            
+            // Tenta obter a stack da função (não é 100% confiável, mas ajuda)
+            const funcaoString = window[nomeFuncao].toString();
+            const veioDoSupport = funcaoString.includes('storage-diagnostics.js') || 
+                                 funcaoString.includes('SUPORTE');
+            
+            if (!veioDoSupport) {
+                // A função parece vir do Core (não tem marcação do Support)
+                resultados.funcoesNoCore.push({
+                    funcao: nomeFuncao,
+                    origem: 'Core System (PROBLEMA)',
+                    solucao: `Remover do arquivo properties.js`
+                });
+                resultados.status = 'ATENÇÃO';
+            } else {
+                resultados.funcoesCorretas.push({
+                    funcao: nomeFuncao,
+                    origem: 'Support System (CORRETO)'
+                });
+            }
+        } else {
+            // Função não existe - também é um problema, pois deveria existir no Support
+            resultados.funcoesNoCore.push({
+                funcao: nomeFuncao,
+                origem: 'NÃO ENCONTRADA',
+                solucao: `Verificar se storage-diagnostics.js foi carregado`
+            });
+            resultados.status = 'ERRO';
+        }
+    });
+    
+    // Exibir relatório
+    console.log('📊 RELATÓRIO DE MIGRAÇÃO:');
+    
+    if (resultados.funcoesCorretas.length > 0) {
+        console.log('✅ Funções corretamente no Support:');
+        resultados.funcoesCorretas.forEach(item => {
+            console.log(`  - ${item.funcao}: ${item.origem}`);
+        });
+    }
+    
+    if (resultados.funcoesNoCore.length > 0) {
+        console.log('⚠️ PROBLEMAS ENCONTRADOS:');
+        resultados.funcoesNoCore.forEach(item => {
+            console.log(`  - ${item.funcao}: ${item.origem}`);
+            console.log(`    Solução: ${item.solucao}`);
+        });
+    }
+    
+    if (resultados.status === 'OK') {
+        console.log('🎉 SISTEMA 100% MIGRADO! Todas as funções estão no Support System.');
+        console.log('📉 Core System limpo e enxuto.');
+    } else {
+        console.log(`🔧 Status: ${resultados.status} - Ações necessárias acima.`);
+    }
+    
+    console.groupEnd();
+    
+    return resultados;
+};
+
+// Executar automaticamente em modo debug após carregamento
+if (window.location.search.includes('debug=true')) {
+    // Pequeno delay para garantir que tudo carregou
+    setTimeout(() => {
+        if (typeof window.verificarMigracaoStorage === 'function') {
+            window.verificarMigracaoStorage();
+        }
+    }, 2000);
+}
+
+// ======================================================================
 // MONITORAMENTO SILENCIOSO CONTÍNUO (APÓS A IIFE)
 // ======================================================================
 // Este monitoramento só atua em modo debug e verifica periodicamente
@@ -251,3 +359,4 @@ if (document.readyState === 'loading') {
 
 console.log('✅ [SUPORTE] Sistema de verificação automática inicial (autoSyncOnLoad) migrado.');
 console.log('✅ [SUPORTE] Monitoramento contínuo configurado. Verificará a cada 30s em modo debug.');
+console.log('✅ [SUPORTE] Verificador de migração disponível (window.verificarMigracaoStorage)');
