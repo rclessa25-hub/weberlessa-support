@@ -221,7 +221,8 @@ window.verificarMigracaoStorage = function() {
             // Tenta obter a stack da função (não é 100% confiável, mas ajuda)
             const funcaoString = window[nomeFuncao].toString();
             const veioDoSupport = funcaoString.includes('storage-diagnostics.js') || 
-                                 funcaoString.includes('SUPORTE');
+                                 funcaoString.includes('SUPORTE') ||
+                                 funcaoString.includes('via Support System');
             
             if (!veioDoSupport) {
                 // A função parece vir do Core (não tem marcação do Support)
@@ -278,7 +279,78 @@ window.verificarMigracaoStorage = function() {
     return resultados;
 };
 
-// Executar automaticamente em modo debug após carregamento
+// ======================================================================
+// VERIFICAÇÕES DETALHADAS DE ORIGEM DAS FUNÇÕES (APENAS MODO DEBUG)
+// ======================================================================
+
+setTimeout(() => {
+    if (window.location.search.includes('debug=true')) {
+        console.log('🔍 VERIFICAÇÃO DETALHADA DE ORIGEM DAS FUNÇÕES:');
+        
+        // Lista de funções para verificar
+        const funcoesParaVerificar = [
+            'diagnosticoSincronizacao',
+            'checkPropertySystem',
+            'testFullUpdate',
+            'forceFullGalleryUpdate',
+            'autoSyncOnLoad'
+        ];
+        
+        funcoesParaVerificar.forEach(nomeFuncao => {
+            if (typeof window[nomeFuncao] === 'function') {
+                const funcaoString = window[nomeFuncao].toString();
+                const primeirasLinhas = funcaoString.split('\n').slice(0, 3).join('\n').substring(0, 200);
+                
+                console.log(`\n📌 FUNÇÃO: ${nomeFuncao}`);
+                console.log(`   Tipo: ${typeof window[nomeFuncao]}`);
+                console.log(`   Origem: ${funcaoString.includes('storage-diagnostics.js') ? '✅ Support System' : '❌ Core System (ou outro)'}`);
+                console.log(`   Primeiras linhas: ${primeirasLinhas}...`);
+            } else {
+                console.log(`\n❌ FUNÇÃO: ${nomeFuncao} - NÃO ENCONTRADA`);
+            }
+        });
+    }
+}, 1000);
+
+// ======================================================================
+// VERIFICAÇÃO PÓS-REMOÇÃO (APENAS MODO DEBUG)
+// ======================================================================
+
+setTimeout(() => {
+    if (window.location.search.includes('debug=true')) {
+        console.log('\n🔍 VERIFICAÇÃO PÓS-REMOÇÃO:');
+        
+        const funcoesVerificar = [
+            'diagnosticoSincronizacao',
+            'checkPropertySystem',
+            'testFullUpdate',
+            'forceFullGalleryUpdate',
+            'autoSyncOnLoad'
+        ];
+        
+        funcoesVerificar.forEach(nomeFuncao => {
+            const existe = typeof window[nomeFuncao] === 'function';
+            
+            if (existe) {
+                const funcaoString = window[nomeFuncao].toString();
+                const noSupport = funcaoString.includes('storage-diagnostics.js') || 
+                                 funcaoString.includes('SUPORTE') ||
+                                 funcaoString.includes('via Support System');
+                
+                console.log(`- ${nomeFuncao}: ${noSupport ? '✅ Support System' : '❌ AINDA NO CORE'}`);
+                
+                // Se estiver no Core, mostra trecho para debug
+                if (!noSupport) {
+                    console.log(`  Primeiras 100 caracteres: ${funcaoString.substring(0, 100)}...`);
+                }
+            } else {
+                console.log(`- ${nomeFuncao}: ❓ NÃO ENCONTRADA`);
+            }
+        });
+    }
+}, 3000);
+
+// Executar verificador automático em modo debug após carregamento
 if (window.location.search.includes('debug=true')) {
     // Pequeno delay para garantir que tudo carregou
     setTimeout(() => {
@@ -360,3 +432,4 @@ if (document.readyState === 'loading') {
 console.log('✅ [SUPORTE] Sistema de verificação automática inicial (autoSyncOnLoad) migrado.');
 console.log('✅ [SUPORTE] Monitoramento contínuo configurado. Verificará a cada 30s em modo debug.');
 console.log('✅ [SUPORTE] Verificador de migração disponível (window.verificarMigracaoStorage)');
+console.log('✅ [SUPORTE] Verificações detalhadas de origem configuradas (executam em modo debug)');
