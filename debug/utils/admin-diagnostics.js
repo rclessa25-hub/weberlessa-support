@@ -270,7 +270,7 @@ console.log('🔧 [SUPPORT] admin-diagnostics.js carregado');
     }
 
     // =========================================================================
-    // 6. INICIALIZAÇÃO AUTOMÁTICA EM MODO DEBUG
+    // 6. INICIALIZAÇÃO AUTOMÁTICA E COMANDOS DE VERIFICAÇÃO PÓS-MIGRAÇÃO
     // =========================================================================
     if (window.location.search.includes('debug=true')) {
         setTimeout(() => {
@@ -286,13 +286,28 @@ console.log('🔧 [SUPPORT] admin-diagnostics.js carregado');
                 }
             }, 3000);
             
-            // Comandos disponíveis
-            console.log('📌 Comandos de diagnóstico do admin:');
-            console.log('  - AdminHelpers.showNotification("mensagem", "success|error") - Toast');
-            console.log('  - AdminHelpers.closeModal() - Fechar modal');
-            console.log('  - diagnoseAdminStorage() - Verificar localStorage');
-            console.log('  - testAdminForm() - Testar formulário');
-            console.log('  - createEmergencyButton() - Recriar botão de emergência');
+            // Comandos disponíveis para teste no console
+            console.log('\n📌 COMANDOS DE VERIFICAÇÃO PÓS-MIGRAÇÃO:');
+            console.log('  ✅ Já disponíveis globalmente:');
+            console.log('  - AdminHelpers.showNotification(\'Teste\', \'success\')');
+            console.log('  - AdminHelpers.closeModal()');
+            console.log('  - diagnoseAdminStorage()');
+            console.log('  - testAdminForm()');
+            console.log('  - createEmergencyButton()');
+            
+            console.log('\n🔧 TESTE RÁPIDO - Copie e cole no console (F12):');
+            console.log('  // Testar helpers');
+            console.log('  AdminHelpers.showNotification(\'Teste\', \'success\');');
+            console.log('  AdminHelpers.closeModal();');
+            console.log('  ');
+            console.log('  // Diagnóstico');
+            console.log('  diagnoseAdminStorage();');
+            console.log('  testAdminForm();');
+            console.log('  ');
+            console.log('  // Botão de emergência');
+            console.log('  createEmergencyButton();');
+            
+            console.log('\n⚠️ Se algum comando não funcionar, recarregue a página com ?debug=true');
             
         }, 1000);
     }
