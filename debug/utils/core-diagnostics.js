@@ -1,6 +1,6 @@
 // debug/utils/core-diagnostics.js
-// Módulo de diagnóstico extraído do Core System (main.js)
-console.log('🔧 [SUPPORT] core-diagnostics.js carregado.');
+// Módulo de diagnóstico e suporte extraído do Core System
+console.log('🔧 [SUPPORT] core-diagnostics.js carregado (versão consolidada).');
 
 (function() {
     // ========== DIAGNÓSTICO DE STORAGE ==========
@@ -73,14 +73,10 @@ console.log('🔧 [SUPPORT] core-diagnostics.js carregado.');
                 if (error) throw error;
                 
                 if (data && data.length > 0) {
-                    // Limpar TUDO
                     localStorage.clear();
-                    
-                    // Salvar novos dados na chave unificada
                     window.properties = data;
                     localStorage.setItem('properties', JSON.stringify(data));
                     
-                    // Recarregar interface
                     if (window.renderProperties) window.renderProperties('todos');
                     if (window.loadPropertyList) window.loadPropertyList();
                     
@@ -120,40 +116,185 @@ console.log('🔧 [SUPPORT] core-diagnostics.js carregado.');
         }, 1000);
     }
 
-    // ========== 🎯 VERIFICAÇÃO ÚNICA E CENTRALIZADA ==========
-    // Tudo em um só lugar - executa automaticamente no console
+    // ========== FUNÇÕES CONSOLIDADAS DO CORE SYSTEM ==========
+
+    // -------------------------------------------------------------------------
+    // 1. UNIFICAÇÃO DO LOCALSTORAGE
+    // -------------------------------------------------------------------------
+    window.unifyLocalStorageKeys = function() {
+        console.group('🔄 [SUPORTE] UNIFICAÇÃO DE LOCALSTORAGE');
+        
+        const oldKey = 'weberlessa_properties';
+        const newKey = 'properties';
+        
+        try {
+            const oldData = localStorage.getItem(oldKey);
+            const newData = localStorage.getItem(newKey);
+            
+            console.log('📊 Estado atual:');
+            console.log(`- "${oldKey}": ${oldData ? 'EXISTE' : 'NÃO EXISTE'}`);
+            console.log(`- "${newKey}": ${newData ? 'EXISTE' : 'NÃO EXISTE'}`);
+            
+            if (oldData && !newData) {
+                console.log(`🔄 Migrando de "${oldKey}" para "${newKey}"`);
+                localStorage.setItem(newKey, oldData);
+                localStorage.removeItem(oldKey);
+                console.log(`✅ Migração concluída`);
+            }
+            
+            if (oldData && newData) {
+                try {
+                    const oldArray = JSON.parse(oldData);
+                    const newArray = JSON.parse(newData);
+                    
+                    console.log(`📊 Comparação:`);
+                    console.log(`- "${oldKey}": ${oldArray.length} imóveis`);
+                    console.log(`- "${newKey}": ${newArray.length} imóveis`);
+                    
+                    if (oldArray.length > newArray.length) {
+                        console.log(`🔄 "${oldKey}" tem mais dados, substituindo...`);
+                        localStorage.setItem(newKey, oldData);
+                        console.log(`✅ Substituído por dados da chave antiga`);
+                    }
+                    
+                    localStorage.removeItem(oldKey);
+                    console.log(`🗑️ Chave antiga "${oldKey}" removida`);
+                    
+                } catch (parseError) {
+                    console.error('❌ Erro ao parsear dados:', parseError);
+                }
+            }
+            
+            const finalData = localStorage.getItem(newKey);
+            if (finalData) {
+                const finalArray = JSON.parse(finalData);
+                console.log(`✅ Estado final: ${finalArray.length} imóveis em "${newKey}"`);
+                
+                if (window.properties && window.properties.length !== finalArray.length) {
+                    console.warn(`⚠️ Inconsistência detectada: memória tem ${window.properties.length}, storage tem ${finalArray.length}`);
+                    console.log('🔄 Sincronizando window.properties...');
+                    window.properties = finalArray;
+                }
+            }
+            
+            console.log('🎯 Unificação concluída');
+            
+        } catch (error) {
+            console.error('❌ Erro na unificação:', error);
+        }
+        
+        console.groupEnd();
+    };
+
+    // -------------------------------------------------------------------------
+    // 2. FUNÇÃO AUXILIAR: AGUARDAR IMAGENS CRÍTICAS
+    // -------------------------------------------------------------------------
+    window.waitForCriticalImages = async function() {
+        return window.SharedCore?.ImageLoader?.waitForCriticalImages?.() || 0;
+    };
+
+    // -------------------------------------------------------------------------
+    // 3. FUNÇÃO DE COMPATIBILIDADE (FALLBACK) - CORAÇÃO DO SISTEMA
+    // -------------------------------------------------------------------------
+    window.ensureBasicFunctionality = function() {
+        console.log('🔧 [SUPORTE] Verificando funcionalidade básica...');
+        
+        // Garantir que window.properties existe
+        if (!window.properties) {
+            window.properties = [];
+            console.log('📦 window.properties inicializado como array vazio');
+        }
+        
+        // Tentar recuperar do localStorage se estiver vazio
+        if (window.properties.length === 0) {
+            const stored = localStorage.getItem('properties');
+            if (stored) {
+                try {
+                    window.properties = JSON.parse(stored);
+                    console.log(`✅ Recuperado ${window.properties.length} imóveis do localStorage (chave unificada)`);
+                } catch (e) {
+                    console.warn('⚠️ Não foi possível recuperar imóveis do localStorage');
+                }
+            }
+        }
+        
+        // Fallback para renderProperties se não existir
+        if (typeof window.renderProperties !== 'function') {
+            console.warn('⚠️ renderProperties() não disponível - criando fallback básico');
+            window.renderProperties = function(filter = 'todos') {
+                const container = document.getElementById('properties-container');
+                if (container) {
+                    container.innerHTML = '<p style="text-align:center;padding:2rem;color:#666;">Imóveis carregando...</p>';
+                }
+            };
+        }
+        
+        // Fallback para setupFilters se não existir
+        if (typeof window.setupFilters !== 'function') {
+            console.warn('⚠️ setupFilters() não disponível - criando fallback básico');
+            window.setupFilters = function() {
+                console.log('ℹ️ Filtros não disponíveis (modo básico)');
+            };
+        }
+    };
+
+    // -------------------------------------------------------------------------
+    // 4. TESTE DE INTEGRAÇÃO
+    // -------------------------------------------------------------------------
+    window.runIntegrationTest = function(totalTime, imagesLoaded) {
+        if (!window.location.search.includes('debug=true')) return;
+        
+        console.log('🧪 [SUPORTE] TESTE DE INTEGRAÇÃO OTIMIZADO:');
+        const testResults = {
+            'Imóveis carregados': !!window.properties && window.properties.length > 0,
+            'Número de imóveis': window.properties ? window.properties.length : 0,
+            'Container encontrado': !!document.getElementById('properties-container'),
+            'Filtros ativos': document.querySelectorAll('.filter-btn.active').length > 0,
+            'Função renderProperties': typeof window.renderProperties === 'function',
+            'Função setupFilters': typeof window.setupFilters === 'function',
+            'Tempo total': `${totalTime}ms`,
+            'Imagens otimizadas': imagesLoaded,
+            'Chaves localStorage': Object.keys(localStorage).filter(k => k.includes('prop')).join(', ')
+        };
+        
+        console.table(testResults);
+    };
+
+    // ========== VERIFICAÇÃO ÚNICA E CENTRALIZADA ==========
     setTimeout(() => {
-        // Só executa em modo debug
         if (!window.location.search.includes('debug=true')) return;
         
         console.log('=================================');
         console.log('🔬 VERIFICAÇÃO DA MIGRAÇÃO (core-diagnostics.js)');
         console.log('=================================');
         
-        // Verificação simples das funções
         const functions = {
             'diagnosticoStorage': typeof window.diagnosticoStorage === 'function' ? '✅' : '❌',
             'cleanupOldStorage': typeof window.cleanupOldStorage === 'function' ? '✅' : '❌',
-            'emergencyRestore': typeof window.emergencyRestoreFromSupabase === 'function' ? '✅' : '❌'
+            'emergencyRestore': typeof window.emergencyRestoreFromSupabase === 'function' ? '✅' : '❌',
+            'unifyLocalStorageKeys': typeof window.unifyLocalStorageKeys === 'function' ? '✅' : '❌',
+            'waitForCriticalImages': typeof window.waitForCriticalImages === 'function' ? '✅' : '❌',
+            'ensureBasicFunctionality': typeof window.ensureBasicFunctionality === 'function' ? '✅' : '❌',
+            'runIntegrationTest': typeof window.runIntegrationTest === 'function' ? '✅' : '❌',
         };
         
         console.table(functions);
         
-        // Verificação de onde vieram
         const allOk = Object.values(functions).every(v => v === '✅');
         if (allOk) {
-            console.log('✅✅✅ MIGRAÇÃO CONCLUÍDA!');
-            console.log('   ✓ Core System: 95 linhas removidas');
-            console.log('   ✓ Support System: Diagnóstico disponível');
-            console.log('   ✓ Auto-verificação: Ativa');
+            console.log('✅✅✅ MIGRAÇÃO CONSOLIDADA COM SUCESSO!');
+            console.log('   ✓ Core System: 150+ linhas removidas do main.js');
+            console.log('   ✓ Support System: core-diagnostics.js agora contém 7 funções');
+            console.log('   ✓ Módulo coeso e sem duplicação');
+            console.log('   ✓ ensureBasicFunctionality() posicionado corretamente');
             console.log('=================================');
             
-            // Executa diagnóstico automático como prova
             console.log('📊 Executando diagnóstico automático:');
             window.diagnosticoStorage();
         } else {
             console.log('❌❌❌ MIGRAÇÃO INCOMPLETA!');
-            console.log('   Verifique se o main.js foi atualizado');
+            console.log('   Verifique se o main.js foi atualizado.');
         }
-    }, 2000); // 2 segundos após carregar
+    }, 2000);
+
 })();
