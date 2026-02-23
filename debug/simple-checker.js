@@ -1,5 +1,5 @@
-// weberlessa-support/debug/simple-checker.js - VERSÃO ATUALIZADA
-console.log('✅ simple-checker.js - Verificação Básica ATUALIZADA');
+// weberlessa-support/debug/simple-checker.js - VERSÃO ATUALIZADA COM REGISTRY
+console.log('✅ simple-checker.js - Verificação Básica ATUALIZADA (com Registry)');
 
 window.runSupportChecks = function() {
     console.group('✅ VERIFICAÇÃO BÁSICA DO SISTEMA - SISTEMA ATUAL');
@@ -30,16 +30,20 @@ window.runSupportChecks = function() {
         
         // Shared Core (essencial)
         'SharedCore': typeof window.SharedCore === 'object',
-        'SharedCore.PriceFormatter': typeof window.SharedCore?.PriceFormatter === 'object'
+        'SharedCore.PriceFormatter': typeof window.SharedCore?.PriceFormatter === 'object',
+        
+        // ✅ NOVO: Diagnostic Registry
+        'Diagnostic Registry': typeof window.DiagnosticRegistry === 'object'
     };
     
     console.table(essentials);
     
     // ✅ VERIFICAÇÃO DE MIGRAÇÃO COMPLETA
     const migrationChecks = {
-        '✅ Sistema antigo substituído': true, // Confirmação de migração
+        '✅ Sistema antigo substituído': true,
         '✅ MediaSystem (unificado) em uso': typeof window.MediaSystem === 'object',
         '✅ PdfSystem (unificado) em uso': typeof window.PdfSystem === 'object',
+        '✅ Diagnostic Registry ativo': typeof window.DiagnosticRegistry === 'object',
         '❌ Funções antigas removidas': !window.handleNewMediaFiles && !window.showPdfModal
     };
     
@@ -57,46 +61,79 @@ window.runSupportChecks = function() {
     console.log('🎯 FUNÇÕES CRÍTICAS:');
     criticalFunctions.forEach(fnName => {
         try {
-            const fn = eval(fnName); // Avaliar caminho do objeto
+            const fn = eval(fnName);
             console.log(`  ${fnName}: ${typeof fn === 'function' ? '✅' : '❌'}`);
         } catch {
             console.log(`  ${fnName}: ❌ (não encontrada)`);
         }
     });
     
+    // ✅ NOVA SEÇÃO: ESTATÍSTICAS DO REGISTRY
+    if (window.DiagnosticRegistry) {
+        console.log('\n📊 ESTATÍSTICAS DO DIAGNOSTIC REGISTRY:');
+        
+        const byCategory = window.DiagnosticRegistry.getFunctionsByCategory();
+        const totalFunctions = window.DiagnosticRegistry.registry.size;
+        
+        console.log(`Total de funções registradas: ${totalFunctions}`);
+        
+        Object.keys(byCategory).sort().forEach(category => {
+            const stats = byCategory[category];
+            const safePercent = ((stats.safe / stats.total) * 100).toFixed(1);
+            console.log(`  📁 ${category}: ${stats.total} funções (${stats.safe} seguras, ${stats.destructive} destrutivas) - ${safePercent}% seguras`);
+        });
+        
+        // Listar funções destrutivas (para alerta)
+        const destructiveFunctions = [];
+        window.DiagnosticRegistry.registry.forEach(fn => {
+            if (fn.safety.isDestructive) {
+                destructiveFunctions.push(fn.name);
+            }
+        });
+        
+        if (destructiveFunctions.length > 0) {
+            console.log('\n⚠️ FUNÇÕES DESTRUTIVAS IDENTIFICADAS (NÃO executar automaticamente):');
+            destructiveFunctions.sort().forEach(name => {
+                console.log(`  💀 ${name}`);
+            });
+        }
+    }
+    
     // ✅ CONTAGEM DE FALHAS (apenas funções críticas)
     const criticalEssentials = {
         'Admin': typeof window.toggleAdminPanel === 'function',
         'Mídia': typeof window.MediaSystem?.addFiles === 'function',
         'PDF': typeof window.PdfSystem?.showModal === 'function',
-        'Galeria': typeof window.openGallery === 'function'
+        'Galeria': typeof window.openGallery === 'function',
+        'Registry': typeof window.DiagnosticRegistry === 'object'
     };
     
     const criticalFailures = Object.values(criticalEssentials).filter(v => !v).length;
     
     if (criticalFailures > 0) {
-        console.warn(`⚠️ ${criticalFailures} função(ões) CRÍTICA(s) não encontrada(s):`);
+        console.warn(`\n⚠️ ${criticalFailures} função(ões) CRÍTICA(s) não encontrada(s):`);
         Object.entries(criticalEssentials).forEach(([name, exists]) => {
             if (!exists) console.warn(`   - ${name}`);
         });
     } else {
-        console.log('🎉 TODAS as funções CRÍTICAS estão disponíveis!');
+        console.log('\n🎉 TODAS as funções CRÍTICAS estão disponíveis!');
     }
     
     // ✅ RESUMO FINAL
-    console.log('📊 RESUMO DO SISTEMA:');
+    console.log('\n📊 RESUMO DO SISTEMA:');
     console.log(`- Imóveis carregados: ${window.properties?.length || 0}`);
     console.log(`- Sistema de mídia: ${window.MediaSystem ? '✅ UNIFICADO' : '❌'}`);
     console.log(`- Sistema de PDF: ${window.PdfSystem ? '✅ UNIFICADO' : '❌'}`);
     console.log(`- SharedCore: ${window.SharedCore ? '✅ DISPONÍVEL' : '❌'}`);
+    console.log(`- Diagnostic Registry: ${window.DiagnosticRegistry ? '✅ ATIVO' : '❌'}`);
     
     // ✅ VERIFICAÇÃO DE COMPATIBILIDADE
     if (!window.handleNewMediaFiles && !window.showPdfModal) {
-        console.log('✅✅✅ MIGRAÇÃO COMPLETA CONFIRMADA!');
+        console.log('\n✅✅✅ MIGRAÇÃO COMPLETA CONFIRMADA!');
         console.log('🎯 Sistema antigo foi completamente substituído.');
         console.log('🚀 Sistema atual 100% funcional.');
     } else {
-        console.warn('⚠️ Sistema em estado MISTO (antigo + novo)');
+        console.warn('\n⚠️ Sistema em estado MISTO (antigo + novo)');
         console.log('💡 Algumas funções antigas ainda podem estar presentes.');
     }
     
@@ -106,10 +143,12 @@ window.runSupportChecks = function() {
         essentials,
         migrationStatus: migrationChecks,
         criticalFunctions: criticalEssentials,
+        registryStats: window.DiagnosticRegistry ? window.DiagnosticRegistry.getFunctionsByCategory() : null,
         summary: {
             propertiesCount: window.properties?.length || 0,
             mediaSystem: !!window.MediaSystem,
             pdfSystem: !!window.PdfSystem,
+            registryActive: !!window.DiagnosticRegistry,
             migrationComplete: !window.handleNewMediaFiles && !window.showPdfModal
         }
     };
@@ -125,6 +164,7 @@ window.quickDiagnostic = function() {
         'Mídia': window.MediaSystem ? '✅' : '❌',
         'PDF': window.PdfSystem ? '✅' : '❌',
         'Admin': typeof window.toggleAdminPanel === 'function' ? '✅' : '❌',
+        'Registry': window.DiagnosticRegistry ? '✅' : '❌',
         'Console limpo': !window.location.search.includes('debug=true') ? '✅ (produção)' : '🔧 (debug)'
     };
     
@@ -132,6 +172,28 @@ window.quickDiagnostic = function() {
     console.groupEnd();
     
     return quickCheck;
+};
+
+// ✅ NOVA FUNÇÃO: Executar apenas diagnósticos seguros
+window.runSafeDiagnostics = async function() {
+    console.log('🛡️ Iniciando diagnóstico seguro via Registry...');
+    
+    if (!window.DiagnosticRegistry) {
+        console.error('❌ DiagnosticRegistry não disponível!');
+        return null;
+    }
+    
+    return await window.DiagnosticRegistry.runSafeDiagnostics();
+};
+
+// ✅ NOVA FUNÇÃO: Listar funções por categoria
+window.listDiagnosticFunctions = function(category = null) {
+    if (!window.DiagnosticRegistry) {
+        console.error('❌ DiagnosticRegistry não disponível!');
+        return;
+    }
+    
+    window.DiagnosticRegistry.list({ category, detailed: true });
 };
 
 // ✅ EXECUTAR AUTOMATICAMENTE EM MODO DEBUG
@@ -152,6 +214,12 @@ window.quickDiagnostic = function() {
                     // Executar diagnóstico rápido também
                     setTimeout(() => {
                         window.quickDiagnostic?.();
+                        
+                        // ✅ NOVO: Sugerir execução segura
+                        if (window.DiagnosticRegistry) {
+                            console.log('\n💡 DICA: Execute window.runSafeDiagnostics() para testar funções seguras');
+                            console.log('💡 Ou window.listDiagnosticFunctions() para listar todas as funções');
+                        }
                     }, 500);
                 }, 1000);
             } else {
@@ -167,14 +235,15 @@ window.quickDiagnostic = function() {
         }, 2000);
     } else {
         console.log('🚀 simple-checker.js carregado (modo produção)');
-        // Em produção, apenas disponibiliza as funções, não executa automaticamente
     }
 })();
 
 // ✅ EXPORTAR PARA USO GLOBAL
 window.simpleChecker = {
     runSupportChecks: window.runSupportChecks,
-    quickDiagnostic: window.quickDiagnostic
+    quickDiagnostic: window.quickDiagnostic,
+    runSafeDiagnostics: window.runSafeDiagnostics,
+    listFunctions: window.listDiagnosticFunctions
 };
 
-console.log('✅ simple-checker.js ATUALIZADO - Verificando sistema atual (pós-migração)');
+console.log('✅ simple-checker.js ATUALIZADO - Com integração ao DiagnosticRegistry');
