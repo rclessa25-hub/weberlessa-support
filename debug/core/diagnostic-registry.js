@@ -1,5 +1,5 @@
 // weberlessa-support/debug/core/diagnostic-registry.js
-console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Segura');
+console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Final com Eventos');
 
 (function() {
     window.DiagnosticRegistry = {
@@ -18,6 +18,9 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Segura');
             RECOVERY: 'recovery',
             MIGRATION: 'migration'
         },
+
+        // Flag para evitar múltiplos eventos
+        _eventDispatched: false,
 
         /**
          * Determina categoria baseada no nome da função
@@ -106,7 +109,38 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Segura');
             });
 
             console.log(`✅ [REGISTRY] Registrado: ${name} (${determinedCategory}) [Seguro: ${safetyFlags.isSafe}]`);
+            
+            // Disparar evento quando todas as funções forem registradas (após um pequeno delay)
+            if (!this._eventDispatched) {
+                clearTimeout(this._eventTimer);
+                this._eventTimer = setTimeout(() => {
+                    this.dispatchReadyEvent();
+                }, 500);
+            }
+            
             return true;
+        },
+
+        /**
+         * Dispara evento personalizado quando o registry está pronto
+         */
+        dispatchReadyEvent() {
+            if (this._eventDispatched) return;
+            
+            const event = new CustomEvent('diagnostic-registry-ready', {
+                detail: {
+                    count: this.registry.size,
+                    categories: this.getFunctionsByCategory(),
+                    timestamp: new Date().toISOString()
+                },
+                bubbles: true,
+                cancelable: false
+            });
+            
+            window.dispatchEvent(event);
+            this._eventDispatched = true;
+            
+            console.log(`🎯 [REGISTRY] Evento disparado: diagnostic-registry-ready (${this.registry.size} funções)`);
         },
 
         /**
@@ -305,20 +339,49 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Segura');
         },
 
         /**
+         * Aguarda o registry estar pronto (Promise)
+         */
+        waitForReady(timeout = 5000) {
+            return new Promise((resolve, reject) => {
+                if (this._eventDispatched) {
+                    resolve(this.getFunctionsByCategory());
+                    return;
+                }
+                
+                const timeoutId = setTimeout(() => {
+                    window.removeEventListener('diagnostic-registry-ready', handler);
+                    reject(new Error(`Timeout aguardando registry (${timeout}ms)`));
+                }, timeout);
+                
+                const handler = (event) => {
+                    clearTimeout(timeoutId);
+                    window.removeEventListener('diagnostic-registry-ready', handler);
+                    resolve(event.detail);
+                };
+                
+                window.addEventListener('diagnostic-registry-ready', handler);
+            });
+        },
+
+        /**
          * Limpa o registro (útil para testes)
          */
         clear() {
             this.registry.clear();
+            this._eventDispatched = false;
             console.log('🧹 Registro de diagnóstico limpo');
         }
     };
 
-    // Auto-registro inicial após 1 segundo
-    setTimeout(() => {
-        if (window.location.search.includes('debug=true')) {
+    // ✅ Auto-registro em modo debug (timer reduzido para resposta rápida)
+    if (window.location.search.includes('debug=true') || 
+        window.location.search.includes('test=true') ||
+        window.location.hostname.includes('localhost')) {
+        
+        setTimeout(() => {
             window.DiagnosticRegistry.autoRegisterFromWindow();
-        }
-    }, 2000);
+        }, 500); // Timer reduzido para 500ms
+    }
 
-    console.log('✅ DiagnosticRegistry inicializado - Versão Segura');
+    console.log('✅ DiagnosticRegistry inicializado - Versão Final com Eventos');
 })();
