@@ -1,5 +1,5 @@
-// weberlessa-support/debug/simple-checker.js - VERSÃO ATUALIZADA COM REGISTRY
-console.log('✅ simple-checker.js - Verificação Básica ATUALIZADA (com Registry)');
+// weberlessa-support/debug/simple-checker.js - VERSÃO FINAL COM EVENTOS
+console.log('✅ simple-checker.js - Verificação Básica ATUALIZADA (com Eventos)');
 
 window.runSupportChecks = function() {
     console.group('✅ VERIFICAÇÃO BÁSICA DO SISTEMA - SISTEMA ATUAL');
@@ -32,7 +32,7 @@ window.runSupportChecks = function() {
         'SharedCore': typeof window.SharedCore === 'object',
         'SharedCore.PriceFormatter': typeof window.SharedCore?.PriceFormatter === 'object',
         
-        // ✅ NOVO: Diagnostic Registry
+        // ✅ Diagnostic Registry
         'Diagnostic Registry': typeof window.DiagnosticRegistry === 'object'
     };
     
@@ -68,7 +68,7 @@ window.runSupportChecks = function() {
         }
     });
     
-    // ✅ NOVA SEÇÃO: ESTATÍSTICAS DO REGISTRY
+    // ✅ ESTATÍSTICAS DO REGISTRY
     if (window.DiagnosticRegistry) {
         console.log('\n📊 ESTATÍSTICAS DO DIAGNOSTIC REGISTRY:');
         
@@ -77,25 +77,27 @@ window.runSupportChecks = function() {
         
         console.log(`Total de funções registradas: ${totalFunctions}`);
         
-        Object.keys(byCategory).sort().forEach(category => {
-            const stats = byCategory[category];
-            const safePercent = ((stats.safe / stats.total) * 100).toFixed(1);
-            console.log(`  📁 ${category}: ${stats.total} funções (${stats.safe} seguras, ${stats.destructive} destrutivas) - ${safePercent}% seguras`);
-        });
-        
-        // Listar funções destrutivas (para alerta)
-        const destructiveFunctions = [];
-        window.DiagnosticRegistry.registry.forEach(fn => {
-            if (fn.safety.isDestructive) {
-                destructiveFunctions.push(fn.name);
-            }
-        });
-        
-        if (destructiveFunctions.length > 0) {
-            console.log('\n⚠️ FUNÇÕES DESTRUTIVAS IDENTIFICADAS (NÃO executar automaticamente):');
-            destructiveFunctions.sort().forEach(name => {
-                console.log(`  💀 ${name}`);
+        if (totalFunctions > 0) {
+            Object.keys(byCategory).sort().forEach(category => {
+                const stats = byCategory[category];
+                const safePercent = ((stats.safe / stats.total) * 100).toFixed(1);
+                console.log(`  📁 ${category}: ${stats.total} funções (${stats.safe} seguras, ${stats.destructive} destrutivas) - ${safePercent}% seguras`);
             });
+            
+            // Listar funções destrutivas (para alerta)
+            const destructiveFunctions = [];
+            window.DiagnosticRegistry.registry.forEach(fn => {
+                if (fn.safety.isDestructive) {
+                    destructiveFunctions.push(fn.name);
+                }
+            });
+            
+            if (destructiveFunctions.length > 0) {
+                console.log('\n⚠️ FUNÇÕES DESTRUTIVAS IDENTIFICADAS (NÃO executar automaticamente):');
+                destructiveFunctions.sort().forEach(name => {
+                    console.log(`  💀 ${name}`);
+                });
+            }
         }
     }
     
@@ -174,7 +176,7 @@ window.quickDiagnostic = function() {
     return quickCheck;
 };
 
-// ✅ NOVA FUNÇÃO: Executar apenas diagnósticos seguros
+// ✅ FUNÇÃO: Executar apenas diagnósticos seguros
 window.runSafeDiagnostics = async function() {
     console.log('🛡️ Iniciando diagnóstico seguro via Registry...');
     
@@ -186,7 +188,7 @@ window.runSafeDiagnostics = async function() {
     return await window.DiagnosticRegistry.runSafeDiagnostics();
 };
 
-// ✅ NOVA FUNÇÃO: Listar funções por categoria
+// ✅ FUNÇÃO: Listar funções por categoria
 window.listDiagnosticFunctions = function(category = null) {
     if (!window.DiagnosticRegistry) {
         console.error('❌ DiagnosticRegistry não disponível!');
@@ -196,43 +198,90 @@ window.listDiagnosticFunctions = function(category = null) {
     window.DiagnosticRegistry.list({ category, detailed: true });
 };
 
-// ✅ EXECUTAR AUTOMATICAMENTE EM MODO DEBUG
+// ✅ FUNÇÃO: Aguardar registry e executar
+function waitForRegistryAndExecute() {
+    console.log('⏳ Aguardando DiagnosticRegistry ficar pronto...');
+    
+    // Se já existe e já disparou evento, executar imediatamente
+    if (window.DiagnosticRegistry && window.DiagnosticRegistry._eventDispatched) {
+        console.log('⚡ Registry já pronto, executando imediatamente');
+        executeAllChecks();
+        return;
+    }
+    
+    // Timer de segurança (timeout global)
+    const timeoutId = setTimeout(() => {
+        window.removeEventListener('diagnostic-registry-ready', readyHandler);
+        console.warn('⚠️ Timeout aguardando registry - executando verificações parciais');
+        executeAllChecks(true); // true = parcial
+    }, 5000);
+    
+    // Handler do evento
+    const readyHandler = (event) => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('diagnostic-registry-ready', readyHandler);
+        console.log(`🎯 Evento recebido: diagnostic-registry-ready com ${event.detail.count} funções`);
+        executeAllChecks();
+    };
+    
+    // Registrar listener do evento
+    window.addEventListener('diagnostic-registry-ready', readyHandler);
+    
+    // Fallback: verificação periódica silenciosa (caso o evento não dispare)
+    let checkCount = 0;
+    const intervalId = setInterval(() => {
+        checkCount++;
+        if (window.DiagnosticRegistry?.registry.size > 0) {
+            clearInterval(intervalId);
+            clearTimeout(timeoutId);
+            window.removeEventListener('diagnostic-registry-ready', readyHandler);
+            console.log(`✅ Registry detectado via polling (${checkCount * 500}ms)`);
+            executeAllChecks();
+        } else if (checkCount >= 10) { // 5 segundos (10 * 500ms)
+            clearInterval(intervalId);
+            // Não fazer nada, o timeout já vai executar
+        }
+    }, 500);
+}
+
+// ✅ FUNÇÃO: Executar todas as verificações
+function executeAllChecks(isPartial = false) {
+    if (isPartial) {
+        console.warn('⚠️ Executando verificações PARCIAIS (registry não respondeu)');
+    }
+    
+    setTimeout(() => {
+        window.runSupportChecks?.();
+        
+        setTimeout(() => {
+            window.quickDiagnostic?.();
+            
+            // ✅ SUGESTÕES (sempre mostradas)
+            console.log('\n💡 DICA: Execute window.runSafeDiagnostics() para testar funções seguras');
+            console.log('💡 Ou window.listDiagnosticFunctions() para listar todas as funções');
+            console.log('💡 Ou window.DiagnosticRegistry.list({ detailed: true }) para detalhes');
+        }, 500);
+    }, 100);
+}
+
+// ✅ EXECUTAR AUTOMATICAMENTE EM MODO DEBUG (COM EVENTOS)
 (function autoInitialize() {
     const isDebugMode = window.location.search.includes('debug=true') || 
-                       window.location.search.includes('test=true');
+                       window.location.search.includes('test=true') ||
+                       window.location.hostname.includes('localhost') ||
+                       window.location.hostname.includes('127.0.0.1');
     
     if (isDebugMode) {
-        console.log('🔧 simple-checker.js - Modo debug ativado');
+        console.log('🔧 simple-checker.js - Modo debug ativado (aguardando evento)');
         
-        // Aguardar carregamento completo
-        setTimeout(() => {
-            if (document.readyState === 'complete') {
-                console.log('🏠 DOM carregado - executando verificações...');
-                setTimeout(() => {
-                    window.runSupportChecks?.();
-                    
-                    // Executar diagnóstico rápido também
-                    setTimeout(() => {
-                        window.quickDiagnostic?.();
-                        
-                        // ✅ NOVO: Sugerir execução segura
-                        if (window.DiagnosticRegistry) {
-                            console.log('\n💡 DICA: Execute window.runSafeDiagnostics() para testar funções seguras');
-                            console.log('💡 Ou window.listDiagnosticFunctions() para listar todas as funções');
-                        }
-                    }, 500);
-                }, 1000);
-            } else {
-                document.addEventListener('DOMContentLoaded', () => {
-                    setTimeout(() => {
-                        window.runSupportChecks?.();
-                        setTimeout(() => {
-                            window.quickDiagnostic?.();
-                        }, 500);
-                    }, 1000);
-                });
-            }
-        }, 2000);
+        // Aguardar carregamento completo do DOM
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(waitForRegistryAndExecute, 500);
+            });
+        } else {
+            setTimeout(waitForRegistryAndExecute, 500);
+        }
     } else {
         console.log('🚀 simple-checker.js carregado (modo produção)');
     }
@@ -243,7 +292,8 @@ window.simpleChecker = {
     runSupportChecks: window.runSupportChecks,
     quickDiagnostic: window.quickDiagnostic,
     runSafeDiagnostics: window.runSafeDiagnostics,
-    listFunctions: window.listDiagnosticFunctions
+    listFunctions: window.listDiagnosticFunctions,
+    waitForRegistry: waitForRegistryAndExecute
 };
 
-console.log('✅ simple-checker.js ATUALIZADO - Com integração ao DiagnosticRegistry');
+console.log('✅ simple-checker.js ATUALIZADO - Versão Final com Eventos e Timeout Global');
