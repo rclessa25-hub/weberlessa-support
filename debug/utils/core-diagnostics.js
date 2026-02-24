@@ -260,6 +260,41 @@ console.log('🔧 [SUPPORT] core-diagnostics.js carregado (versão consolidada).
         console.table(testResults);
     };
 
+    // =========================================================================
+    // 5. TESTE DE CONEXÃO SUPABASE (COMPLEMENTAR)
+    // =========================================================================
+    /**
+     * Testa a conexão com o Supabase de forma simples
+     * Complementa o diagnosticoStorage() já existente
+     */
+    window.testSupabaseConnection = async function() {
+        console.log('🔍 [SUPPORT] Testando conexão com Supabase...');
+        
+        if (!window.supabaseClient) {
+            console.error('❌ [SUPPORT] Cliente Supabase não inicializado');
+            return false;
+        }
+        
+        try {
+            const { data, error } = await window.supabaseClient
+                .from('properties')
+                .select('id')
+                .limit(1);
+                
+            if (error) {
+                console.error('❌ [SUPPORT] Erro na conexão:', error.message);
+                return false;
+            }
+            
+            console.log(`✅ [SUPPORT] Conexão estabelecida!`);
+            return true;
+            
+        } catch (error) {
+            console.error('❌ [SUPPORT] Erro fatal na conexão:', error.message);
+            return false;
+        }
+    };
+
     // ========== VERIFICAÇÃO ÚNICA E CENTRALIZADA ==========
     setTimeout(() => {
         if (!window.location.search.includes('debug=true')) return;
@@ -276,6 +311,7 @@ console.log('🔧 [SUPPORT] core-diagnostics.js carregado (versão consolidada).
             'waitForCriticalImages': typeof window.waitForCriticalImages === 'function' ? '✅' : '❌',
             'ensureBasicFunctionality': typeof window.ensureBasicFunctionality === 'function' ? '✅' : '❌',
             'runIntegrationTest': typeof window.runIntegrationTest === 'function' ? '✅' : '❌',
+            'testSupabaseConnection': typeof window.testSupabaseConnection === 'function' ? '✅' : '❌',
         };
         
         console.table(functions);
@@ -284,9 +320,9 @@ console.log('🔧 [SUPPORT] core-diagnostics.js carregado (versão consolidada).
         if (allOk) {
             console.log('✅✅✅ MIGRAÇÃO CONSOLIDADA COM SUCESSO!');
             console.log('   ✓ Core System: 150+ linhas removidas do main.js');
-            console.log('   ✓ Support System: core-diagnostics.js agora contém 7 funções');
+            console.log('   ✓ Support System: core-diagnostics.js agora contém 8 funções');
             console.log('   ✓ Módulo coeso e sem duplicação');
-            console.log('   ✓ ensureBasicFunctionality() posicionado corretamente');
+            console.log('   ✓ Teste Supabase adicionado com sucesso');
             console.log('=================================');
             
             console.log('📊 Executando diagnóstico automático:');
@@ -296,5 +332,14 @@ console.log('🔧 [SUPPORT] core-diagnostics.js carregado (versão consolidada).
             console.log('   Verifique se o main.js foi atualizado.');
         }
     }, 2000);
+
+    // Registrar no DiagnosticRegistry
+    setTimeout(() => {
+        if (window.DiagnosticRegistry && typeof window.testSupabaseConnection === 'function') {
+            window.DiagnosticRegistry.register('testSupabaseConnection', window.testSupabaseConnection, 'essential', {
+                description: 'Testa conexão com Supabase'
+            });
+        }
+    }, 1000);
 
 })();
