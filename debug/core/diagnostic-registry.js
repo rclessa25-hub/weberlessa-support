@@ -78,11 +78,16 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Final com Ev
         },
 
         /**
-         * Registra uma função de diagnóstico
+         * ✅ REGISTRA UMA FUNÇÃO DE DIAGNÓSTICO (CORRIGIDO)
+         * Agora verifica se é realmente uma função antes de registrar
          */
         register(name, fn, category = null, metadata = {}) {
+            // 🟢 CORREÇÃO CRÍTICA: Verificação rigorosa de função
             if (typeof fn !== 'function') {
-                console.warn(`⚠️ [REGISTRY] Tentativa de registrar não-função: ${name}`);
+                // Log silencioso em modo debug (opcional - pode remover esta linha)
+                if (window.location.search.includes('debug=true')) {
+                    console.log(`ℹ️ [REGISTRY] Ignorando não-função: ${name}`);
+                }
                 return false;
             }
 
@@ -145,8 +150,8 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Final com Ev
         },
 
         /**
-         * Registra automaticamente TODAS as funções de diagnóstico no escopo window
-         * ✅ CORREÇÃO: Ignora objetos como EventManager que não são funções
+         * ✅ REGISTRA AUTOMATICAMENTE FUNÇÕES DE DIAGNÓSTICO (CORRIGIDO)
+         * Agora filtra corretamente apenas funções verdadeiras
          */
         autoRegisterFromWindow() {
             console.group('🔍 Auto-registro de funções de diagnóstico');
@@ -163,26 +168,34 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Final com Ev
                 /^debug[A-Z]/,          // debugMediaSystem
                 /^monitor[A-Z]/,        // monitorPerformance
                 /^audit[A-Z]/,          // auditSystem
-                /^force[A-Z]/,          // forceUpdate, forceSync (destrutivas!)
-                /^delete[A-Z]/,         // deleteProperty (destrutivas!)
-                /^cleanup[A-Z]/         // cleanupStorage (destrutivas!)
+                /^force[A-Z]/,          // forceUpdate, forceSync
+                /^delete[A-Z]/,         // deleteProperty
+                /^cleanup[A-Z]/,        // cleanupStorage
+                /^waitFor[A-Z]/,        // waitForAllPropertyImages
+                /^setup[A-Z]/           // setupManualFilterFallback
             ];
 
             let registeredCount = 0;
             let skippedCount = 0;
+            let ignoredCount = 0;
             
             Object.keys(window).forEach(key => {
                 try {
                     const value = window[key];
                     
-                    // ✅ CORREÇÃO: Verificar se é função E ignorar objetos conhecidos
-                    // Ignora objetos como EventManager, FilterManager, etc.
-                    if (typeof value === 'function' && 
-                        !key.includes('Manager') && 
-                        !key.includes('System') &&
-                        !key.includes('Helper') &&
-                        !key.includes('Config')) {
-                        
+                    // 🟢 CORREÇÃO CRÍTICA: Verificação rigorosa
+                    // 1. Deve ser função
+                    // 2. Não pode ser objeto/manager conhecido
+                    // 3. Deve corresponder aos padrões
+                    const isFunction = typeof value === 'function';
+                    const isKnownObject = key.includes('Manager') || 
+                                         key.includes('System') ||
+                                         key.includes('Helper') ||
+                                         key.includes('Config') ||
+                                         key.includes('Constants') ||
+                                         key === 'EventManager'; // 🟢 Explicitar EventManager
+                    
+                    if (isFunction && !isKnownObject) {
                         const matchesPattern = diagnosticPatterns.some(pattern => 
                             pattern.test(key)
                         );
@@ -190,19 +203,26 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Final com Ev
                         if (matchesPattern) {
                             // Verificar se já está registrada
                             if (!this.registry.has(key)) {
-                                this.register(key, value);
-                                registeredCount++;
+                                // 🟢 Chamar register que já tem verificação interna
+                                const registered = this.register(key, value);
+                                if (registered) {
+                                    registeredCount++;
+                                } else {
+                                    ignoredCount++;
+                                }
                             } else {
                                 skippedCount++;
                             }
                         }
+                    } else if (isKnownObject) {
+                        ignoredCount++;
                     }
                 } catch (e) {
                     // Ignorar propriedades problemáticas
                 }
             });
 
-            console.log(`✅ Auto-registro concluído: ${registeredCount} novas funções (${skippedCount} já existentes)`);
+            console.log(`✅ Auto-registro concluído: ${registeredCount} novas funções (${skippedCount} já existentes, ${ignoredCount} ignoradas)`);
             console.groupEnd();
             return registeredCount;
         },
@@ -386,14 +406,14 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Final com Ev
         }
     };
 
-    // ✅ Auto-registro em modo debug (timer reduzido para resposta rápida)
+    // ✅ Auto-registro em modo debug
     if (window.location.search.includes('debug=true') || 
         window.location.search.includes('test=true') ||
         window.location.hostname.includes('localhost')) {
         
         setTimeout(() => {
             window.DiagnosticRegistry.autoRegisterFromWindow();
-        }, 500); // Timer reduzido para 500ms
+        }, 500);
     }
 
     console.log('✅ DiagnosticRegistry inicializado - Versão Final com Eventos');
