@@ -21,6 +21,7 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Final com Ev
 
         // Flag para evitar múltiplos eventos
         _eventDispatched: false,
+        _eventTimer: null,
 
         /**
          * Determina categoria baseada no nome da função
@@ -145,6 +146,7 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Final com Ev
 
         /**
          * Registra automaticamente TODAS as funções de diagnóstico no escopo window
+         * ✅ CORREÇÃO: Ignora objetos como EventManager que não são funções
          */
         autoRegisterFromWindow() {
             console.group('🔍 Auto-registro de funções de diagnóstico');
@@ -173,7 +175,14 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Final com Ev
                 try {
                     const value = window[key];
                     
-                    if (typeof value === 'function') {
+                    // ✅ CORREÇÃO: Verificar se é função E ignorar objetos conhecidos
+                    // Ignora objetos como EventManager, FilterManager, etc.
+                    if (typeof value === 'function' && 
+                        !key.includes('Manager') && 
+                        !key.includes('System') &&
+                        !key.includes('Helper') &&
+                        !key.includes('Config')) {
+                        
                         const matchesPattern = diagnosticPatterns.some(pattern => 
                             pattern.test(key)
                         );
@@ -369,6 +378,10 @@ console.log('📋 [SUPORTE] Diagnostic Registry carregado - Versão Final com Ev
         clear() {
             this.registry.clear();
             this._eventDispatched = false;
+            if (this._eventTimer) {
+                clearTimeout(this._eventTimer);
+                this._eventTimer = null;
+            }
             console.log('🧹 Registro de diagnóstico limpo');
         }
     };
