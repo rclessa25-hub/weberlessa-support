@@ -198,11 +198,71 @@ console.log('🔧 [SUPPORT] gallery-diagnostics.js carregado');
     };
 
     // =========================================================================
-    // 5. INICIALIZAÇÃO AUTOMÁTICA EM MODO DEBUG
+    // 5. AGUARDAR CARREGAMENTO DE IMAGENS DOS IMÓVEIS
+    // =========================================================================
+    /**
+     * Aguarda todas as imagens dos imóveis carregarem
+     * Útil para testes de performance e diagnóstico visual
+     */
+    window.waitForAllPropertyImages = async function() {
+        console.log('🖼️ [SUPPORT] Aguardando carregamento completo de todas as imagens...');
+        
+        const propertyImages = document.querySelectorAll('.property-image img, .property-gallery-image');
+        
+        if (propertyImages.length === 0) {
+            console.log('ℹ️ [SUPPORT] Nenhuma imagem de imóvel encontrada');
+            return 0;
+        }
+        
+        console.log(`📸 [SUPPORT] ${propertyImages.length} imagem(ns) de imóveis para carregar`);
+        
+        return new Promise((resolve) => {
+            let loadedCount = 0;
+            const totalImages = propertyImages.length;
+            
+            propertyImages.forEach(img => {
+                if (img.complete && img.naturalWidth > 0) {
+                    loadedCount++;
+                } else {
+                    img.onload = () => {
+                        loadedCount++;
+                        if (loadedCount >= totalImages) resolve(loadedCount);
+                    };
+                    
+                    img.onerror = () => {
+                        loadedCount++;
+                        if (loadedCount >= totalImages) resolve(loadedCount);
+                    };
+                }
+            });
+            
+            const safetyTimeout = setTimeout(() => {
+                console.log(`⏰ [SUPPORT] Timeout: ${loadedCount}/${totalImages} imagens carregadas`);
+                resolve(loadedCount);
+            }, 10000);
+            
+            if (loadedCount >= totalImages) {
+                clearTimeout(safetyTimeout);
+                resolve(loadedCount);
+            }
+        });
+    };
+
+    // =========================================================================
+    // 6. INICIALIZAÇÃO AUTOMÁTICA EM MODO DEBUG
     // =========================================================================
     if (window.location.search.includes('debug=true')) {
         setTimeout(() => {
             console.log('🔄 [SUPORTE] Executando verificação automática da galeria...');
+            
+            // Registrar no DiagnosticRegistry (se disponível)
+            setTimeout(() => {
+                if (window.DiagnosticRegistry && typeof window.waitForAllPropertyImages === 'function') {
+                    window.DiagnosticRegistry.register('waitForAllPropertyImages', window.waitForAllPropertyImages, 'gallery', {
+                        description: 'Aguarda carregamento de todas as imagens dos imóveis'
+                    });
+                }
+            }, 1000);
             
             // Verificar sistema após 3 segundos
             setTimeout(() => {
@@ -217,6 +277,7 @@ console.log('🔧 [SUPPORT] gallery-diagnostics.js carregado');
             console.log('  - testGalleryNavigation() - Testar navegação');
             console.log('  - diagnoseGalleryTouch() - Diagnosticar touch');
             console.log('  - initializeGalleryModule() - Reinicializar manualmente');
+            console.log('  - waitForAllPropertyImages() - Aguardar carregamento de imagens');
             
         }, 1000);
     }
