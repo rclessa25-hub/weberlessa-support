@@ -704,6 +704,18 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
         // Utilitários
         config: CONFIG,
         
+        /**
+         * Executa tarefas com baixa prioridade (quando o navegador está ocioso)
+         * @param {Function} task - Função a ser executada
+         */
+        runLowPriority: function(task) {
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(task, { timeout: 1000 });
+            } else {
+                setTimeout(task, 100);
+            }
+        },
+        
         // Inicialização manual
         init() {
             console.log('🚀 Inicializando Performance System...');
@@ -782,5 +794,10 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
         runVerification() {
             verifyPostExclusion();
         }
+    };
+    
+    // Também expor globalmente para compatibilidade
+    window.runLowPriority = function(task) {
+        return PerformanceSystem.runLowPriority(task);
     };
 })();
