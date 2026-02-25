@@ -11,6 +11,72 @@
         window.location.search.includes('debug=true') ||
         window.location.hostname.includes('localhost');
     
+    // ========== VALIDAÇÕES DE ID PARA SUPABASE (MIGRADO DE PROPERTIES.JS) ==========
+    /**
+     * Valida e normaliza IDs para operações no Supabase
+     * @param {string|number} id - ID a ser validado
+     * @returns {number|string|null} ID validado ou null se inválido
+     */
+    window.validateIdForSupabase = function(id) {
+        // IDs numéricos são seguros para o Supabase
+        if (typeof id === 'number' && !isNaN(id) && id > 0) {
+            return id;
+        }
+        
+        // Se for string, tenta converter
+        if (typeof id === 'string') {
+            const trimmed = id.trim();
+            
+            // UUID do Supabase (formato específico)
+            const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (uuidPattern.test(trimmed)) {
+                return trimmed;
+            }
+            
+            // Limpar prefixos temporários (test_id_, temp_)
+            const cleanId = trimmed
+                .replace('test_id_', '')
+                .replace('temp_', '')
+                .replace(/[^0-9]/g, '');
+            
+            const numericId = parseInt(cleanId);
+            if (!isNaN(numericId) && numericId > 0) {
+                return numericId;
+            }
+            
+            // Tentar conversão direta
+            const directConvert = parseInt(trimmed);
+            if (!isNaN(directConvert) && directConvert > 0) {
+                return directConvert;
+            }
+        }
+        
+        if (isDebugMode) {
+            console.warn(`⚠️ [validateIdForSupabase] ID inválido:`, id);
+        }
+        return null;
+    };
+    
+    /**
+     * Verifica se uma string é um UUID válido
+     * @param {string} str - String a ser verificada
+     * @returns {boolean} true se for UUID válido
+     */
+    window.isValidUuid = function(str) {
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        return typeof str === 'string' && uuidPattern.test(str);
+    };
+    
+    /**
+     * Verifica se um ID de propriedade é válido
+     * @param {string|number} id - ID a ser verificado
+     * @returns {boolean} true se for válido
+     */
+    window.isValidPropertyId = function(id) {
+        const validated = window.validateIdForSupabase(id);
+        return validated !== null;
+    };
+    
     // ========== VERIFICAÇÕES DO SISTEMA ATUAL ==========
     
     // Função 1: Verificar sistema de galeria
@@ -254,6 +320,7 @@
                 console.log('🖼️ Gallery System:', typeof window.openGallery === 'function' ? '✅ Disponível' : '❌ Indisponível');
                 console.log('👨‍💼 Admin System:', typeof window.toggleAdminPanel === 'function' ? '✅ Disponível' : '❌ Indisponível');
                 console.log('💾 LocalStorage:', typeof localStorage !== 'undefined' ? '✅ Disponível' : '❌ Indisponível');
+                console.log('✅ Validação de ID:', typeof window.validateIdForSupabase === 'function' ? '✅ Disponível' : '❌ Indisponível');
                 console.groupEnd();
                 
                 // Instruções
@@ -263,6 +330,8 @@
                 console.log('3. window.verifyCompleteSystem() - Verificação completa');
                 console.log('4. window.testPdfFunctionality() - Teste prático (debug only)');
                 console.log('5. window.PdfSystem.showModal(ID) - Abrir documentos de um imóvel');
+                console.log('6. window.validateIdForSupabase(ID) - Validar ID para Supabase');
+                console.log('7. window.isValidPropertyId(ID) - Verificar se ID é válido');
             }
         }, 2000);
     }
