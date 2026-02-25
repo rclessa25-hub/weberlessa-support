@@ -801,3 +801,129 @@ console.log('📊 performance-system.js - Sistema Consolidado (benchmark + core-
         return PerformanceSystem.runLowPriority(task);
     };
 })();
+
+// ===== TEMPLATE CACHE SYSTEM (MIGRADO DE PROPERTIES.JS) =====
+/**
+ * Cache especializado para templates de propriedades
+ * Estende o SmartCache com funcionalidades específicas para renderização
+ */
+window.TemplateCache = {
+    _cache: new Map(),
+    _stats: { hits: 0, misses: 0 },
+    
+    /**
+     * Obtém template do cache ou gera novo
+     * @param {Object} property - Propriedade a ser renderizada
+     * @param {Function} templateFn - Função que gera o template
+     * @returns {string} HTML do template
+     */
+    getTemplate: function(property, templateFn) {
+        if (!property || !property.id) {
+            return templateFn(property);
+        }
+        
+        // Usar ID + timestamp para cache busting quando necessário
+        const cacheKey = `template_${property.id}_${property.updated_at || property.version || '1.0'}`;
+        
+        if (this._cache.has(cacheKey)) {
+            this._stats.hits++;
+            return this._cache.get(cacheKey);
+        }
+        
+        this._stats.misses++;
+        const template = templateFn(property);
+        this._cache.set(cacheKey, template);
+        
+        // Limitar tamanho do cache (LRU simplificado)
+        if (this._cache.size > 100) {
+            const keysToDelete = Array.from(this._cache.keys()).slice(0, 20);
+            keysToDelete.forEach(key => this._cache.delete(key));
+            if (window.location.search.includes('debug=true')) {
+                console.log('🧹 [TemplateCache] Limpeza automática: 20 itens removidos');
+            }
+        }
+        
+        return template;
+    },
+    
+    /**
+     * Invalida cache para uma propriedade específica
+     * @param {number|string} propertyId - ID da propriedade
+     * @returns {number} Quantidade de itens invalidados
+     */
+    invalidate: function(propertyId) {
+        let count = 0;
+        const pattern = `template_${propertyId}_`;
+        
+        for (const key of this._cache.keys()) {
+            if (key.startsWith(pattern)) {
+                this._cache.delete(key);
+                count++;
+            }
+        }
+        
+        if (count > 0 && window.location.search.includes('debug=true')) {
+            console.log(`🧹 [TemplateCache] Invalidados ${count} templates para propriedade ${propertyId}`);
+        }
+        
+        return count;
+    },
+    
+    /**
+     * Invalida todo o cache
+     * @returns {number} Número de itens removidos
+     */
+    invalidateAll: function() {
+        const count = this._cache.size;
+        this._cache.clear();
+        this._stats = { hits: 0, misses: 0 };
+        
+        if (count > 0 && window.location.search.includes('debug=true')) {
+            console.log(`🧹 [TemplateCache] Cache completamente limpo (${count} itens)`);
+        }
+        
+        return count;
+    },
+    
+    /**
+     * Estatísticas do cache
+     * @returns {Object} Estatísticas de uso
+     */
+    getStats: function() {
+        const total = this._stats.hits + this._stats.misses;
+        return {
+            size: this._cache.size,
+            hits: this._stats.hits,
+            misses: this._stats.misses,
+            hitRate: total > 0 ? ((this._stats.hits / total) * 100).toFixed(1) + '%' : '0%'
+        };
+    }
+};
+
+// Integrar com PerformanceSystem existente
+if (window.PerformanceSystem) {
+    window.PerformanceSystem.templateCache = window.TemplateCache;
+    
+    // Adicionar método de utilidade
+    window.PerformanceSystem.getTemplateCacheStats = function() {
+        return window.TemplateCache.getStats();
+    };
+    
+    console.log('✅ TemplateCache integrado ao PerformanceSystem');
+}
+
+// Registrar no DiagnosticRegistry (se disponível)
+setTimeout(() => {
+    if (window.DiagnosticRegistry && window.TemplateCache) {
+        if (typeof window.DiagnosticRegistry.register === 'function') {
+            window.DiagnosticRegistry.register('TemplateCache', window.TemplateCache, 'performance', {
+                description: 'Cache especializado para templates de propriedades',
+                isObject: true
+            });
+            
+            window.DiagnosticRegistry.register('TemplateCache.getStats', window.TemplateCache.getStats, 'performance', {
+                description: 'Estatísticas do cache de templates'
+            });
+        }
+    }
+}, 1000);
